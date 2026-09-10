@@ -1,0 +1,32 @@
+# ==========================================
+# Swift & Xcode Ignore Rules
+# ==========================================
+# Xcode local user settings and workspaces
+**/xcuserdata/
+**/.XCodePure/
+**/DerivedData/
+
+# Swift Package Manager build artifacts
+**/.build/
+**/.swiftpm/
+
+# Package.resolved should be committed for apps, but can be ignored for libraries. 
+# Uncomment if you are building a library:
+**/Package.resolved
+
+**/.xcodesamplecode.plist
+**/.xcodeproj
+
+# ==========================================
+# OS & Editor Overhead
+# ==========================================
+.DS_Store
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*~
+\#*
+.\#*
