@@ -79,4 +79,61 @@ final class BackendDiffTests: XCTestCase {
         )
         XCTAssertTrue(chosen == AccelerateBackend.self)
     }
+
+    // MARK: - axpy / dot / norm
+
+    func testAccelerateAxpyAgreesWithFallback() throws {
+        let x = Vector<Double>([1.5, -2.0, 3.25, 0.0, 7.0])
+        let y = Vector<Double>([0.5, 4.0, -1.0, 2.5, -3.0])
+        let alpha = 2.5
+
+        Dispatcher.registeredBackends = []
+        var fallbackY = y
+        try Dispatcher.axpy(alpha: alpha, x, into: &fallbackY)
+
+        Dispatcher.registeredBackends = [AccelerateBackend.self]
+        var accelerateY = y
+        try Dispatcher.axpy(alpha: alpha, x, into: &accelerateY)
+
+        for i in 0..<fallbackY.count {
+            XCTAssertEqual(fallbackY[i], accelerateY[i], accuracy: 1e-9)
+        }
+    }
+
+    func testAccelerateDotAgreesWithFallback() throws {
+        let x = Vector<Double>([1.0, 2.0, 3.0, 4.0])
+        let y = Vector<Double>([5.0, -1.0, 0.5, 2.0])
+
+        Dispatcher.registeredBackends = []
+        let fallbackResult = try Dispatcher.dot(x, y)
+
+        Dispatcher.registeredBackends = [AccelerateBackend.self]
+        let accelerateResult = try Dispatcher.dot(x, y)
+
+        XCTAssertEqual(fallbackResult, accelerateResult, accuracy: 1e-9)
+    }
+
+    func testAccelerateNormAgreesWithFallback() throws {
+        let x = Vector<Double>([3.0, 4.0, 0.0, -12.0])
+
+        Dispatcher.registeredBackends = []
+        let fallbackResult = try x.norm()
+
+        Dispatcher.registeredBackends = [AccelerateBackend.self]
+        let accelerateResult = try x.norm()
+
+        XCTAssertEqual(fallbackResult, accelerateResult, accuracy: 1e-9)
+    }
+
+    func testAccelerateNormRejectsUnsupportedOrders() {
+        Dispatcher.registeredBackends = [AccelerateBackend.self]
+        let x = Vector<Double>([1.0, 2.0, 3.0])
+        XCTAssertThrowsError(try AccelerateBackend.norm(x, order: .l1))
+        XCTAssertThrowsError(try AccelerateBackend.norm(x, order: .infinity))
+    }
+
+    func testAccelerateCapabilitiesAdvertiseElementwiseAndReduction() {
+        XCTAssertTrue(AccelerateBackend.capabilities.contains(.elementwise))
+        XCTAssertTrue(AccelerateBackend.capabilities.contains(.reduction))
+    }
 }

@@ -54,13 +54,15 @@ Swift-NumericCore/
   protocol, `DispatchPolicy`, `Dispatcher`, and a real (if unoptimized)
   `RustFallbackBackend` implementing matmul/axpy/dot/norm directly in
   Swift.
-- `NumericCoreAccelerate` — `matmul` is real, via `cblas_dgemm`/`cblas_sgemm`.
-  `axpy`/`dot`/`norm` are not wired yet (`capabilities` doesn't advertise
-  them, so `Dispatcher` never routes to this backend for those ops).
+- `NumericCoreAccelerate` — `matmul`, `axpy`, `dot`, and `norm` (L2 only)
+  are all real now, via `cblas_dgemm`/`sgemm`, `cblas_daxpy`/`saxpy`,
+  `cblas_ddot`/`sdot`, and `cblas_dnrm2`/`snrm2`. `capabilities` now
+  advertises `.matmul`, `.elementwise`, and `.reduction`, so `Dispatcher`
+  actually routes to this backend for all of them when registered.
   `QRSolve.swift` adds QR decomposition and QR-based `solve`/
   `leastSquares` (`Double` only, called directly rather than through
   `Dispatcher` — see ADR 0003) — **written without a Swift compiler
-  available; build `QRSolveTests.swift` before trusting it.** See
+  available; build the test suite before trusting either file.** See
   `docs/design/datalens-integration.md` for how this maps onto
   `Swift-DataLens`'s `LinAlg`/`Regression` seam.
 - `NumericCoreSparse` — `SparseMatrix<T>` (CSR), real SpMV.

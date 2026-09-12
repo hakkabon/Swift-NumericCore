@@ -63,7 +63,7 @@ extension Vector {
     }
 }
 
-public enum NormOrder {
+public enum NormOrder: Equatable {
     case l1
     case l2
     case infinity
