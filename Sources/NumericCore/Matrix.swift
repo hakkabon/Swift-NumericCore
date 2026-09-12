@@ -34,6 +34,47 @@ public struct Matrix<Scalar: NCScalar> {
         self.storage = [Scalar](repeating: value, count: rows * cols)
     }
 
+    /// Build from a row-major nested array — `[[1, 2], [3, 4]]` is the
+    /// matrix `[[1, 2], [3, 4]]`, matching how most callers naturally
+    /// write matrix literals (and how APIs like `Swift-DataLens`'s
+    /// `LinAlg.leastSquares(design: [[Double]], ...)` already receive
+    /// their data). Internally converts to this type's column-major
+    /// storage (ADR 0001) — the row-major/column-major distinction is
+    /// this initializer's problem to solve, not the caller's.
+    ///
+    /// All rows must have equal length. Throws `.dimensionMismatch` on
+    /// an empty outer array, a ragged inner array, or a zero-length row.
+    public init(rows rowArrays: [[Scalar]]) throws {
+        guard let firstRow = rowArrays.first else {
+            throw NCError.dimensionMismatch("Matrix(rows:): no rows given")
+        }
+        let cols = firstRow.count
+        guard cols > 0 else {
+            throw NCError.dimensionMismatch("Matrix(rows:): rows must be non-empty")
+        }
+        guard rowArrays.allSatisfy({ $0.count == cols }) else {
+            throw NCError.dimensionMismatch("Matrix(rows:): all rows must have the same length")
+        }
+
+        let rows = rowArrays.count
+        var storage = [Scalar](repeating: .zero, count: rows * cols)
+        for (r, rowValues) in rowArrays.enumerated() {
+            for (c, value) in rowValues.enumerated() {
+                storage[r + c * rows] = value
+            }
+        }
+        self.rows = rows
+        self.cols = cols
+        self.storage = storage
+    }
+
+    /// The inverse of `init(rows:)` — a row-major nested-array view,
+    /// for handing results back to callers (like `Swift-DataLens`) that
+    /// work in that representation rather than `Matrix<Scalar>` directly.
+    public var rowMajorArray: [[Scalar]] {
+        (0..<rows).map { r in (0..<cols).map { c in self[r, c] } }
+    }
+
     @inline(__always)
     private func index(_ row: Int, _ col: Int) -> Int {
         row + col * rows

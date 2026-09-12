@@ -15,7 +15,10 @@ import NumericCore
 /// for when there's a concrete caller exercising them, per this
 /// project's "don't build ahead of need" principle.
 ///
-/// Decompositions (LU/QR/SVD via LAPACKE) are still out of scope here —
+/// QR decomposition and QR-based solve/least-squares are implemented in
+/// `QRSolve.swift` (see that file for the LAPACK calls and an important
+/// caveat about unverified parameter marshaling). LU and SVD are still
+/// out of scope here —
 /// see `docs/decisions/0003-decomposition-scope.md`.
 ///
 /// ## Why the `as?` casts

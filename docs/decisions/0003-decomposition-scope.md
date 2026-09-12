@@ -44,3 +44,12 @@ target, an extended-precision variant, or similar.
   explicitly the Mac platform (per the original scoping conversation);
   portability is a real but secondary goal that shouldn't gate getting a
   correct, fast decomposition story shipped first.
+
+## Update (QR implemented)
+`NumericCoreAccelerate/QRSolve.swift` now wraps `dgeqrf_`/`dormqr_`/
+`dtrtrs_` directly for QR decomposition and QR-based `solve`/
+`leastSquares` — the first concrete consumer being `Swift-DataLens`'s
+`LinAlg`/`Regression` seam (QR + square solve is all LOESS needs, per
+that project's own scoping). LU and SVD remain unimplemented; revisit
+this ADR's "wrap, don't reimplement" stance only if a concrete need for
+them shows up, per the same reasoning that applied to QR.
