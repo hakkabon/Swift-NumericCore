@@ -77,15 +77,19 @@ did, even at the same nominal threshold.
 
 ## What this does *not* yet cover
 
-- **SPD-specific solving / eigensolve** — explicitly out of scope per
-  the original action items ("can wait for local likelihood"). Nothing
-  here blocks adding a `solveSPD` (via `dpotrf_`/`dpotrs`, Cholesky)
-  later as a separate, faster path for the specific case where `A` is
-  known symmetric positive-definite.
-- **Verification**: the existing `QRSolveTests.swift` in this repo
-  checks `AccelerateBackend`'s behavior in isolation. It does **not**
-  run `Swift-DataLens`'s existing 10-test suite — that verification
-  step (per the original action items: "the existing 10 tests pass
-  unchanged, plus rank-deficient → nil still holds") has to happen in
-  `Swift-DataLens` itself, after wiring the two bodies above, on a real
-  Mac toolchain.
+- **SPD-specific solving** is now available — see `solveSPD(_:_:)` in
+  `CholeskySolve.swift`, added for local-likelihood's normal-equations
+  matrices (`XᵀWX`, SPD by construction). It is **not** wired as a
+  drop-in for `Regression.solve`/`LinAlg.leastSquares` above — those
+  two signatures are general-purpose (arbitrary `A`, not guaranteed
+  SPD), so switching them to the Cholesky path would be silently wrong
+  for a caller that passes a non-SPD matrix (`dpotrf_` doesn't detect
+  non-symmetry, only non-positive-definiteness — see that file's header
+  comment). Call `solveSPD` directly and only where SPD-ness is known
+  to hold, alongside `Regression.solve`, not as its replacement.
+- **Eigensolve** — still explicitly out of scope per the original
+  action items ("can wait for local likelihood").
+- **Verification**: `QRSolveTests.swift`/`CholeskySolveTests.swift` in
+  this repo check `AccelerateBackend`'s behavior in isolation. They do
+  **not** run `Swift-DataLens`'s own test suite — that verification
+  step happens in `Swift-DataLens` itself, on a real Mac toolchain.

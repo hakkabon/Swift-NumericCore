@@ -27,38 +27,34 @@ let package = Package(
         // .package(url: "https://github.com/hakkabon/Lexer", branch: "main"),
     ],
     targets: [
-        // Raw unsafe wrapper around the Rust core (nc-ffi via UniFFI).
-        // Not part of the public API surface — NumericCore is the only
-        // target that should import this.
-        //
-        // Currently a plain source target with NO dependency on
-        // Rust-NumericCore's binary — see ADR 0006 (v1 storage is a
-        // Swift array) and RustFallbackBackend, which reimplements the
-        // Rust logic directly in Swift rather than calling through.
-        // That's why this package builds standalone today with zero
-        // external binary dependency, which matters for downstream
-        // consumers (e.g. Swift-DataLens) who need this to "just build."
-        //
-        // Once Rust-NumericCore publishes a tagged XCFramework release
-        // (see that repo's scripts/build-xcframework.sh and
-        // .github/workflows/release.yml), switch this target to:
+        // The compiled Rust core (nc-ffi), built by
+        // Rust-NumericCore/scripts/build-xcframework.sh. Wired as a
+        // *local path* binary target for now — see
+        // Frameworks/README.md for how it gets there
+        // (scripts/update-ffi.sh) and ADR 0009 for why local-path
+        // rather than a remote URL, and what changes once
+        // Rust-NumericCore starts tagging releases:
         //
         //   .binaryTarget(
         //       name: "NumericCoreFFI",
         //       url: "https://github.com/hakkabon/Rust-NumericCore/releases/download/vX.Y.Z/NumericCoreFFI.xcframework.zip",
         //       checksum: "<from `swift package compute-checksum`>"
         //   ),
-        //
-        // and change this NCBindings target to depend on
-        // "NumericCoreFFI" plus the UniFFI-generated Swift bindings
-        // (checked in under Sources/NCBindings/Generated/ — copy them
-        // from the release build's bindings/*.swift output; they are
-        // source, not part of the binary, and must ship alongside it).
-        // See docs/decisions/0008-split-into-two-repos.md for the full
-        // versioning/pinning plan.
+        .binaryTarget(
+            name: "NumericCoreFFI",
+            path: "Frameworks/NumericCoreFFI.xcframework"
+        ),
+
+        // Thin Swift wrapper around the UniFFI-generated bindings
+        // (checked in under Sources/NCBindings/Generated/ — see that
+        // directory's README) plus the hand-written adapter in
+        // FFIBridge.swift. Not part of the public API surface —
+        // NumericCore/NumericCoreSparse are the only targets that
+        // should import this.
         .target(
             name: "NCBindings",
-            dependencies: []
+            dependencies: ["NumericCoreFFI"],
+            exclude: ["Generated/README.md"]
         ),
 
         .target(
