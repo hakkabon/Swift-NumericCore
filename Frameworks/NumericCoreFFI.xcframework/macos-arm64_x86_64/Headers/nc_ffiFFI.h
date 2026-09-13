@@ -251,9 +251,19 @@ typedef void (*UniffiForeignFutureCompleteVoid)(uint64_t, UniffiForeignFutureStr
     );
 
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_NC_FFI_FN_FUNC_AXPY_F32
+#define UNIFFI_FFIDEF_UNIFFI_NC_FFI_FN_FUNC_AXPY_F32
+RustBuffer uniffi_nc_ffi_fn_func_axpy_f32(float alpha, RustBuffer x, RustBuffer y, RustCallStatus *_Nonnull out_status
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_NC_FFI_FN_FUNC_AXPY_F64
 #define UNIFFI_FFIDEF_UNIFFI_NC_FFI_FN_FUNC_AXPY_F64
 RustBuffer uniffi_nc_ffi_fn_func_axpy_f64(double alpha, RustBuffer x, RustBuffer y, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_NC_FFI_FN_FUNC_DOT_F32
+#define UNIFFI_FFIDEF_UNIFFI_NC_FFI_FN_FUNC_DOT_F32
+float uniffi_nc_ffi_fn_func_dot_f32(RustBuffer x, RustBuffer y, RustCallStatus *_Nonnull out_status
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_NC_FFI_FN_FUNC_DOT_F64
@@ -261,14 +271,29 @@ RustBuffer uniffi_nc_ffi_fn_func_axpy_f64(double alpha, RustBuffer x, RustBuffer
 double uniffi_nc_ffi_fn_func_dot_f64(RustBuffer x, RustBuffer y, RustCallStatus *_Nonnull out_status
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_NC_FFI_FN_FUNC_MATMUL_F32
+#define UNIFFI_FFIDEF_UNIFFI_NC_FFI_FN_FUNC_MATMUL_F32
+RustBuffer uniffi_nc_ffi_fn_func_matmul_f32(RustBuffer a, RustBuffer b, RustCallStatus *_Nonnull out_status
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_NC_FFI_FN_FUNC_MATMUL_F64
 #define UNIFFI_FFIDEF_UNIFFI_NC_FFI_FN_FUNC_MATMUL_F64
 RustBuffer uniffi_nc_ffi_fn_func_matmul_f64(RustBuffer a, RustBuffer b, RustCallStatus *_Nonnull out_status
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_NC_FFI_FN_FUNC_NORM2_F32
+#define UNIFFI_FFIDEF_UNIFFI_NC_FFI_FN_FUNC_NORM2_F32
+float uniffi_nc_ffi_fn_func_norm2_f32(RustBuffer x, RustCallStatus *_Nonnull out_status
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_NC_FFI_FN_FUNC_NORM2_F64
 #define UNIFFI_FFIDEF_UNIFFI_NC_FFI_FN_FUNC_NORM2_F64
 double uniffi_nc_ffi_fn_func_norm2_f64(RustBuffer x, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_NC_FFI_FN_FUNC_SPMV_F32
+#define UNIFFI_FFIDEF_UNIFFI_NC_FFI_FN_FUNC_SPMV_F32
+RustBuffer uniffi_nc_ffi_fn_func_spmv_f32(RustBuffer matrix, RustBuffer x, RustCallStatus *_Nonnull out_status
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_NC_FFI_FN_FUNC_SPMV_F64
@@ -556,9 +581,21 @@ void ffi_nc_ffi_rust_future_free_void(uint64_t handle
 void ffi_nc_ffi_rust_future_complete_void(uint64_t handle, RustCallStatus *_Nonnull out_status
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_NC_FFI_CHECKSUM_FUNC_AXPY_F32
+#define UNIFFI_FFIDEF_UNIFFI_NC_FFI_CHECKSUM_FUNC_AXPY_F32
+uint16_t uniffi_nc_ffi_checksum_func_axpy_f32(void
+    
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_NC_FFI_CHECKSUM_FUNC_AXPY_F64
 #define UNIFFI_FFIDEF_UNIFFI_NC_FFI_CHECKSUM_FUNC_AXPY_F64
 uint16_t uniffi_nc_ffi_checksum_func_axpy_f64(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_NC_FFI_CHECKSUM_FUNC_DOT_F32
+#define UNIFFI_FFIDEF_UNIFFI_NC_FFI_CHECKSUM_FUNC_DOT_F32
+uint16_t uniffi_nc_ffi_checksum_func_dot_f32(void
     
 );
 #endif
@@ -568,15 +605,33 @@ uint16_t uniffi_nc_ffi_checksum_func_dot_f64(void
     
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_NC_FFI_CHECKSUM_FUNC_MATMUL_F32
+#define UNIFFI_FFIDEF_UNIFFI_NC_FFI_CHECKSUM_FUNC_MATMUL_F32
+uint16_t uniffi_nc_ffi_checksum_func_matmul_f32(void
+    
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_NC_FFI_CHECKSUM_FUNC_MATMUL_F64
 #define UNIFFI_FFIDEF_UNIFFI_NC_FFI_CHECKSUM_FUNC_MATMUL_F64
 uint16_t uniffi_nc_ffi_checksum_func_matmul_f64(void
     
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_NC_FFI_CHECKSUM_FUNC_NORM2_F32
+#define UNIFFI_FFIDEF_UNIFFI_NC_FFI_CHECKSUM_FUNC_NORM2_F32
+uint16_t uniffi_nc_ffi_checksum_func_norm2_f32(void
+    
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_NC_FFI_CHECKSUM_FUNC_NORM2_F64
 #define UNIFFI_FFIDEF_UNIFFI_NC_FFI_CHECKSUM_FUNC_NORM2_F64
 uint16_t uniffi_nc_ffi_checksum_func_norm2_f64(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_NC_FFI_CHECKSUM_FUNC_SPMV_F32
+#define UNIFFI_FFIDEF_UNIFFI_NC_FFI_CHECKSUM_FUNC_SPMV_F32
+uint16_t uniffi_nc_ffi_checksum_func_spmv_f32(void
     
 );
 #endif

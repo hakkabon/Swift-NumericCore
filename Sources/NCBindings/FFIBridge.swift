@@ -57,6 +57,20 @@ public struct FFIMatrix {
     }
 }
 
+/// The `Float` counterpart of `FFIMatrix`, for the `nc-ffi::*_f32`
+/// exports.
+public struct FFIMatrixFloat {
+    public let rows: Int
+    public let cols: Int
+    public let data: [Float]
+
+    public init(rows: Int, cols: Int, data: [Float]) {
+        self.rows = rows
+        self.cols = cols
+        self.data = data
+    }
+}
+
 /// Thin wrappers over the generated free functions. Each one:
 /// 1. converts Swift `Int`/`FFIMatrix` inputs to the generated types'
 ///    expected shape (`UInt32`, `FfiMatrixF64`, ...),
@@ -75,9 +89,29 @@ public enum FFIKernels {
         }
     }
 
+    public static func matmulFloat(_ a: FFIMatrixFloat, _ b: FFIMatrixFloat) throws -> FFIMatrixFloat {
+        do {
+            let result = try matmulF32(
+                a: FfiMatrixF32(rows: UInt32(a.rows), cols: UInt32(a.cols), data: a.data),
+                b: FfiMatrixF32(rows: UInt32(b.rows), cols: UInt32(b.cols), data: b.data)
+            )
+            return FFIMatrixFloat(rows: Int(result.rows), cols: Int(result.cols), data: result.data)
+        } catch {
+            throw Self.translate(error)
+        }
+    }
+
     public static func dot(_ x: [Double], _ y: [Double]) throws -> Double {
         do {
             return try dotF64(x: x, y: y)
+        } catch {
+            throw Self.translate(error)
+        }
+    }
+
+    public static func dotFloat(_ x: [Float], _ y: [Float]) throws -> Float {
+        do {
+            return try dotF32(x: x, y: y)
         } catch {
             throw Self.translate(error)
         }
@@ -95,8 +129,20 @@ public enum FFIKernels {
         }
     }
 
+    public static func axpyFloat(alpha: Float, _ x: [Float], _ y: [Float]) throws -> [Float] {
+        do {
+            return try axpyF32(alpha: alpha, x: x, y: y)
+        } catch {
+            throw Self.translate(error)
+        }
+    }
+
     public static func norm2(_ x: [Double]) -> Double {
         norm2F64(x: x)
+    }
+
+    public static func norm2Float(_ x: [Float]) -> Float {
+        norm2F32(x: x)
     }
 
     public static func spmv(
@@ -116,6 +162,28 @@ public enum FFIKernels {
                 values: values
             )
             return try spmvF64(matrix: matrix, x: x)
+        } catch {
+            throw Self.translate(error)
+        }
+    }
+
+    public static func spmvFloat(
+        rows: Int,
+        cols: Int,
+        rowPointers: [Int],
+        columnIndices: [Int],
+        values: [Float],
+        x: [Float]
+    ) throws -> [Float] {
+        do {
+            let matrix = FfiCsrMatrixF32(
+                rows: UInt32(rows),
+                cols: UInt32(cols),
+                rowPtr: rowPointers.map { UInt32($0) },
+                colIndices: columnIndices.map { UInt32($0) },
+                values: values
+            )
+            return try spmvF32(matrix: matrix, x: x)
         } catch {
             throw Self.translate(error)
         }

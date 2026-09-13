@@ -4,12 +4,12 @@ import NumericCore
 /// Compressed Sparse Row matrix — the Swift-facing counterpart of
 /// `nc-sparse::CsrMatrix`.
 ///
-/// For `Scalar == Double`, `multiplying(_:)` now calls through to the
-/// Rust core (`nc-sparse::CsrMatrix::spmv`, via `NCBindings.FFIKernels.spmv`)
-/// — the duplication ADR 0006 flagged as accepted debt is retired for
-/// that case, mirroring the same rewiring done for `RustFallbackBackend`.
-/// Any other `Scalar` (i.e. `Float`, since no `f32` FFI export exists
-/// yet) still runs the pure-Swift loop below.
+/// `multiplying(_:)` (SpMV) now calls through to the Rust core
+/// (`nc-sparse::CsrMatrix::spmv`, via `NCBindings.FFIKernels`) for both
+/// `Double` and `Float` — the duplication ADR 0006 flagged as accepted
+/// debt is fully retired, mirroring the same rewiring done for
+/// `RustFallbackBackend`. There is no pure-Swift SpMV implementation
+/// left in this file.
 ///
 /// Only CSR is implemented in v1 — see
 /// `docs/decisions/0002-sparse-v1-scope.md` for why COO/CSC are deferred.
@@ -49,10 +49,12 @@ public struct SparseMatrix<Scalar: NCScalar> {
             throw NCError.dimensionMismatch("spmv: matrix is \(rows)x\(cols), vector has length \(x.count)")
         }
 
-        if Scalar.dispatchTypeName == "Double",
-           let doubleValues = values as? [Double],
-           let doubleX = x as? Vector<Double> {
-            do {
+        do {
+            switch Scalar.dispatchTypeName {
+            case "Double":
+                guard let doubleValues = values as? [Double], let doubleX = x as? Vector<Double> else {
+                    throw NCError.unsupportedScalarType(Scalar.dispatchTypeName)
+                }
                 let resultData = try FFIKernels.spmv(
                     rows: rows, cols: cols,
                     rowPointers: rowPointers, columnIndices: columnIndices,
@@ -62,26 +64,27 @@ public struct SparseMatrix<Scalar: NCScalar> {
                     throw NCError.unsupportedScalarType(Scalar.dispatchTypeName)
                 }
                 return cast
-            } catch let error as FFIError {
-                throw error.asNCError
-            }
-        }
 
-        return try swiftSpmv(x)
-    }
+            case "Float":
+                guard let floatValues = values as? [Float], let floatX = x as? Vector<Float> else {
+                    throw NCError.unsupportedScalarType(Scalar.dispatchTypeName)
+                }
+                let resultData = try FFIKernels.spmvFloat(
+                    rows: rows, cols: cols,
+                    rowPointers: rowPointers, columnIndices: columnIndices,
+                    values: floatValues, x: floatX.storage
+                )
+                guard let cast = Vector(resultData) as? Vector<Scalar> else {
+                    throw NCError.unsupportedScalarType(Scalar.dispatchTypeName)
+                }
+                return cast
 
-    /// The original pure-Swift loop, kept for `Float` (no `f32` FFI
-    /// export exists yet) and any future non-Double `NCScalar`.
-    private func swiftSpmv(_ x: Vector<Scalar>) throws -> Vector<Scalar> {
-        var result = Vector<Scalar>(repeating: .zero, count: rows)
-        for row in 0..<rows {
-            var acc = Scalar.zero
-            for idx in rowPointers[row]..<rowPointers[row + 1] {
-                acc += values[idx] * x[columnIndices[idx]]
+            default:
+                throw NCError.unsupportedScalarType(Scalar.dispatchTypeName)
             }
-            result[row] = acc
+        } catch let error as FFIError {
+            throw error.asNCError
         }
-        return result
     }
 }
 

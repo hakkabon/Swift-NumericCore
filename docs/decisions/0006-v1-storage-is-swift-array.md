@@ -72,3 +72,16 @@ storage, not the storage model itself. Every FFI call still pays a full
 array copy in each direction (see `nc-ffi`'s own module docs on why);
 that remains the next real optimization opportunity if profiling ever
 shows it matters.
+
+## Update (Float retired too — duplication fully gone)
+`nc-ffi` gained `f32` counterparts of every export
+(`matmul_f32`/`dot_f32`/`axpy_f32`/`norm2_f32`/`spmv_f32`), and
+`RustFallbackBackend`/`SparseMatrix` were rewired to use them.
+`SwiftFallbackKernels` — the pure-Swift naive loops mentioned above —
+is deleted; there is no Swift-side numeric implementation left in
+either file. Every `NCScalar` conformance (`Float` and `Double`, the
+only two that exist) now runs the actual Rust kernels for
+matmul/axpy/dot/norm/SpMV. The storage-model caveat two paragraphs up
+still stands unchanged: this was about which implementation runs, not
+about the array-copy-per-call cost, which remains the next real
+optimization target if it's ever measured to matter.

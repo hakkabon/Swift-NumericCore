@@ -3,16 +3,15 @@ import NCBindings
 /// The universal fallback backend — always available, no Accelerate/MPS
 /// dependency.
 ///
-/// For `Double`, this now genuinely calls through to the Rust core
-/// (`nc-kernels-generic`, via `NCBindings.FFIKernels`) — the
-/// Swift/Rust duplication ADR 0006 flagged as accepted debt is retired
-/// for the `Double` path. For `Float`, there is no `f32` FFI export yet
-/// (see `nc-ffi`'s module docs — deliberately deferred until a caller
-/// needs it), so `Float` still runs the pure-Swift naive loops in
-/// `SwiftFallbackKernels` below. This means "the fallback backend" is
-/// now two different implementations depending on `T` — documented
-/// here rather than hidden, since it's a real asymmetry a future reader
-/// should know about, not an accident.
+/// Both `Double` and `Float` now genuinely call through to the Rust
+/// core (`nc-kernels-generic`, via `NCBindings.FFIKernels`) — the
+/// Swift/Rust duplication ADR 0006 flagged as accepted debt is fully
+/// retired as of `nc-ffi` gaining `f32` exports alongside the original
+/// `f64` ones. There is no pure-Swift numeric implementation left in
+/// this file; any future `NCScalar` conformance beyond these two would
+/// need its own FFI export added in `nc-ffi` first (following the exact
+/// pattern already established for `f32`/`f64`) before it could be
+/// supported here.
 ///
 /// This type's identifier stays `"fallback"` and its public API is
 /// unchanged from before this rewiring — existing `Dispatcher`
@@ -32,8 +31,12 @@ public enum RustFallbackBackend: Backend {
             )
         }
 
-        if T.dispatchTypeName == "Double", let da = a as? Matrix<Double>, let db = b as? Matrix<Double> {
-            do {
+        do {
+            switch T.dispatchTypeName {
+            case "Double":
+                guard let da = a as? Matrix<Double>, let db = b as? Matrix<Double> else {
+                    throw BackendError.unsupportedScalarType(T.dispatchTypeName)
+                }
                 let ffiResult = try FFIKernels.matmul(
                     FFIMatrix(rows: da.rows, cols: da.cols, data: da.storage),
                     FFIMatrix(rows: db.rows, cols: db.cols, data: db.storage)
@@ -43,19 +46,31 @@ public enum RustFallbackBackend: Backend {
                     throw BackendError.unsupportedScalarType(T.dispatchTypeName)
                 }
                 result = cast
-                return
-            } catch let error as FFIError {
-                throw error.asBackendError
-            }
-            // Any other thrown error (e.g. the NCError from the Matrix
-            // initializer above, which only fails if the FFI layer
-            // returned an internally-inconsistent shape — a bug in
-            // nc-ffi, not a normal runtime condition) propagates as-is.
-        }
 
-        // Float (no f32 FFI export yet) and any future non-Double/Float
-        // NCScalar conformance fall through to the pure-Swift path.
-        try SwiftFallbackKernels.matmul(a, b, into: &result)
+            case "Float":
+                guard let fa = a as? Matrix<Float>, let fb = b as? Matrix<Float> else {
+                    throw BackendError.unsupportedScalarType(T.dispatchTypeName)
+                }
+                let ffiResult = try FFIKernels.matmulFloat(
+                    FFIMatrixFloat(rows: fa.rows, cols: fa.cols, data: fa.storage),
+                    FFIMatrixFloat(rows: fb.rows, cols: fb.cols, data: fb.storage)
+                )
+                let computed = try Matrix<Float>(rows: ffiResult.rows, cols: ffiResult.cols, storage: ffiResult.data)
+                guard let cast = computed as? Matrix<T> else {
+                    throw BackendError.unsupportedScalarType(T.dispatchTypeName)
+                }
+                result = cast
+
+            default:
+                throw BackendError.unsupportedScalarType(T.dispatchTypeName)
+            }
+        } catch let error as FFIError {
+            throw error.asBackendError
+        }
+        // Any other thrown error (e.g. the NCError from a Matrix
+        // initializer above, which only fails if the FFI layer returned
+        // an internally-inconsistent shape — a bug in nc-ffi, not a
+        // normal runtime condition) propagates as-is.
     }
 
     public static func axpy<T: NCScalar>(alpha: T, _ x: Vector<T>, into y: inout Vector<T>) throws {
@@ -63,23 +78,34 @@ public enum RustFallbackBackend: Backend {
             throw BackendError.dimensionMismatch("axpy: lengths \(x.count) and \(y.count)")
         }
 
-        if T.dispatchTypeName == "Double",
-           let dAlpha = alpha as? Double,
-           let dx = x as? Vector<Double>,
-           let dy = y as? Vector<Double> {
-            do {
+        do {
+            switch T.dispatchTypeName {
+            case "Double":
+                guard let dAlpha = alpha as? Double, let dx = x as? Vector<Double>, let dy = y as? Vector<Double> else {
+                    throw BackendError.unsupportedScalarType(T.dispatchTypeName)
+                }
                 let resultData = try FFIKernels.axpy(alpha: dAlpha, dx.storage, dy.storage)
                 guard let cast = Vector(resultData) as? Vector<T> else {
                     throw BackendError.unsupportedScalarType(T.dispatchTypeName)
                 }
                 y = cast
-                return
-            } catch let error as FFIError {
-                throw error.asBackendError
-            }
-        }
 
-        try SwiftFallbackKernels.axpy(alpha: alpha, x, into: &y)
+            case "Float":
+                guard let fAlpha = alpha as? Float, let fx = x as? Vector<Float>, let fy = y as? Vector<Float> else {
+                    throw BackendError.unsupportedScalarType(T.dispatchTypeName)
+                }
+                let resultData = try FFIKernels.axpyFloat(alpha: fAlpha, fx.storage, fy.storage)
+                guard let cast = Vector(resultData) as? Vector<T> else {
+                    throw BackendError.unsupportedScalarType(T.dispatchTypeName)
+                }
+                y = cast
+
+            default:
+                throw BackendError.unsupportedScalarType(T.dispatchTypeName)
+            }
+        } catch let error as FFIError {
+            throw error.asBackendError
+        }
     }
 
     public static func dot<T: NCScalar>(_ x: Vector<T>, _ y: Vector<T>) throws -> T {
@@ -87,27 +113,40 @@ public enum RustFallbackBackend: Backend {
             throw BackendError.dimensionMismatch("dot: lengths \(x.count) and \(y.count)")
         }
 
-        if T.dispatchTypeName == "Double", let dx = x as? Vector<Double>, let dy = y as? Vector<Double> {
-            do {
-                let result = try FFIKernels.dot(dx.storage, dy.storage)
-                guard let cast = result as? T else {
+        do {
+            switch T.dispatchTypeName {
+            case "Double":
+                guard let dx = x as? Vector<Double>, let dy = y as? Vector<Double> else {
+                    throw BackendError.unsupportedScalarType(T.dispatchTypeName)
+                }
+                guard let cast = try FFIKernels.dot(dx.storage, dy.storage) as? T else {
                     throw BackendError.unsupportedScalarType(T.dispatchTypeName)
                 }
                 return cast
-            } catch let error as FFIError {
-                throw error.asBackendError
-            }
-        }
 
-        return try SwiftFallbackKernels.dot(x, y)
+            case "Float":
+                guard let fx = x as? Vector<Float>, let fy = y as? Vector<Float> else {
+                    throw BackendError.unsupportedScalarType(T.dispatchTypeName)
+                }
+                guard let cast = try FFIKernels.dotFloat(fx.storage, fy.storage) as? T else {
+                    throw BackendError.unsupportedScalarType(T.dispatchTypeName)
+                }
+                return cast
+
+            default:
+                throw BackendError.unsupportedScalarType(T.dispatchTypeName)
+            }
+        } catch let error as FFIError {
+            throw error.asBackendError
+        }
     }
 
     public static func norm<T: NCScalar>(_ x: Vector<T>, order: NormOrder) throws -> T {
         switch order {
         case .l2:
             // Routes through `dot` above, so this is FFI-backed for
-            // Double and pure-Swift for Float automatically — no
-            // separate dispatch needed here.
+            // both Double and Float automatically — no separate
+            // dispatch needed here.
             return try dot(x, x).squareRoot()
         case .l1, .infinity:
             throw BackendError.unsupportedOperation("fallback.norm(order: \(order))")
@@ -123,37 +162,5 @@ extension FFIError {
         case .unknown(let message):
             return .unsupportedOperation(message)
         }
-    }
-}
-
-/// The original pure-Swift naive implementations, kept only for `Float`
-/// now that `Double` calls through `NCBindings` above. Mirrors
-/// `nc-kernels-generic`'s algorithms exactly (see that crate for the
-/// Rust equivalent) — retained here, rather than deleted, because it's
-/// still the only `Float` implementation this package has.
-private enum SwiftFallbackKernels {
-    static func matmul<T: NCScalar>(_ a: Matrix<T>, _ b: Matrix<T>, into result: inout Matrix<T>) throws {
-        for j in 0..<b.cols {
-            for p in 0..<a.cols {
-                let bpj = b[p, j]
-                for i in 0..<a.rows {
-                    result[i, j] += a[i, p] * bpj
-                }
-            }
-        }
-    }
-
-    static func axpy<T: NCScalar>(alpha: T, _ x: Vector<T>, into y: inout Vector<T>) throws {
-        for i in 0..<x.count {
-            y[i] += alpha * x[i]
-        }
-    }
-
-    static func dot<T: NCScalar>(_ x: Vector<T>, _ y: Vector<T>) throws -> T {
-        var acc = T.zero
-        for i in 0..<x.count {
-            acc += x[i] * y[i]
-        }
-        return acc
     }
 }
