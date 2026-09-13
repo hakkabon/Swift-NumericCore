@@ -394,6 +394,19 @@ fileprivate struct FfiConverterUInt32: FfiConverterPrimitive {
     }
 }
 
+fileprivate struct FfiConverterFloat: FfiConverterPrimitive {
+    typealias FfiType = Float
+    typealias SwiftType = Float
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Float {
+        return try lift(readFloat(&buf))
+    }
+
+    public static func write(_ value: Float, into buf: inout [UInt8]) {
+        writeFloat(&buf, lower(value))
+    }
+}
+
 fileprivate struct FfiConverterDouble: FfiConverterPrimitive {
     typealias FfiType = Double
     typealias SwiftType = Double
@@ -447,7 +460,91 @@ fileprivate struct FfiConverterString: FfiConverter {
 
 
 /**
- * A CSR sparse matrix crossing the FFI boundary — field names and
+ * The `f32` counterpart of `FfiCsrMatrixF64`.
+ */
+public struct FfiCsrMatrixF32 {
+    public var rows: UInt32
+    public var cols: UInt32
+    public var rowPtr: [UInt32]
+    public var colIndices: [UInt32]
+    public var values: [Float]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(rows: UInt32, cols: UInt32, rowPtr: [UInt32], colIndices: [UInt32], values: [Float]) {
+        self.rows = rows
+        self.cols = cols
+        self.rowPtr = rowPtr
+        self.colIndices = colIndices
+        self.values = values
+    }
+}
+
+
+
+extension FfiCsrMatrixF32: Equatable, Hashable {
+    public static func ==(lhs: FfiCsrMatrixF32, rhs: FfiCsrMatrixF32) -> Bool {
+        if lhs.rows != rhs.rows {
+            return false
+        }
+        if lhs.cols != rhs.cols {
+            return false
+        }
+        if lhs.rowPtr != rhs.rowPtr {
+            return false
+        }
+        if lhs.colIndices != rhs.colIndices {
+            return false
+        }
+        if lhs.values != rhs.values {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(rows)
+        hasher.combine(cols)
+        hasher.combine(rowPtr)
+        hasher.combine(colIndices)
+        hasher.combine(values)
+    }
+}
+
+
+public struct FfiConverterTypeFfiCsrMatrixF32: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiCsrMatrixF32 {
+        return
+            try FfiCsrMatrixF32(
+                rows: FfiConverterUInt32.read(from: &buf), 
+                cols: FfiConverterUInt32.read(from: &buf), 
+                rowPtr: FfiConverterSequenceUInt32.read(from: &buf), 
+                colIndices: FfiConverterSequenceUInt32.read(from: &buf), 
+                values: FfiConverterSequenceFloat.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiCsrMatrixF32, into buf: inout [UInt8]) {
+        FfiConverterUInt32.write(value.rows, into: &buf)
+        FfiConverterUInt32.write(value.cols, into: &buf)
+        FfiConverterSequenceUInt32.write(value.rowPtr, into: &buf)
+        FfiConverterSequenceUInt32.write(value.colIndices, into: &buf)
+        FfiConverterSequenceFloat.write(value.values, into: &buf)
+    }
+}
+
+
+public func FfiConverterTypeFfiCsrMatrixF32_lift(_ buf: RustBuffer) throws -> FfiCsrMatrixF32 {
+    return try FfiConverterTypeFfiCsrMatrixF32.lift(buf)
+}
+
+public func FfiConverterTypeFfiCsrMatrixF32_lower(_ value: FfiCsrMatrixF32) -> RustBuffer {
+    return FfiConverterTypeFfiCsrMatrixF32.lower(value)
+}
+
+
+/**
+ * A CSR sparse `f64` matrix crossing the FFI boundary — field names and
  * shape mirror `nc_sparse::CsrMatrix` directly (ADR 0002).
  */
 public struct FfiCsrMatrixF64 {
@@ -532,9 +629,77 @@ public func FfiConverterTypeFfiCsrMatrixF64_lower(_ value: FfiCsrMatrixF64) -> R
 
 
 /**
- * A dense matrix crossing the FFI boundary, column-major (matching
- * `Matrix<T>`'s Swift-side layout — ADR 0001 — so no reordering happens
- * in either direction).
+ * The `f32` counterpart of `FfiMatrixF64`.
+ */
+public struct FfiMatrixF32 {
+    public var rows: UInt32
+    public var cols: UInt32
+    public var data: [Float]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(rows: UInt32, cols: UInt32, data: [Float]) {
+        self.rows = rows
+        self.cols = cols
+        self.data = data
+    }
+}
+
+
+
+extension FfiMatrixF32: Equatable, Hashable {
+    public static func ==(lhs: FfiMatrixF32, rhs: FfiMatrixF32) -> Bool {
+        if lhs.rows != rhs.rows {
+            return false
+        }
+        if lhs.cols != rhs.cols {
+            return false
+        }
+        if lhs.data != rhs.data {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(rows)
+        hasher.combine(cols)
+        hasher.combine(data)
+    }
+}
+
+
+public struct FfiConverterTypeFfiMatrixF32: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiMatrixF32 {
+        return
+            try FfiMatrixF32(
+                rows: FfiConverterUInt32.read(from: &buf), 
+                cols: FfiConverterUInt32.read(from: &buf), 
+                data: FfiConverterSequenceFloat.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiMatrixF32, into buf: inout [UInt8]) {
+        FfiConverterUInt32.write(value.rows, into: &buf)
+        FfiConverterUInt32.write(value.cols, into: &buf)
+        FfiConverterSequenceFloat.write(value.data, into: &buf)
+    }
+}
+
+
+public func FfiConverterTypeFfiMatrixF32_lift(_ buf: RustBuffer) throws -> FfiMatrixF32 {
+    return try FfiConverterTypeFfiMatrixF32.lift(buf)
+}
+
+public func FfiConverterTypeFfiMatrixF32_lower(_ value: FfiMatrixF32) -> RustBuffer {
+    return FfiConverterTypeFfiMatrixF32.lower(value)
+}
+
+
+/**
+ * A dense `f64` matrix crossing the FFI boundary, column-major
+ * (matching `Matrix<T>`'s Swift-side layout — ADR 0001 — so no
+ * reordering happens in either direction).
  */
 public struct FfiMatrixF64 {
     public var rows: UInt32
@@ -612,7 +777,7 @@ public enum FfiError {
 
     
     
-    case DimensionMismatch(message: String
+    case DimensionMismatch(String
     )
 }
 
@@ -628,7 +793,7 @@ public struct FfiConverterTypeFfiError: FfiConverterRustBuffer {
 
         
         case 1: return .DimensionMismatch(
-            message: try FfiConverterString.read(from: &buf)
+            : try FfiConverterString.read(from: &buf)
             )
 
          default: throw UniffiInternalError.unexpectedEnumCase
@@ -642,9 +807,9 @@ public struct FfiConverterTypeFfiError: FfiConverterRustBuffer {
 
         
         
-        case let .DimensionMismatch(message):
+        case let .DimensionMismatch():
             writeInt(&buf, Int32(1))
-            FfiConverterString.write(message, into: &buf)
+            FfiConverterString.write(, into: &buf)
             
         }
     }
@@ -677,6 +842,28 @@ fileprivate struct FfiConverterSequenceUInt32: FfiConverterRustBuffer {
     }
 }
 
+fileprivate struct FfiConverterSequenceFloat: FfiConverterRustBuffer {
+    typealias SwiftType = [Float]
+
+    public static func write(_ value: [Float], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterFloat.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [Float] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [Float]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterFloat.read(from: &buf))
+        }
+        return seq
+    }
+}
+
 fileprivate struct FfiConverterSequenceDouble: FfiConverterRustBuffer {
     typealias SwiftType = [Double]
 
@@ -699,6 +886,18 @@ fileprivate struct FfiConverterSequenceDouble: FfiConverterRustBuffer {
     }
 }
 /**
+ * The `f32` counterpart of `axpy_f64`.
+ */
+public func axpyF32(alpha: Float, x: [Float], y: [Float])throws  -> [Float] {
+    return try  FfiConverterSequenceFloat.lift(try rustCallWithError(FfiConverterTypeFfiError.lift) {
+    uniffi_nc_ffi_fn_func_axpy_f32(
+        FfiConverterFloat.lower(alpha),
+        FfiConverterSequenceFloat.lower(x),
+        FfiConverterSequenceFloat.lower(y),$0
+    )
+})
+}
+/**
  * `result = alpha * x + y`. Returns a new vector rather than mutating,
  * since UniFFI's proc-macro surface passes by value/copy anyway (see
  * module docs) — an `inout`-style Swift API is layered on top of this
@@ -713,11 +912,33 @@ public func axpyF64(alpha: Double, x: [Double], y: [Double])throws  -> [Double] 
     )
 })
 }
+/**
+ * The `f32` counterpart of `dot_f64`.
+ */
+public func dotF32(x: [Float], y: [Float])throws  -> Float {
+    return try  FfiConverterFloat.lift(try rustCallWithError(FfiConverterTypeFfiError.lift) {
+    uniffi_nc_ffi_fn_func_dot_f32(
+        FfiConverterSequenceFloat.lower(x),
+        FfiConverterSequenceFloat.lower(y),$0
+    )
+})
+}
 public func dotF64(x: [Double], y: [Double])throws  -> Double {
     return try  FfiConverterDouble.lift(try rustCallWithError(FfiConverterTypeFfiError.lift) {
     uniffi_nc_ffi_fn_func_dot_f64(
         FfiConverterSequenceDouble.lower(x),
         FfiConverterSequenceDouble.lower(y),$0
+    )
+})
+}
+/**
+ * The `f32` counterpart of `matmul_f64`.
+ */
+public func matmulF32(a: FfiMatrixF32, b: FfiMatrixF32)throws  -> FfiMatrixF32 {
+    return try  FfiConverterTypeFfiMatrixF32.lift(try rustCallWithError(FfiConverterTypeFfiError.lift) {
+    uniffi_nc_ffi_fn_func_matmul_f32(
+        FfiConverterTypeFfiMatrixF32.lower(a),
+        FfiConverterTypeFfiMatrixF32.lower(b),$0
     )
 })
 }
@@ -729,10 +950,31 @@ public func matmulF64(a: FfiMatrixF64, b: FfiMatrixF64)throws  -> FfiMatrixF64 {
     )
 })
 }
+/**
+ * The `f32` counterpart of `norm2_f64`.
+ */
+public func norm2F32(x: [Float]) -> Float {
+    return try!  FfiConverterFloat.lift(try! rustCall() {
+    uniffi_nc_ffi_fn_func_norm2_f32(
+        FfiConverterSequenceFloat.lower(x),$0
+    )
+})
+}
 public func norm2F64(x: [Double]) -> Double {
     return try!  FfiConverterDouble.lift(try! rustCall() {
     uniffi_nc_ffi_fn_func_norm2_f64(
         FfiConverterSequenceDouble.lower(x),$0
+    )
+})
+}
+/**
+ * The `f32` counterpart of `spmv_f64`.
+ */
+public func spmvF32(matrix: FfiCsrMatrixF32, x: [Float])throws  -> [Float] {
+    return try  FfiConverterSequenceFloat.lift(try rustCallWithError(FfiConverterTypeFfiError.lift) {
+    uniffi_nc_ffi_fn_func_spmv_f32(
+        FfiConverterTypeFfiCsrMatrixF32.lower(matrix),
+        FfiConverterSequenceFloat.lower(x),$0
     )
 })
 }
@@ -760,16 +1002,31 @@ private var initializationResult: InitializationResult {
     if bindings_contract_version != scaffolding_contract_version {
         return InitializationResult.contractVersionMismatch
     }
+    if (uniffi_nc_ffi_checksum_func_axpy_f32() != 32161) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_nc_ffi_checksum_func_axpy_f64() != 23243) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nc_ffi_checksum_func_dot_f32() != 28514) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nc_ffi_checksum_func_dot_f64() != 22855) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_nc_ffi_checksum_func_matmul_f32() != 54411) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_nc_ffi_checksum_func_matmul_f64() != 53784) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_nc_ffi_checksum_func_norm2_f32() != 50338) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_nc_ffi_checksum_func_norm2_f64() != 34231) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nc_ffi_checksum_func_spmv_f32() != 8289) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nc_ffi_checksum_func_spmv_f64() != 5376) {

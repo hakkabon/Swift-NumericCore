@@ -80,8 +80,8 @@ Swift-NumericCore/
   convenience for callers working with nested arrays), `Backend`
   protocol, `DispatchPolicy`, `Dispatcher`, and `RustFallbackBackend` —
   now genuinely calling through to the Rust core via `NCBindings` for
-  `Double` (matmul/axpy/dot/norm); `Float` still runs the original
-  pure-Swift loops since no `f32` FFI export exists yet.
+  **both** `Double` and `Float` (matmul/axpy/dot/norm). No Swift-side
+  numeric loops remain in this file.
 - `NumericCoreAccelerate` — `matmul`, `axpy`, `dot`, and `norm` (L2 only)
   are all real now, via `cblas_dgemm`/`sgemm`, `cblas_daxpy`/`saxpy`,
   `cblas_ddot`/`sdot`, and `cblas_dnrm2`/`snrm2`. `capabilities` now
@@ -90,13 +90,12 @@ Swift-NumericCore/
   `QRSolve.swift` adds QR decomposition and QR-based `solve`/
   `leastSquares`; `CholeskySolve.swift` adds a faster `solveSPD(_:_:)`
   for known-symmetric-positive-definite systems (`Double` only, called
-  directly rather than through `Dispatcher` — see ADR 0003) — **written
-  without a Swift compiler available; build the test suite before
-  trusting any of the three.** See `docs/design/datalens-integration.md`
-  for how this maps onto `Swift-DataLens`'s `LinAlg`/`Regression` seam.
+  directly rather than through `Dispatcher` — see ADR 0003). Confirmed
+  building. See `docs/design/datalens-integration.md` for how this maps
+  onto `Swift-DataLens`'s `LinAlg`/`Regression` seam.
 - `NumericCoreSparse` — `SparseMatrix<T>` (CSR); `multiplying` (SpMV)
-  calls through to `nc-sparse` via `NCBindings` for `Double`, pure-Swift
-  loop for `Float`.
+  calls through to `nc-sparse` via `NCBindings` for both `Double` and
+  `Float`.
 - `NumericCoreGraph` — adjacency-matrix construction from an edge list.
 - `NumericCoreMPS` — empty scaffold (`capabilities = []`).
 - `NumericCoreAMPL` — only `Model` (variable declaration) exists; the

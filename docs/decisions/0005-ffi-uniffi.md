@@ -72,6 +72,19 @@ to check against — see `FFIBridge.swift`'s header comment for exactly
 which names are a best-effort prediction of UniFFI's codegen convention
 and what to fix locally if they're wrong.
 
+## Update (Float wired through too)
+`nc-ffi` gained `f32` exports; `FFIKernels` gained
+`matmulFloat`/`dotFloat`/`axpyFloat`/`norm2Float`/`spmvFloat` calling
+them (named distinctly from the generated `*F32` names to avoid a
+same-name recursive-call risk — see `FFIBridge.swift`).
+`RustFallbackBackend`/`SparseMatrix` now route `Float` through these
+instead of the pure-Swift loops, which are deleted. See ADR 0006's
+matching update. Also confirmed by this point: the generated `FfiError`
+enum keeps its Rust `PascalCase` variant name (`.DimensionMismatch`),
+not Swift `camelCase` — noted here since it's the one naming guess in
+`FFIBridge.swift` that turned out wrong; everything else (function
+names, record field names) matched the predicted convention.
+
 ## Alternatives considered
 - **cbindgen + hand-rolled C ABI** (the original sketch). Rejected once
   the `Layout` precedent was identified — no reason to introduce a
