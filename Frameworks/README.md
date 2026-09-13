@@ -23,6 +23,33 @@ Run `scripts/update-ffi.sh` from the repo root. It expects
 `.xcframework` here and the generated Swift bindings into
 `Sources/NCBindings/Generated/`.
 
+The last-vendored Rust tag is recorded in `FFI_VERSION` (`unreleased`
+until the first tagged vendor). Do not vendor a framework without its
+same-release bindings — update-ffi.sh always copies both together.
+
+### Automatic updates on Rust version tags
+
+`.github/workflows/update-ffi.yml` does the same vendoring
+automatically: Rust-NumericCore's `release.yml` notifies this repo on
+every `v*.*.*` tag (plus a weekly poll as fallback), and the workflow
+opens a PR refreshing this directory, `Sources/NCBindings/Generated/`,
+and `FFI_VERSION`, after passing `swift build` + `swift test`.
+Prefer letting the bot open the PR over hand-copying release assets —
+the workflow also enforces the `Headers/module.modulemap` guard below.
+
+### Why `Headers/module.modulemap` must exist in every slice
+
+UniFFI generates `<crate>FFI.modulemap` (`nc_ffiFFI.modulemap`), but
+Clang only auto-loads a modulemap named exactly `module.modulemap`
+from a header search path. Without that copy, `canImport(nc_ffiFFI)`
+in the generated bindings silently evaluates false, `RustBuffer` /
+`RustCallStatus` / `ForeignBytes` vanish, and the link fails with
+undefined symbols for every `uniffi_*` / `ffi_*` entry point.
+`build-xcframework.sh` creates the copy; `update-ffi.sh` and the
+update workflow refuse to proceed without it. Never delete it, and
+never place `*.swift` inside `Headers/` (headers hold only `.h` +
+`.modulemap`; Swift bindings live in `Sources/NCBindings/Generated/`).
+
 ## Migrating to a remote binary target later
 
 Once `Rust-NumericCore` starts tagging releases and you'd rather not

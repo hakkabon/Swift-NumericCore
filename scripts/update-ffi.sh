@@ -37,6 +37,24 @@ echo "==> Copying XCFramework into Frameworks/"
 rm -rf Frameworks/NumericCoreFFI.xcframework
 cp -R "${XCFRAMEWORK_SRC}" Frameworks/
 
+# Guard against the classic UniFFI + SwiftPM failure mode: Clang only
+# auto-loads a modulemap named exactly `module.modulemap` from a header
+# search path. If a slice is missing it, `canImport(nc_ffiFFI)` silently
+# evaluates false, the generated bindings lose RustBuffer/RustCallStatus,
+# and the link fails with undefined symbols for every uniffi_/ffi_
+# entry point. build-xcframework.sh is responsible for creating it —
+# fail here rather than shipping a broken framework.
+for slice in Frameworks/NumericCoreFFI.xcframework/*/; do
+    if [ -d "${slice}/Headers" ] && [ ! -f "${slice}/Headers/module.modulemap" ]; then
+        echo "error: ${slice}/Headers/module.modulemap missing (build-xcframework.sh regression?)" >&2
+        exit 1
+    fi
+    if ls "${slice}/Headers"/*.swift >/dev/null 2>&1; then
+        echo "error: stray *.swift inside ${slice}/Headers/ (headers dir must hold only .h + .modulemap)" >&2
+        exit 1
+    fi
+done
+
 echo "==> Copying generated Swift bindings into Sources/NCBindings/Generated/"
 mkdir -p Sources/NCBindings/Generated
 find Sources/NCBindings/Generated -name "*.swift" -delete
