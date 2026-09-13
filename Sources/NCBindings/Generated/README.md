@@ -16,6 +16,17 @@ If you need different behavior at the Swift call site, add it in
 `FFIBridge.swift` (a sibling, hand-written file, not regenerated)
 instead.
 
+## Known codegen pitfall: `FfiError` must stay a struct variant
+
+UniFFI 0.27 emits **uncompilable** Swift for a single-field tuple-variant
+error (`DimensionMismatch(String)` → `: try ...` / `write(, into:)`).
+`nc-ffi` therefore declares `DimensionMismatch { message: String }`, which
+generates valid `case DimensionMismatch(message:)` with correct read/write
+(identical wire encoding). If you add a new error variant, use a struct
+variant too. `scripts/update-ffi.sh` rejects broken output before copying
+it into the tree, so a regression here fails loudly at sync time rather
+than as cryptic errors in this file.
+
 ## If this directory is empty
 
 You haven't run `scripts/update-ffi.sh` yet (or copied the bindings in

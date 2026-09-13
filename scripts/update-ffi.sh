@@ -33,6 +33,19 @@ if [ ! -d "${XCFRAMEWORK_SRC}" ]; then
     exit 1
 fi
 
+# Guard against UniFFI 0.27's broken Swift for single-field tuple-variant
+# errors: it emits `: try ...` (missing argument label) and `write(, into:)`,
+# which fail with "expected argument label before colon" / "unexpected ','".
+# nc-ffi must declare FfiError::DimensionMismatch as a struct variant
+# (`{ message: String }`), never `DimensionMismatch(String)` — see the NOTE
+# on the enum in nc-ffi/src/lib.rs. Check BEFORE copying so a broken
+# regeneration can never clobber the working tree.
+if grep -rn --include='*.swift' -e '^[[:space:]]*: try FfiConverter' -e 'write(, into:' "${BINDINGS_SRC}" 2>/dev/null; then
+    echo "error: generated bindings contain broken UniFFI tuple-variant codegen" >&2
+    echo "       fix nc-ffi/src/lib.rs (struct variant, see NOTE on FfiError) and rebuild" >&2
+    exit 1
+fi
+
 echo "==> Copying XCFramework into Frameworks/"
 rm -rf Frameworks/NumericCoreFFI.xcframework
 cp -R "${XCFRAMEWORK_SRC}" Frameworks/
