@@ -50,3 +50,25 @@ revisited for real.
   exists.** Rejected: high risk of designing it against an imagined FFI
   shape rather than the real one, and blocks all other v1 work on
   getting this one hard problem right first.
+
+## Update (Double path retired, Float remains)
+`RustFallbackBackend` and `SparseMatrix.multiplying` now call through
+`NCBindings.FFIKernels` (backed by `nc-ffi`'s real UniFFI exports — see
+ADR 0005's update and ADR 0009) for `Scalar == Double`. The duplication
+called out above is retired for that case: `Double` matmul/axpy/dot/norm
+and CSR SpMV now run the actual Rust implementation, not a second
+Swift copy of it.
+
+`Float` still runs the original pure-Swift loops (`SwiftFallbackKernels`
+in `RustFallbackBackend.swift`), because `nc-ffi` has no `f32` exports
+yet (deliberately deferred — see that crate's module docs). The
+duplication this ADR flagged as debt is now half-retired, not fully:
+revisit once/if `f32` FFI exports are added, following the exact same
+pattern already established for `f64`.
+
+Storage itself (`[Scalar]`, not a shared-memory buffer) is unchanged —
+this update only addresses which implementation runs on top of that
+storage, not the storage model itself. Every FFI call still pays a full
+array copy in each direction (see `nc-ffi`'s own module docs on why);
+that remains the next real optimization opportunity if profiling ever
+shows it matters.

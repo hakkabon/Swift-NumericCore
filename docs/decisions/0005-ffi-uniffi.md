@@ -61,6 +61,17 @@ not yet wired to call through this — that rewiring is the next step,
 not done as part of proving the Rust-side surface builds and tests
 correctly.
 
+## Update (Swift side wired through)
+`NCBindings/FFIBridge.swift` now wraps the generated bindings
+(`Sources/NCBindings/Generated/`, produced by `scripts/update-ffi.sh`)
+with a hand-written adapter (`FFIKernels`), and `RustFallbackBackend`/
+`SparseMatrix.multiplying` call through it for `Double` — see ADR 0006's
+update and ADR 0009 (the local-binary-target packaging decision this
+required). Written without the actual generated bindings file available
+to check against — see `FFIBridge.swift`'s header comment for exactly
+which names are a best-effort prediction of UniFFI's codegen convention
+and what to fix locally if they're wrong.
+
 ## Alternatives considered
 - **cbindgen + hand-rolled C ABI** (the original sketch). Rejected once
   the `Layout` precedent was identified — no reason to introduce a

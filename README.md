@@ -2,19 +2,39 @@
 
 A numerical computing platform for Apple platforms — `Matrix<T>`/
 `Vector<T>` with a capability-based dispatcher across Accelerate, Metal
-Performance Shaders, and a pure-Swift fallback — plus an AMPL-style
-declarative modeling language and solver interface built on top.
+Performance Shaders, and a Rust-core-backed fallback — plus an
+AMPL-style declarative modeling language and solver interface built on
+top.
 
 This is the Swift half of the project. The Rust half
 (kernels/sparse/solvers, consumed via UniFFI) lives in
-[`Rust-NumericCore`](https://github.com/hakkabon/Rust-NumericCore) — see
-`docs/decisions/0008-split-into-two-repos.md` for why they're split, and
-importantly: **this package currently has no build-time dependency on
-Rust-NumericCore at all** (see that ADR and 0006). It builds and works
-standalone via Swift Package Manager.
+[`Rust-NumericCore`](https://github.com/hakkabon/Rust-NumericCore) —
+see `docs/decisions/0008-split-into-two-repos.md` for why they're
+split. **This package now has a real build-time dependency on the Rust
+core**, via a binary target checked into `Frameworks/` (see ADR 0009)
+— this is a change from earlier versions of this README, which
+described a purely-Swift-standalone package; that was true only until
+`NCBindings` was wired to the real FFI (ADR 0005/0006's updates).
 
 **Not related to Apple's `swift-numerics`.** The similar name is a
 known, deliberately-avoided near-collision — see ADR 0008.
+
+## ⚠️ Before building: populate the FFI artifacts
+
+`Frameworks/NumericCoreFFI.xcframework` and
+`Sources/NCBindings/Generated/*.swift` must exist and match each other
+before `swift build` will succeed — `NCBindings/FFIBridge.swift`
+references symbols from the generated file directly. If you're reading
+this from a fresh clone (or a patch applied without the artifacts
+committed alongside it), run:
+
+```bash
+# with Rust-NumericCore checked out as a sibling directory
+./scripts/update-ffi.sh
+```
+
+then commit both directories together. See `Frameworks/README.md` and
+`Sources/NCBindings/Generated/README.md`.
 
 ## Adding as a dependency
 
@@ -27,13 +47,20 @@ dependencies: [
 then depend on whichever product(s) you need — `NumericCore` is the
 core `Matrix`/`Vector`/`Dispatcher` API; `NumericCoreAccelerate`,
 `NumericCoreSparse`, `NumericCoreGraph`, `NumericCoreAMPL` are additive.
+As long as the maintainer has committed working FFI artifacts (see
+above), this "just works" for a consumer — no separate Rust toolchain
+or build step on their end.
 
 ## Package layout
 
 ```
 Swift-NumericCore/
+├── Frameworks/
+│   └── NumericCoreFFI.xcframework   # compiled Rust core — checked in, see ADR 0009
 ├── Sources/
-│   ├── NCBindings/            # raw UniFFI wrapper — not public API, currently near-empty
+│   ├── NCBindings/
+│   │   ├── FFIBridge.swift          # hand-written adapter — see its header comment
+│   │   └── Generated/               # UniFFI-generated bindings — checked in, not hand-edited
 │   ├── NumericCore/           # Matrix<T>, Vector<T>, Backend, DispatchPolicy, Dispatcher
 │   ├── NumericCoreAccelerate/ # Accelerate backend — matmul implemented via cblas_dgemm/sgemm
 │   ├── NumericCoreMPS/        # Metal Performance Shaders backend (scaffold)
@@ -51,21 +78,25 @@ Swift-NumericCore/
 - `NumericCore` — `Matrix<T>`, `Vector<T>` (column-major, `Float`/`Double`
   only, with a row-major `init(rows: [[Scalar]])`/`.rowMajorArray`
   convenience for callers working with nested arrays), `Backend`
-  protocol, `DispatchPolicy`, `Dispatcher`, and a real (if unoptimized)
-  `RustFallbackBackend` implementing matmul/axpy/dot/norm directly in
-  Swift.
+  protocol, `DispatchPolicy`, `Dispatcher`, and `RustFallbackBackend` —
+  now genuinely calling through to the Rust core via `NCBindings` for
+  `Double` (matmul/axpy/dot/norm); `Float` still runs the original
+  pure-Swift loops since no `f32` FFI export exists yet.
 - `NumericCoreAccelerate` — `matmul`, `axpy`, `dot`, and `norm` (L2 only)
   are all real now, via `cblas_dgemm`/`sgemm`, `cblas_daxpy`/`saxpy`,
   `cblas_ddot`/`sdot`, and `cblas_dnrm2`/`snrm2`. `capabilities` now
   advertises `.matmul`, `.elementwise`, and `.reduction`, so `Dispatcher`
   actually routes to this backend for all of them when registered.
   `QRSolve.swift` adds QR decomposition and QR-based `solve`/
-  `leastSquares` (`Double` only, called directly rather than through
-  `Dispatcher` — see ADR 0003) — **written without a Swift compiler
-  available; build the test suite before trusting either file.** See
-  `docs/design/datalens-integration.md` for how this maps onto
-  `Swift-DataLens`'s `LinAlg`/`Regression` seam.
-- `NumericCoreSparse` — `SparseMatrix<T>` (CSR), real SpMV.
+  `leastSquares`; `CholeskySolve.swift` adds a faster `solveSPD(_:_:)`
+  for known-symmetric-positive-definite systems (`Double` only, called
+  directly rather than through `Dispatcher` — see ADR 0003) — **written
+  without a Swift compiler available; build the test suite before
+  trusting any of the three.** See `docs/design/datalens-integration.md`
+  for how this maps onto `Swift-DataLens`'s `LinAlg`/`Regression` seam.
+- `NumericCoreSparse` — `SparseMatrix<T>` (CSR); `multiplying` (SpMV)
+  calls through to `nc-sparse` via `NCBindings` for `Double`, pure-Swift
+  loop for `Float`.
 - `NumericCoreGraph` — adjacency-matrix construction from an edge list.
 - `NumericCoreMPS` — empty scaffold (`capabilities = []`).
 - `NumericCoreAMPL` — only `Model` (variable declaration) exists; the

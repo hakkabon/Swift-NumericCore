@@ -53,3 +53,13 @@ target, an extended-precision variant, or similar.
 that project's own scoping). LU and SVD remain unimplemented; revisit
 this ADR's "wrap, don't reimplement" stance only if a concrete need for
 them shows up, per the same reasoning that applied to QR.
+
+## Update (Cholesky/SPD implemented)
+`NumericCoreAccelerate/CholeskySolve.swift` adds `solveSPD(_:_:)` via
+`dpotrf_`/`dpotrs_`, for `Swift-DataLens`'s local-likelihood
+calculations where the normal-equations matrix is SPD by construction.
+Kept as a separate function from `solve(_:_:)`, not a dispatch path
+switched on some "is this SPD" check — LAPACK's Cholesky routine
+doesn't verify symmetry, only positive-definiteness, so silently
+routing arbitrary input through it would be a correctness trap for any
+caller that can't guarantee SPD-ness. Callers opt in explicitly.
