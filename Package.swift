@@ -31,15 +31,23 @@ let package = Package(
         // Rust-NumericCore/scripts/build-xcframework.sh. Wired as a
         // *local path* binary target for now — see
         // Frameworks/README.md for how it gets there
-        // (scripts/update-ffi.sh) and ADR 0009 for why local-path
+        // (scripts/update-ffi.sh, or automatically via
+        // .github/workflows/update-ffi.yml on each Rust-NumericCore
+        // version tag) and ADR 0009 for why local-path
         // rather than a remote URL, and what changes once
         // Rust-NumericCore starts tagging releases:
         //
         //   .binaryTarget(
         //       name: "NumericCoreFFI",
         //       url: "https://github.com/hakkabon/Rust-NumericCore/releases/download/vX.Y.Z/NumericCoreFFI.xcframework.zip",
-        //       checksum: "<from `swift package compute-checksum`>"
+        //       checksum: "<from the release body — Rust-NumericCore's release.yml prints it>"
         //   ),
+        //
+        // Note: `Sources/NCBindings/Generated/nc_ffi.swift` must always be
+        // refreshed in lockstep with the framework (same release's
+        // `nc_ffi.swift` asset) — a framework without matching bindings
+        // (or vice versa) links or misbehaves, and SPM will not catch
+        // the mismatch for you.
         .binaryTarget(
             name: "NumericCoreFFI",
             path: "Frameworks/NumericCoreFFI.xcframework"

@@ -612,7 +612,7 @@ public enum FfiError {
 
     
     
-    case DimensionMismatch(String
+    case DimensionMismatch(message: String
     )
 }
 
@@ -628,7 +628,7 @@ public struct FfiConverterTypeFfiError: FfiConverterRustBuffer {
 
         
         case 1: return .DimensionMismatch(
-            : try FfiConverterString.read(from: &buf)
+            message: try FfiConverterString.read(from: &buf)
             )
 
          default: throw UniffiInternalError.unexpectedEnumCase
@@ -642,9 +642,9 @@ public struct FfiConverterTypeFfiError: FfiConverterRustBuffer {
 
         
         
-        case let .DimensionMismatch():
+        case let .DimensionMismatch(message):
             writeInt(&buf, Int32(1))
-            FfiConverterString.write(, into: &buf)
+            FfiConverterString.write(message, into: &buf)
             
         }
     }

@@ -1,0 +1,132 @@
+name: Update Rust FFI
+
+# Vendors a new Rust-NumericCore release into this repo's checked-in
+# Frameworks/NumericCoreFFI.xcframework + Sources/NCBindings/Generated/
+# (the local-path binaryTarget layout from ADR 0009) and opens a PR.
+#
+# Triggers, in order of preference:
+#   1. repository_dispatch `rust-release` — sent by Rust-NumericCore's
+#      `release.yml` on every version-tag push (needs its
+#      SWIFT_NUMERICCORE_DISPATCH_TOKEN secret; no secret needed here).
+#   2. weekly schedule — polls Rust-NumericCore's `latest` release, so a
+#      missed dispatch still converges within a week.
+#   3. manual workflow_dispatch with an explicit `rust_tag`.
+#
+# The last-vendored tag is tracked in Frameworks/FFI_VERSION. If the
+# resolved tag already matches, the job exits without opening a PR.
+
+on:
+  repository_dispatch:
+    types: [rust-release]
+  schedule:
+    - cron: "0 6 * * 1" # Mondays 06:00 UTC
+  workflow_dispatch:
+    inputs:
+      rust_tag:
+        description: "Rust-NumericCore tag to vendor (e.g. v0.2.0). Empty = latest release."
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+  pull-requests: write
+
+env:
+  RUST_REPO: hakkabon/Rust-NumericCore
+
+jobs:
+  update-ffi:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve tag to vendor
+        id: tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DISPATCH_TAG: ${{ github.event.client_payload.tag }}
+          INPUT_TAG: ${{ inputs.rust_tag }}
+        run: |
+          if [ -n "${INPUT_TAG}" ]; then
+            TAG="${INPUT_TAG}"
+          elif [ -n "${DISPATCH_TAG}" ]; then
+            TAG="${DISPATCH_TAG}"
+          else
+            TAG=$(gh release view --repo "${RUST_REPO}" --json tagName -q .tagName)
+          fi
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "Resolved Rust tag: ${TAG}"
+          echo "Current vendored: $(cat Frameworks/FFI_VERSION)"
+
+      - name: Skip if already vendored
+        id: check
+        run: |
+          if [ "$(cat Frameworks/FFI_VERSION)" = "${{ steps.tag.outputs.tag }}" ]; then
+            echo "up_to_date=true" >> "$GITHUB_OUTPUT"
+            echo "Already at ${{ steps.tag.outputs.tag }} — nothing to do."
+          else
+            echo "up_to_date=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Download release assets
+        if: steps.check.outputs.up_to_date == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p /tmp/ffi-update
+          gh release download "${{ steps.tag.outputs.tag }}" --repo "${RUST_REPO}" \
+            --pattern "NumericCoreFFI.xcframework.zip" \
+            --pattern "nc_ffi.swift" \
+            --dir /tmp/ffi-update --clobber
+          ls -la /tmp/ffi-update
+
+      - name: Vendor framework + bindings
+        if: steps.check.outputs.up_to_date == 'false'
+        run: |
+          rm -rf Frameworks/NumericCoreFFI.xcframework
+          unzip -q /tmp/ffi-update/NumericCoreFFI.xcframework.zip -d Frameworks/
+          find Sources/NCBindings/Generated -name "*.swift" -delete
+          cp /tmp/ffi-update/nc_ffi.swift Sources/NCBindings/Generated/
+          echo -n "${{ steps.tag.outputs.tag }}" > Frameworks/FFI_VERSION
+
+      - name: Validate Headers layout
+        if: steps.check.outputs.up_to_date == 'false'
+        run: |
+          for slice in Frameworks/NumericCoreFFI.xcframework/*/; do
+            test -f "${slice}/Headers/module.modulemap" \
+              || { echo "missing ${slice}/Headers/module.modulemap" >&2; exit 1; }
+          done
+          if ls Frameworks/NumericCoreFFI.xcframework/*/Headers/*.swift >/dev/null 2>&1; then
+            echo "stray *.swift inside XCFramework Headers/" >&2; exit 1
+          fi
+          # Without module.modulemap, canImport(nc_ffiFFI) is false and the
+          # link fails with undefined uniffi_*/ffi_* symbols — see ADR 0009
+          # and scripts/update-ffi.sh.
+
+      - name: Build + test
+        if: steps.check.outputs.up_to_date == 'false'
+        run: |
+          swift build
+          swift test
+
+      - name: Open update PR
+        if: steps.check.outputs.up_to_date == 'false'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: "ffi/update-${{ steps.tag.outputs.tag }}"
+          delete-branch: true
+          title: "Vendor Rust-NumericCore ${{ steps.tag.outputs.tag }} (FFI)"
+          body: |
+            Automated FFI vendor update.
+
+            - Rust release: https://github.com/${{ env.RUST_REPO }}/releases/tag/${{ steps.tag.outputs.tag }}
+            - Refreshed `Frameworks/NumericCoreFFI.xcframework` (+ `FFI_VERSION`)
+              and `Sources/NCBindings/Generated/nc_ffi.swift` from that release's assets.
+            - `swift build` + `swift test` passed on the update runner.
+
+            If the UniFFI interface changed (new/renamed functions or types),
+            `Sources/NCBindings/FFIBridge.swift` may need a follow-up — it is
+            the only hand-written file that names generated symbols directly.
+          add-paths: |
+            Frameworks/
+            Sources/NCBindings/Generated/

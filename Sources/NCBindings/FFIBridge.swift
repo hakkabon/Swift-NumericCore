@@ -15,10 +15,10 @@
 /// This was written **without a Swift compiler or the actual generated
 /// bindings file available** — `Generated/` was empty at the time of
 /// writing (see that directory's README). The exact names below
-/// (`matmulF64`, `FfiMatrixF64`, `FfiError.dimensionMismatch`, etc.) are
+/// (`matmulF64`, `FfiMatrixF64`, `FfiError.DimensionMismatch`, etc.) are
 /// a best-effort prediction of UniFFI 0.27's Swift codegen conventions
 /// (Rust `snake_case` functions → Swift `camelCase`; Rust `PascalCase`
-/// types stay `PascalCase`; enum variants → Swift `camelCase`), applied
+/// types *and enum variants* stay `PascalCase`), applied
 /// to the exact function/type names declared in `nc-ffi/src/lib.rs`
 /// (`matmul_f64`, `dot_f64`, `axpy_f64`, `norm2_f64`, `spmv_f64`,
 /// `FfiMatrixF64`, `FfiCsrMatrixF64`, `FfiError::DimensionMismatch`).
@@ -30,6 +30,11 @@
 /// below — the fix is local to this file; nothing about
 /// `RustFallbackBackend`'s or `SparseMatrix`'s public API should need
 /// to change.
+///
+/// Note (verified against UniFFI 0.27.3 output): enum cases keep their
+/// Rust `PascalCase` (`FfiError.DimensionMismatch`), *not* Swift
+/// `camelCase`. `FFIKernels.translate` matches on `.DimensionMismatch` —
+/// do not "fix" it to `.dimensionMismatch`; that will not compile.
 public enum FFIError: Error {
     case dimensionMismatch(String)
     case unknown(String)
@@ -125,7 +130,7 @@ public enum FFIKernels {
             return .unknown(String(describing: error))
         }
         switch ffiError {
-        case .dimensionMismatch(let message):
+        case .DimensionMismatch(let message):
             return .dimensionMismatch(message)
         }
     }
