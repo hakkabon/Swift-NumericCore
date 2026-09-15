@@ -60,13 +60,14 @@ Swift-NumericCore/
 ├── Sources/
 │   ├── NCBindings/
 │   │   ├── FFIBridge.swift          # hand-written adapter — see its header comment
+│   │   ├── FFIVectorBuffer.swift    # opt-in zero-copy vector handle (FFIVectorHandle) — see ADR 0006
 │   │   └── Generated/               # UniFFI-generated bindings — checked in, not hand-edited
 │   ├── NumericCore/           # Matrix<T>, Vector<T>, Backend, DispatchPolicy, Dispatcher
 │   ├── NumericCoreAccelerate/ # Accelerate backend — matmul implemented via cblas_dgemm/sgemm
 │   ├── NumericCoreMPS/        # Metal Performance Shaders backend (scaffold)
 │   ├── NumericCoreSparse/     # SparseMatrix<T> (CSR), SpMV
 │   ├── NumericCoreGraph/      # bridge to NetworkGraph/Layout — adjacency matrices
-│   └── NumericCoreAMPL/       # AMPL-style modeling language (Model only, so far)
+│   └── NumericCoreAMPL/       # AMPL-style modeling language — lexer/parser/presolve implemented
 ├── Tests/
 └── docs/
     ├── decisions/             # full ADR set for the NumericCore project
@@ -89,18 +90,24 @@ Swift-NumericCore/
   actually routes to this backend for all of them when registered.
   `QRSolve.swift` adds QR decomposition and QR-based `solve`/
   `leastSquares`; `CholeskySolve.swift` adds a faster `solveSPD(_:_:)`
-  for known-symmetric-positive-definite systems (`Double` only, called
-  directly rather than through `Dispatcher` — see ADR 0003). Confirmed
-  building. See `docs/design/datalens-integration.md` for how this maps
-  onto `Swift-DataLens`'s `LinAlg`/`Regression` seam.
+  for known-symmetric-positive-definite systems; `LUSolve.swift` adds
+  `solveLU(_:_:)` (general square systems, no symmetry assumed) and
+  `inverse(_:)` (`Double` only, called directly rather than through
+  `Dispatcher` — see ADR 0003). See `docs/design/datalens-integration.md`
+  for how this maps onto `Swift-DataLens`'s `LinAlg`/`Regression` seam.
 - `NumericCoreSparse` — `SparseMatrix<T>` (CSR); `multiplying` (SpMV)
   calls through to `nc-sparse` via `NCBindings` for both `Double` and
   `Float`.
 - `NumericCoreGraph` — adjacency-matrix construction from an edge list.
 - `NumericCoreMPS` — empty scaffold (`capabilities = []`).
-- `NumericCoreAMPL` — only `Model` (variable declaration) exists; the
-  parser, presolve, and solver call-through are unbuilt. See
-  `docs/design/ampl-grammar.md` for the planned grammar and pipeline.
+- `NumericCoreAMPL` — `Model` (variables/params/constraints/objective),
+  a hand-rolled lexer/parser for the grammar in
+  `docs/design/ampl-grammar.md` (`AMPLLexer.swift`/`AMPLParser.swift`),
+  and presolve (`Model.compile() -> CompiledProblem`, `Presolve.swift`).
+  Not yet built on the `Grammar`/`Lexer`/`Parser` packages originally
+  sketched for this — see `Model.swift`'s module docs for why. The
+  solver call-through (`CompiledProblem` → `nc-optimize::Solver` via
+  `NCBindings`) is the one piece still unbuilt.
 
 Confirmed building on a real Mac toolchain as of the last full review;
 anything added after that point in a given conversation may not be
