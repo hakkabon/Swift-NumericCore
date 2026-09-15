@@ -1,5 +1,13 @@
 # A minimal AMPL-subset grammar
 
+**Status: implemented.** `AMPLLexer.swift`/`AMPLParser.swift`/
+`Presolve.swift` implement everything below — a hand-rolled
+recursive-descent parser, not (yet) the `Grammar`/`Lexer`/`Parser`
+packages this doc originally sketched using; see `Model.swift`'s
+module docs for why. This doc remains the source of truth for the
+grammar itself and stays accurate to what's implemented; the "Next
+steps" section at the bottom is updated to reflect what's actually left.
+
 Working sketch for `NumericCoreAMPL`'s modeling-language front end,
 intended as the starting grammar to hand to the existing
 `Grammar`/`Lexer`/`Parser` Swift packages (see ADR 0005's sibling
@@ -16,6 +24,11 @@ indexed expressions in particular change the shape of the AST
 significantly (an expression becomes a function of an index tuple, not
 a fixed value) and are worth getting right in isolation rather than
 designing alongside everything else at once.
+
+One implemented extension beyond the EBNF below: `linear_expr` accepts
+an optional leading `+`/`-` before its first term (so `-3 x + 2 y` parses
+without the `0 - 3 x + 2 y` workaround the literal grammar would
+otherwise require) — see `AMPLParser`'s doc comment.
 
 ## EBNF
 
@@ -62,46 +75,55 @@ subject to capacity: x + y <= 4;
 subject to demand: x <= 3;
 ```
 
-This should compile (once the presolve layer exists) to an
-`nc_optimize::Problem` roughly like:
+This compiles (via `Model.compile()` in `Presolve.swift`) to a
+`CompiledProblem` like:
 
 ```text
-objective     = [3, 2]                  // maximize -> negate for minimize-form solvers
-constraints   = [[1, 1],                // capacity: x + y <= 4
-                 [1, 0]]                // demand:   x <= 3
-row_bounds    = [(-inf, 4), (-inf, 3)]
-var_bounds    = [(0, +inf), (0, 10)]
+objective      = [-3, -2]               // maximize negated to minimize form
+objectiveSign  = -1                     // multiply solver's result by this to report in the original (maximize) sense
+constraints    = [[1, 1],                // capacity: x + y <= 4
+                  [1, 0]]                // demand:   x <= 3
+rowBounds      = [(nil, 4), (nil, 3)]   // (lower, upper); nil = unbounded that direction
+variableLowerBounds = [0, 0]
+variableUpperBounds = [nil, 10]
 ```
 
-Note the objective sense (`maximize` vs `minimize`) has to be resolved
-during presolve, since `nc_optimize::Problem` (ADR 0004) only expresses
-`minimize c^T x` — `maximize` compiles to `minimize -c^T x`, with the
-sign flipped back on the reported objective value before it's shown to
-the user.
+`objectiveSign` is `+1` for a `minimize` objective (no negation
+happened) and `-1` for `maximize` — see `CompiledProblem`'s doc comment.
 
-## What the parser needs to produce
+## What the parser produces
 
-A `Model` (see `Sources/NumericCoreAMPL/Model.swift`) already has
-the shape for variable declarations. The parser's job is to turn source
-text matching the grammar above into calls against that same builder
-API — `addVariable(name:lowerBound:upperBound:)`, plus the not-yet-written
-`addConstraint`/`setObjective` — rather than producing a separate parse
-tree type that then needs a second translation step into `Model`. This
-keeps the parser's output format tied to one place
-(`Model`'s public API) instead of two things that can drift apart.
+`AMPLParser.parse(_:)` calls `Model`'s builder methods directly
+(`addVariable`/`addParameter`/`addConstraint`/`setObjective`) — no
+separate parse-tree/AST type sits in between, per the plan below. An
+identifier inside a `linear_expr` is resolved against both the model's
+declared variables and its declared parameters: a variable reference
+becomes a coefficient, a parameter reference folds into the
+expression's constant at parse time (this is what makes `param_decl`
+actually useful — the literal EBNF's `term` production doesn't
+distinguish the two, but the semantics require it).
 
 ## Next steps, in order
 
-1. Write the lexical spec (token classes: keyword, identifier, number,
-   relop, `;`, `:`) using the existing `Lexer`/`Lexer-FSA` package.
-2. Feed the EBNF above into `Grammar` for FIRST/FOLLOW computation and
-   grammar-class analysis (this is a small LL(1)-shaped grammar — no
-   ambiguity expected, so `LL-Parsing` should suffice without needing
-   `LR-Parsing`/`Earley-Parser`'s extra power).
-3. Wire parser actions to call `Model`'s builder methods directly (see
-   above) rather than building an intermediate AST — this is a small
-   enough grammar that a separate AST type is unlikely to earn its
-   complexity, though revisit this if `set`/indexed-expression support
-   later makes a real AST worthwhile.
-4. Only then: `Presolve.swift` — `Model` → `CompiledProblem` — is the
-   next file to write, per `Model.swift`'s module docs.
+1. ~~Write the lexical spec~~ — done, `AMPLLexer.swift`, hand-rolled
+   rather than built on `Lexer`/`Lexer-FSA` (see `Model.swift`'s module
+   docs for why).
+2. ~~Parse the grammar above~~ — done, `AMPLParser.swift`, hand-rolled
+   recursive descent rather than built on `Grammar`/`LL-Parsing`, for
+   the same reason.
+3. ~~Wire parser actions to call `Model`'s builder methods~~ — done,
+   directly, no intermediate AST (small enough grammar that one isn't
+   earning its complexity yet — revisit if/when `set`/indexed-expression
+   support is added).
+4. ~~`Presolve.swift` — `Model` → `CompiledProblem`~~ — done.
+5. **Not yet done**: wiring `CompiledProblem` through `NCBindings` to
+   `nc-optimize::Solver` (currently `StubSolver`, reporting
+   "not implemented" — see ADR 0004). This is the next real step:
+   an `nc-ffi` export taking a `CompiledProblem`-shaped payload and
+   returning a `Solution`, mirroring the pattern already established
+   for `matmul_f64`/etc.
+6. **Not yet done**: migrating the lexer/parser to the
+   `hakkabon/Grammar`/`Lexer`/`Parser` packages, if that's still
+   wanted, once their exact public APIs are in hand to write against.
+7. **Not yet started**: `set` declarations, indexed expressions,
+   piecewise-linear terms — deliberately deferred, per this doc's intro.

@@ -63,3 +63,14 @@ switched on some "is this SPD" check — LAPACK's Cholesky routine
 doesn't verify symmetry, only positive-definiteness, so silently
 routing arbitrary input through it would be a correctness trap for any
 caller that can't guarantee SPD-ness. Callers opt in explicitly.
+
+## Update (LU implemented)
+`NumericCoreAccelerate/LUSolve.swift` adds `solveLU(_:_:)` via
+`dgetrf_`/`dgetrs_` (general square systems, no symmetry assumed) and
+`inverse(_:)` (explicit matrix inverse via the same factorization,
+solving column-by-column against the identity). This closes out the
+three solve paths this ADR anticipated: QR (general, rank-checked,
+handles overdetermined systems too), Cholesky (SPD-only, fastest), LU
+(general square, faster than QR when no rank check is needed). SVD
+remains the one unimplemented decomposition — still no concrete
+consumer requesting it.
