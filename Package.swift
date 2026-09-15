@@ -100,12 +100,12 @@ let package = Package(
 
         .testTarget(
             name: "NumericCoreTests",
-            dependencies: ["NumericCore", "NumericCoreAccelerate", "NumericCoreSparse", "NumericCoreGraph"]
+            dependencies: ["NumericCore", "NumericCoreAccelerate", "NumericCoreSparse", "NumericCoreGraph", "NCBindings"]
         ),
 
         .testTarget(
             name: "NumericCoreAMPLTests",
-            dependencies: ["NumericCoreAMPL"]
+            dependencies: ["NumericCoreAMPL", "NumericCore"]
         ),
     ]
 )
