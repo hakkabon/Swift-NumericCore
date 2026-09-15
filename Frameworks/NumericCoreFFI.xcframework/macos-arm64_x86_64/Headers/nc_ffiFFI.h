@@ -251,6 +251,86 @@ typedef void (*UniffiForeignFutureCompleteVoid)(uint64_t, UniffiForeignFutureStr
     );
 
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_NC_FFI_FN_CLONE_FFIVECTORF32
+#define UNIFFI_FFIDEF_UNIFFI_NC_FFI_FN_CLONE_FFIVECTORF32
+void*_Nonnull uniffi_nc_ffi_fn_clone_ffivectorf32(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_NC_FFI_FN_FREE_FFIVECTORF32
+#define UNIFFI_FFIDEF_UNIFFI_NC_FFI_FN_FREE_FFIVECTORF32
+void uniffi_nc_ffi_fn_free_ffivectorf32(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_NC_FFI_FN_CONSTRUCTOR_FFIVECTORF32_NEW
+#define UNIFFI_FFIDEF_UNIFFI_NC_FFI_FN_CONSTRUCTOR_FFIVECTORF32_NEW
+void*_Nonnull uniffi_nc_ffi_fn_constructor_ffivectorf32_new(RustBuffer data, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_NC_FFI_FN_METHOD_FFIVECTORF32_AXPY_IN_PLACE
+#define UNIFFI_FFIDEF_UNIFFI_NC_FFI_FN_METHOD_FFIVECTORF32_AXPY_IN_PLACE
+void uniffi_nc_ffi_fn_method_ffivectorf32_axpy_in_place(void*_Nonnull ptr, float alpha, void*_Nonnull other, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_NC_FFI_FN_METHOD_FFIVECTORF32_DOT
+#define UNIFFI_FFIDEF_UNIFFI_NC_FFI_FN_METHOD_FFIVECTORF32_DOT
+float uniffi_nc_ffi_fn_method_ffivectorf32_dot(void*_Nonnull ptr, void*_Nonnull other, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_NC_FFI_FN_METHOD_FFIVECTORF32_LEN
+#define UNIFFI_FFIDEF_UNIFFI_NC_FFI_FN_METHOD_FFIVECTORF32_LEN
+uint64_t uniffi_nc_ffi_fn_method_ffivectorf32_len(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_NC_FFI_FN_METHOD_FFIVECTORF32_NORM2
+#define UNIFFI_FFIDEF_UNIFFI_NC_FFI_FN_METHOD_FFIVECTORF32_NORM2
+float uniffi_nc_ffi_fn_method_ffivectorf32_norm2(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_NC_FFI_FN_METHOD_FFIVECTORF32_TO_VEC
+#define UNIFFI_FFIDEF_UNIFFI_NC_FFI_FN_METHOD_FFIVECTORF32_TO_VEC
+RustBuffer uniffi_nc_ffi_fn_method_ffivectorf32_to_vec(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_NC_FFI_FN_CLONE_FFIVECTORF64
+#define UNIFFI_FFIDEF_UNIFFI_NC_FFI_FN_CLONE_FFIVECTORF64
+void*_Nonnull uniffi_nc_ffi_fn_clone_ffivectorf64(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_NC_FFI_FN_FREE_FFIVECTORF64
+#define UNIFFI_FFIDEF_UNIFFI_NC_FFI_FN_FREE_FFIVECTORF64
+void uniffi_nc_ffi_fn_free_ffivectorf64(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_NC_FFI_FN_CONSTRUCTOR_FFIVECTORF64_NEW
+#define UNIFFI_FFIDEF_UNIFFI_NC_FFI_FN_CONSTRUCTOR_FFIVECTORF64_NEW
+void*_Nonnull uniffi_nc_ffi_fn_constructor_ffivectorf64_new(RustBuffer data, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_NC_FFI_FN_METHOD_FFIVECTORF64_AXPY_IN_PLACE
+#define UNIFFI_FFIDEF_UNIFFI_NC_FFI_FN_METHOD_FFIVECTORF64_AXPY_IN_PLACE
+void uniffi_nc_ffi_fn_method_ffivectorf64_axpy_in_place(void*_Nonnull ptr, double alpha, void*_Nonnull other, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_NC_FFI_FN_METHOD_FFIVECTORF64_DOT
+#define UNIFFI_FFIDEF_UNIFFI_NC_FFI_FN_METHOD_FFIVECTORF64_DOT
+double uniffi_nc_ffi_fn_method_ffivectorf64_dot(void*_Nonnull ptr, void*_Nonnull other, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_NC_FFI_FN_METHOD_FFIVECTORF64_LEN
+#define UNIFFI_FFIDEF_UNIFFI_NC_FFI_FN_METHOD_FFIVECTORF64_LEN
+uint64_t uniffi_nc_ffi_fn_method_ffivectorf64_len(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_NC_FFI_FN_METHOD_FFIVECTORF64_NORM2
+#define UNIFFI_FFIDEF_UNIFFI_NC_FFI_FN_METHOD_FFIVECTORF64_NORM2
+double uniffi_nc_ffi_fn_method_ffivectorf64_norm2(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_NC_FFI_FN_METHOD_FFIVECTORF64_TO_VEC
+#define UNIFFI_FFIDEF_UNIFFI_NC_FFI_FN_METHOD_FFIVECTORF64_TO_VEC
+RustBuffer uniffi_nc_ffi_fn_method_ffivectorf64_to_vec(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_NC_FFI_FN_FUNC_AXPY_F32
 #define UNIFFI_FFIDEF_UNIFFI_NC_FFI_FN_FUNC_AXPY_F32
 RustBuffer uniffi_nc_ffi_fn_func_axpy_f32(float alpha, RustBuffer x, RustBuffer y, RustCallStatus *_Nonnull out_status
@@ -638,6 +718,78 @@ uint16_t uniffi_nc_ffi_checksum_func_spmv_f32(void
 #ifndef UNIFFI_FFIDEF_UNIFFI_NC_FFI_CHECKSUM_FUNC_SPMV_F64
 #define UNIFFI_FFIDEF_UNIFFI_NC_FFI_CHECKSUM_FUNC_SPMV_F64
 uint16_t uniffi_nc_ffi_checksum_func_spmv_f64(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_NC_FFI_CHECKSUM_METHOD_FFIVECTORF32_AXPY_IN_PLACE
+#define UNIFFI_FFIDEF_UNIFFI_NC_FFI_CHECKSUM_METHOD_FFIVECTORF32_AXPY_IN_PLACE
+uint16_t uniffi_nc_ffi_checksum_method_ffivectorf32_axpy_in_place(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_NC_FFI_CHECKSUM_METHOD_FFIVECTORF32_DOT
+#define UNIFFI_FFIDEF_UNIFFI_NC_FFI_CHECKSUM_METHOD_FFIVECTORF32_DOT
+uint16_t uniffi_nc_ffi_checksum_method_ffivectorf32_dot(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_NC_FFI_CHECKSUM_METHOD_FFIVECTORF32_LEN
+#define UNIFFI_FFIDEF_UNIFFI_NC_FFI_CHECKSUM_METHOD_FFIVECTORF32_LEN
+uint16_t uniffi_nc_ffi_checksum_method_ffivectorf32_len(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_NC_FFI_CHECKSUM_METHOD_FFIVECTORF32_NORM2
+#define UNIFFI_FFIDEF_UNIFFI_NC_FFI_CHECKSUM_METHOD_FFIVECTORF32_NORM2
+uint16_t uniffi_nc_ffi_checksum_method_ffivectorf32_norm2(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_NC_FFI_CHECKSUM_METHOD_FFIVECTORF32_TO_VEC
+#define UNIFFI_FFIDEF_UNIFFI_NC_FFI_CHECKSUM_METHOD_FFIVECTORF32_TO_VEC
+uint16_t uniffi_nc_ffi_checksum_method_ffivectorf32_to_vec(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_NC_FFI_CHECKSUM_METHOD_FFIVECTORF64_AXPY_IN_PLACE
+#define UNIFFI_FFIDEF_UNIFFI_NC_FFI_CHECKSUM_METHOD_FFIVECTORF64_AXPY_IN_PLACE
+uint16_t uniffi_nc_ffi_checksum_method_ffivectorf64_axpy_in_place(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_NC_FFI_CHECKSUM_METHOD_FFIVECTORF64_DOT
+#define UNIFFI_FFIDEF_UNIFFI_NC_FFI_CHECKSUM_METHOD_FFIVECTORF64_DOT
+uint16_t uniffi_nc_ffi_checksum_method_ffivectorf64_dot(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_NC_FFI_CHECKSUM_METHOD_FFIVECTORF64_LEN
+#define UNIFFI_FFIDEF_UNIFFI_NC_FFI_CHECKSUM_METHOD_FFIVECTORF64_LEN
+uint16_t uniffi_nc_ffi_checksum_method_ffivectorf64_len(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_NC_FFI_CHECKSUM_METHOD_FFIVECTORF64_NORM2
+#define UNIFFI_FFIDEF_UNIFFI_NC_FFI_CHECKSUM_METHOD_FFIVECTORF64_NORM2
+uint16_t uniffi_nc_ffi_checksum_method_ffivectorf64_norm2(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_NC_FFI_CHECKSUM_METHOD_FFIVECTORF64_TO_VEC
+#define UNIFFI_FFIDEF_UNIFFI_NC_FFI_CHECKSUM_METHOD_FFIVECTORF64_TO_VEC
+uint16_t uniffi_nc_ffi_checksum_method_ffivectorf64_to_vec(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_NC_FFI_CHECKSUM_CONSTRUCTOR_FFIVECTORF32_NEW
+#define UNIFFI_FFIDEF_UNIFFI_NC_FFI_CHECKSUM_CONSTRUCTOR_FFIVECTORF32_NEW
+uint16_t uniffi_nc_ffi_checksum_constructor_ffivectorf32_new(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_NC_FFI_CHECKSUM_CONSTRUCTOR_FFIVECTORF64_NEW
+#define UNIFFI_FFIDEF_UNIFFI_NC_FFI_CHECKSUM_CONSTRUCTOR_FFIVECTORF64_NEW
+uint16_t uniffi_nc_ffi_checksum_constructor_ffivectorf64_new(void
     
 );
 #endif

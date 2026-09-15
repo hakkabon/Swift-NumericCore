@@ -394,6 +394,19 @@ fileprivate struct FfiConverterUInt32: FfiConverterPrimitive {
     }
 }
 
+fileprivate struct FfiConverterUInt64: FfiConverterPrimitive {
+    typealias FfiType = UInt64
+    typealias SwiftType = UInt64
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UInt64 {
+        return try lift(readInt(&buf))
+    }
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
 fileprivate struct FfiConverterFloat: FfiConverterPrimitive {
     typealias FfiType = Float
     typealias SwiftType = Float
@@ -456,6 +469,340 @@ fileprivate struct FfiConverterString: FfiConverter {
         writeInt(&buf, len)
         writeBytes(&buf, value.utf8)
     }
+}
+
+
+
+
+/**
+ * The `f32` counterpart of `FfiVectorF64`.
+ */
+public protocol FfiVectorF32Protocol : AnyObject {
+    
+    func axpyInPlace(alpha: Float, other: FfiVectorF32) throws 
+    
+    func dot(other: FfiVectorF32) throws  -> Float
+    
+    func len()  -> UInt64
+    
+    func norm2()  -> Float
+    
+    func toVec()  -> [Float]
+    
+}
+
+/**
+ * The `f32` counterpart of `FfiVectorF64`.
+ */
+open class FfiVectorF32:
+    FfiVectorF32Protocol {
+    fileprivate let pointer: UnsafeMutableRawPointer!
+
+    /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+    public struct NoPointer {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+    required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
+        self.pointer = pointer
+    }
+
+    /// This constructor can be used to instantiate a fake object.
+    /// - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    ///
+    /// - Warning:
+    ///     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+    public init(noPointer: NoPointer) {
+        self.pointer = nil
+    }
+
+    public func uniffiClonePointer() -> UnsafeMutableRawPointer {
+        return try! rustCall { uniffi_nc_ffi_fn_clone_ffivectorf32(self.pointer, $0) }
+    }
+public convenience init(data: [Float]) {
+    let pointer =
+        try! rustCall() {
+    uniffi_nc_ffi_fn_constructor_ffivectorf32_new(
+        FfiConverterSequenceFloat.lower(data),$0
+    )
+}
+    self.init(unsafeFromRawPointer: pointer)
+}
+
+    deinit {
+        guard let pointer = pointer else {
+            return
+        }
+
+        try! rustCall { uniffi_nc_ffi_fn_free_ffivectorf32(pointer, $0) }
+    }
+
+    
+
+    
+open func axpyInPlace(alpha: Float, other: FfiVectorF32)throws  {try rustCallWithError(FfiConverterTypeFfiError.lift) {
+    uniffi_nc_ffi_fn_method_ffivectorf32_axpy_in_place(self.uniffiClonePointer(),
+        FfiConverterFloat.lower(alpha),
+        FfiConverterTypeFfiVectorF32.lower(other),$0
+    )
+}
+}
+    
+open func dot(other: FfiVectorF32)throws  -> Float {
+    return try  FfiConverterFloat.lift(try rustCallWithError(FfiConverterTypeFfiError.lift) {
+    uniffi_nc_ffi_fn_method_ffivectorf32_dot(self.uniffiClonePointer(),
+        FfiConverterTypeFfiVectorF32.lower(other),$0
+    )
+})
+}
+    
+open func len() -> UInt64 {
+    return try!  FfiConverterUInt64.lift(try! rustCall() {
+    uniffi_nc_ffi_fn_method_ffivectorf32_len(self.uniffiClonePointer(),$0
+    )
+})
+}
+    
+open func norm2() -> Float {
+    return try!  FfiConverterFloat.lift(try! rustCall() {
+    uniffi_nc_ffi_fn_method_ffivectorf32_norm2(self.uniffiClonePointer(),$0
+    )
+})
+}
+    
+open func toVec() -> [Float] {
+    return try!  FfiConverterSequenceFloat.lift(try! rustCall() {
+    uniffi_nc_ffi_fn_method_ffivectorf32_to_vec(self.uniffiClonePointer(),$0
+    )
+})
+}
+    
+
+}
+
+public struct FfiConverterTypeFfiVectorF32: FfiConverter {
+
+    typealias FfiType = UnsafeMutableRawPointer
+    typealias SwiftType = FfiVectorF32
+
+    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> FfiVectorF32 {
+        return FfiVectorF32(unsafeFromRawPointer: pointer)
+    }
+
+    public static func lower(_ value: FfiVectorF32) -> UnsafeMutableRawPointer {
+        return value.uniffiClonePointer()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiVectorF32 {
+        let v: UInt64 = try readInt(&buf)
+        // The Rust code won't compile if a pointer won't fit in a UInt64.
+        // We have to go via `UInt` because that's the thing that's the size of a pointer.
+        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
+        if (ptr == nil) {
+            throw UniffiInternalError.unexpectedNullPointer
+        }
+        return try lift(ptr!)
+    }
+
+    public static func write(_ value: FfiVectorF32, into buf: inout [UInt8]) {
+        // This fiddling is because `Int` is the thing that's the same size as a pointer.
+        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
+        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+    }
+}
+
+
+
+
+public func FfiConverterTypeFfiVectorF32_lift(_ pointer: UnsafeMutableRawPointer) throws -> FfiVectorF32 {
+    return try FfiConverterTypeFfiVectorF32.lift(pointer)
+}
+
+public func FfiConverterTypeFfiVectorF32_lower(_ value: FfiVectorF32) -> UnsafeMutableRawPointer {
+    return FfiConverterTypeFfiVectorF32.lower(value)
+}
+
+
+
+
+/**
+ * A reference-counted `f64` vector buffer living entirely in Rust —
+ * see this file's module docs for why this exists alongside the
+ * copy-per-call functions above. `Mutex`-guarded interior mutability
+ * is required here (not just `RefCell`) because UniFFI objects cross
+ * the FFI boundary as `Arc<Self>`, which needs `Send + Sync`.
+ */
+public protocol FfiVectorF64Protocol : AnyObject {
+    
+    /**
+     * `self <- self + alpha * other`, entirely in Rust — no data
+     * crosses the FFI boundary for this call beyond the two handles
+     * and the scalar `alpha`.
+     */
+    func axpyInPlace(alpha: Double, other: FfiVectorF64) throws 
+    
+    func dot(other: FfiVectorF64) throws  -> Double
+    
+    func len()  -> UInt64
+    
+    func norm2()  -> Double
+    
+    /**
+     * The one copy back out to Swift — call once, at the end of a
+     * chain of in-place operations, not after every step.
+     */
+    func toVec()  -> [Double]
+    
+}
+
+/**
+ * A reference-counted `f64` vector buffer living entirely in Rust —
+ * see this file's module docs for why this exists alongside the
+ * copy-per-call functions above. `Mutex`-guarded interior mutability
+ * is required here (not just `RefCell`) because UniFFI objects cross
+ * the FFI boundary as `Arc<Self>`, which needs `Send + Sync`.
+ */
+open class FfiVectorF64:
+    FfiVectorF64Protocol {
+    fileprivate let pointer: UnsafeMutableRawPointer!
+
+    /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+    public struct NoPointer {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+    required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
+        self.pointer = pointer
+    }
+
+    /// This constructor can be used to instantiate a fake object.
+    /// - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    ///
+    /// - Warning:
+    ///     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+    public init(noPointer: NoPointer) {
+        self.pointer = nil
+    }
+
+    public func uniffiClonePointer() -> UnsafeMutableRawPointer {
+        return try! rustCall { uniffi_nc_ffi_fn_clone_ffivectorf64(self.pointer, $0) }
+    }
+public convenience init(data: [Double]) {
+    let pointer =
+        try! rustCall() {
+    uniffi_nc_ffi_fn_constructor_ffivectorf64_new(
+        FfiConverterSequenceDouble.lower(data),$0
+    )
+}
+    self.init(unsafeFromRawPointer: pointer)
+}
+
+    deinit {
+        guard let pointer = pointer else {
+            return
+        }
+
+        try! rustCall { uniffi_nc_ffi_fn_free_ffivectorf64(pointer, $0) }
+    }
+
+    
+
+    
+    /**
+     * `self <- self + alpha * other`, entirely in Rust — no data
+     * crosses the FFI boundary for this call beyond the two handles
+     * and the scalar `alpha`.
+     */
+open func axpyInPlace(alpha: Double, other: FfiVectorF64)throws  {try rustCallWithError(FfiConverterTypeFfiError.lift) {
+    uniffi_nc_ffi_fn_method_ffivectorf64_axpy_in_place(self.uniffiClonePointer(),
+        FfiConverterDouble.lower(alpha),
+        FfiConverterTypeFfiVectorF64.lower(other),$0
+    )
+}
+}
+    
+open func dot(other: FfiVectorF64)throws  -> Double {
+    return try  FfiConverterDouble.lift(try rustCallWithError(FfiConverterTypeFfiError.lift) {
+    uniffi_nc_ffi_fn_method_ffivectorf64_dot(self.uniffiClonePointer(),
+        FfiConverterTypeFfiVectorF64.lower(other),$0
+    )
+})
+}
+    
+open func len() -> UInt64 {
+    return try!  FfiConverterUInt64.lift(try! rustCall() {
+    uniffi_nc_ffi_fn_method_ffivectorf64_len(self.uniffiClonePointer(),$0
+    )
+})
+}
+    
+open func norm2() -> Double {
+    return try!  FfiConverterDouble.lift(try! rustCall() {
+    uniffi_nc_ffi_fn_method_ffivectorf64_norm2(self.uniffiClonePointer(),$0
+    )
+})
+}
+    
+    /**
+     * The one copy back out to Swift — call once, at the end of a
+     * chain of in-place operations, not after every step.
+     */
+open func toVec() -> [Double] {
+    return try!  FfiConverterSequenceDouble.lift(try! rustCall() {
+    uniffi_nc_ffi_fn_method_ffivectorf64_to_vec(self.uniffiClonePointer(),$0
+    )
+})
+}
+    
+
+}
+
+public struct FfiConverterTypeFfiVectorF64: FfiConverter {
+
+    typealias FfiType = UnsafeMutableRawPointer
+    typealias SwiftType = FfiVectorF64
+
+    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> FfiVectorF64 {
+        return FfiVectorF64(unsafeFromRawPointer: pointer)
+    }
+
+    public static func lower(_ value: FfiVectorF64) -> UnsafeMutableRawPointer {
+        return value.uniffiClonePointer()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiVectorF64 {
+        let v: UInt64 = try readInt(&buf)
+        // The Rust code won't compile if a pointer won't fit in a UInt64.
+        // We have to go via `UInt` because that's the thing that's the size of a pointer.
+        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
+        if (ptr == nil) {
+            throw UniffiInternalError.unexpectedNullPointer
+        }
+        return try lift(ptr!)
+    }
+
+    public static func write(_ value: FfiVectorF64, into buf: inout [UInt8]) {
+        // This fiddling is because `Int` is the thing that's the same size as a pointer.
+        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
+        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+    }
+}
+
+
+
+
+public func FfiConverterTypeFfiVectorF64_lift(_ pointer: UnsafeMutableRawPointer) throws -> FfiVectorF64 {
+    return try FfiConverterTypeFfiVectorF64.lift(pointer)
+}
+
+public func FfiConverterTypeFfiVectorF64_lower(_ value: FfiVectorF64) -> UnsafeMutableRawPointer {
+    return FfiConverterTypeFfiVectorF64.lower(value)
 }
 
 
@@ -777,7 +1124,7 @@ public enum FfiError {
 
     
     
-    case DimensionMismatch(String
+    case DimensionMismatch(message: String
     )
 }
 
@@ -793,7 +1140,7 @@ public struct FfiConverterTypeFfiError: FfiConverterRustBuffer {
 
         
         case 1: return .DimensionMismatch(
-            : try FfiConverterString.read(from: &buf)
+            message: try FfiConverterString.read(from: &buf)
             )
 
          default: throw UniffiInternalError.unexpectedEnumCase
@@ -807,9 +1154,9 @@ public struct FfiConverterTypeFfiError: FfiConverterRustBuffer {
 
         
         
-        case let .DimensionMismatch():
+        case let .DimensionMismatch(message):
             writeInt(&buf, Int32(1))
-            FfiConverterString.write(, into: &buf)
+            FfiConverterString.write(message, into: &buf)
             
         }
     }
@@ -1030,6 +1377,42 @@ private var initializationResult: InitializationResult {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nc_ffi_checksum_func_spmv_f64() != 5376) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nc_ffi_checksum_method_ffivectorf32_axpy_in_place() != 51042) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nc_ffi_checksum_method_ffivectorf32_dot() != 11674) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nc_ffi_checksum_method_ffivectorf32_len() != 48323) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nc_ffi_checksum_method_ffivectorf32_norm2() != 62614) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nc_ffi_checksum_method_ffivectorf32_to_vec() != 56913) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nc_ffi_checksum_method_ffivectorf64_axpy_in_place() != 59867) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nc_ffi_checksum_method_ffivectorf64_dot() != 64696) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nc_ffi_checksum_method_ffivectorf64_len() != 31366) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nc_ffi_checksum_method_ffivectorf64_norm2() != 34247) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nc_ffi_checksum_method_ffivectorf64_to_vec() != 62940) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nc_ffi_checksum_constructor_ffivectorf32_new() != 38782) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nc_ffi_checksum_constructor_ffivectorf64_new() != 59672) {
         return InitializationResult.apiChecksumMismatch
     }
 
