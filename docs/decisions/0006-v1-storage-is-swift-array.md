@@ -85,3 +85,19 @@ matmul/axpy/dot/norm/SpMV. The storage-model caveat two paragraphs up
 still stands unchanged: this was about which implementation runs, not
 about the array-copy-per-call cost, which remains the next real
 optimization target if it's ever measured to matter.
+
+## Update (opt-in zero-copy buffers now available)
+The array-copy-per-call cost flagged immediately above now has an
+answer, but a deliberately narrow one: `NCBindings.FFIVectorHandle`/
+`FFIVectorHandleFloat` (wrapping `nc-ffi`'s new `FfiVectorF64`/
+`FfiVectorF32` object handles) let a caller do repeated
+`axpy`/`dot`/`norm2` against the same data with the copy paid only once
+at construction and once at final read-back. This is **not** wired into
+`Matrix`/`Vector`/`Dispatcher`'s default path — those are unchanged,
+still one copy each way per call, exactly as described above. The new
+type is opt-in infrastructure for a caller that specifically has a
+tight loop of repeated vector operations (an iterative solver, or a
+`Swift-DataLens` inner loop) and has a measured reason to reach for it.
+Making this the *default* path (e.g. giving `Vector<T>` an FFI-backed
+storage mode) is a bigger, separate change this update does not make —
+revisit only once a concrete caller's profiling calls for it.
