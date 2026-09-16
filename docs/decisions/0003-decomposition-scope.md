@@ -74,3 +74,18 @@ handles overdetermined systems too), Cholesky (SPD-only, fastest), LU
 (general square, faster than QR when no rank check is needed). SVD
 remains the one unimplemented decomposition — still no concrete
 consumer requesting it.
+
+## Update (SVD implemented)
+`NumericCoreAccelerate/SVD.swift` adds `svd(_:)` (thin/economy SVD via
+`dgesvd_`), `pseudoInverse(_:tolerance:)`, `rank(_:tolerance:)`, and
+`leastSquaresSVD(design:response:tolerance:)`. This closes out every
+decomposition this ADR originally anticipated. Unlike QR/Cholesky/LU's
+`nil`-on-failure contract, `svd(_:)` never returns `nil` for a
+convergence issue — a non-converging bidiagonal QR iteration is a
+genuine numerical failure (thrown), not an expected outcome the way
+"singular"/"not SPD" are. `leastSquaresSVD` deliberately never returns
+`nil` either, for the opposite reason: a rank-deficient design still
+has a well-defined minimum-norm solution via the pseudo-inverse, so
+there's nothing to fail on — it's offered alongside (not instead of)
+QR's `leastSquares`, which stays the right choice when rank deficiency
+should be a caller-visible failure rather than silently handled.

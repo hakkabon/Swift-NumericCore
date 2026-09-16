@@ -91,10 +91,14 @@ Swift-NumericCore/
   `QRSolve.swift` adds QR decomposition and QR-based `solve`/
   `leastSquares`; `CholeskySolve.swift` adds a faster `solveSPD(_:_:)`
   for known-symmetric-positive-definite systems; `LUSolve.swift` adds
-  `solveLU(_:_:)` (general square systems, no symmetry assumed) and
-  `inverse(_:)` (`Double` only, called directly rather than through
-  `Dispatcher` — see ADR 0003). See `docs/design/datalens-integration.md`
-  for how this maps onto `Swift-DataLens`'s `LinAlg`/`Regression` seam.
+  `solveLU(_:_:)` and `inverse(_:)`; `SVD.swift` adds `svd(_:)`,
+  `pseudoInverse(_:tolerance:)`, `rank(_:tolerance:)`, and
+  `leastSquaresSVD(design:response:tolerance:)` (a rank-deficiency-robust
+  alternative to QR's `leastSquares` — never `nil`, always the
+  minimum-norm solution). All `Double` only, called directly rather than
+  through `Dispatcher` — see ADR 0003. See
+  `docs/design/datalens-integration.md` for how this maps onto
+  `Swift-DataLens`'s `LinAlg`/`Regression` seam.
 - `NumericCoreSparse` — `SparseMatrix<T>` (CSR); `multiplying` (SpMV)
   calls through to `nc-sparse` via `NCBindings` for both `Double` and
   `Float`.
