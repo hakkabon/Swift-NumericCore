@@ -807,6 +807,67 @@ public func FfiConverterTypeFfiVectorF64_lower(_ value: FfiVectorF64) -> UnsafeM
 
 
 /**
+ * Mirrors `nc_optimize::Bound`. `None` means unbounded in that
+ * direction, same convention as the Rust type.
+ */
+public struct FfiBound {
+    public var lower: Double?
+    public var upper: Double?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(lower: Double?, upper: Double?) {
+        self.lower = lower
+        self.upper = upper
+    }
+}
+
+
+
+extension FfiBound: Equatable, Hashable {
+    public static func ==(lhs: FfiBound, rhs: FfiBound) -> Bool {
+        if lhs.lower != rhs.lower {
+            return false
+        }
+        if lhs.upper != rhs.upper {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(lower)
+        hasher.combine(upper)
+    }
+}
+
+
+public struct FfiConverterTypeFfiBound: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiBound {
+        return
+            try FfiBound(
+                lower: FfiConverterOptionDouble.read(from: &buf), 
+                upper: FfiConverterOptionDouble.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiBound, into buf: inout [UInt8]) {
+        FfiConverterOptionDouble.write(value.lower, into: &buf)
+        FfiConverterOptionDouble.write(value.upper, into: &buf)
+    }
+}
+
+
+public func FfiConverterTypeFfiBound_lift(_ buf: RustBuffer) throws -> FfiBound {
+    return try FfiConverterTypeFfiBound.lift(buf)
+}
+
+public func FfiConverterTypeFfiBound_lower(_ value: FfiBound) -> RustBuffer {
+    return FfiConverterTypeFfiBound.lower(value)
+}
+
+
+/**
  * The `f32` counterpart of `FfiCsrMatrixF64`.
  */
 public struct FfiCsrMatrixF32 {
@@ -1114,6 +1175,152 @@ public func FfiConverterTypeFfiMatrixF64_lower(_ value: FfiMatrixF64) -> RustBuf
 
 
 /**
+ * Mirrors `nc_optimize::Problem`, with the constraint matrix crossing
+ * as `FfiCsrMatrixF64` (already established above) rather than a
+ * separate ad hoc shape.
+ */
+public struct FfiProblem {
+    public var objective: [Double]
+    public var constraints: FfiCsrMatrixF64
+    public var rowBounds: [FfiBound]
+    public var varBounds: [FfiBound]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(objective: [Double], constraints: FfiCsrMatrixF64, rowBounds: [FfiBound], varBounds: [FfiBound]) {
+        self.objective = objective
+        self.constraints = constraints
+        self.rowBounds = rowBounds
+        self.varBounds = varBounds
+    }
+}
+
+
+
+extension FfiProblem: Equatable, Hashable {
+    public static func ==(lhs: FfiProblem, rhs: FfiProblem) -> Bool {
+        if lhs.objective != rhs.objective {
+            return false
+        }
+        if lhs.constraints != rhs.constraints {
+            return false
+        }
+        if lhs.rowBounds != rhs.rowBounds {
+            return false
+        }
+        if lhs.varBounds != rhs.varBounds {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(objective)
+        hasher.combine(constraints)
+        hasher.combine(rowBounds)
+        hasher.combine(varBounds)
+    }
+}
+
+
+public struct FfiConverterTypeFfiProblem: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiProblem {
+        return
+            try FfiProblem(
+                objective: FfiConverterSequenceDouble.read(from: &buf), 
+                constraints: FfiConverterTypeFfiCsrMatrixF64.read(from: &buf), 
+                rowBounds: FfiConverterSequenceTypeFfiBound.read(from: &buf), 
+                varBounds: FfiConverterSequenceTypeFfiBound.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiProblem, into buf: inout [UInt8]) {
+        FfiConverterSequenceDouble.write(value.objective, into: &buf)
+        FfiConverterTypeFfiCsrMatrixF64.write(value.constraints, into: &buf)
+        FfiConverterSequenceTypeFfiBound.write(value.rowBounds, into: &buf)
+        FfiConverterSequenceTypeFfiBound.write(value.varBounds, into: &buf)
+    }
+}
+
+
+public func FfiConverterTypeFfiProblem_lift(_ buf: RustBuffer) throws -> FfiProblem {
+    return try FfiConverterTypeFfiProblem.lift(buf)
+}
+
+public func FfiConverterTypeFfiProblem_lower(_ value: FfiProblem) -> RustBuffer {
+    return FfiConverterTypeFfiProblem.lower(value)
+}
+
+
+/**
+ * Mirrors `nc_optimize::Solution`.
+ */
+public struct FfiSolution {
+    public var variableValues: [Double]
+    public var objectiveValue: Double
+    public var status: FfiSolveStatus
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(variableValues: [Double], objectiveValue: Double, status: FfiSolveStatus) {
+        self.variableValues = variableValues
+        self.objectiveValue = objectiveValue
+        self.status = status
+    }
+}
+
+
+
+extension FfiSolution: Equatable, Hashable {
+    public static func ==(lhs: FfiSolution, rhs: FfiSolution) -> Bool {
+        if lhs.variableValues != rhs.variableValues {
+            return false
+        }
+        if lhs.objectiveValue != rhs.objectiveValue {
+            return false
+        }
+        if lhs.status != rhs.status {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(variableValues)
+        hasher.combine(objectiveValue)
+        hasher.combine(status)
+    }
+}
+
+
+public struct FfiConverterTypeFfiSolution: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiSolution {
+        return
+            try FfiSolution(
+                variableValues: FfiConverterSequenceDouble.read(from: &buf), 
+                objectiveValue: FfiConverterDouble.read(from: &buf), 
+                status: FfiConverterTypeFfiSolveStatus.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiSolution, into buf: inout [UInt8]) {
+        FfiConverterSequenceDouble.write(value.variableValues, into: &buf)
+        FfiConverterDouble.write(value.objectiveValue, into: &buf)
+        FfiConverterTypeFfiSolveStatus.write(value.status, into: &buf)
+    }
+}
+
+
+public func FfiConverterTypeFfiSolution_lift(_ buf: RustBuffer) throws -> FfiSolution {
+    return try FfiConverterTypeFfiSolution.lift(buf)
+}
+
+public func FfiConverterTypeFfiSolution_lower(_ value: FfiSolution) -> RustBuffer {
+    return FfiConverterTypeFfiSolution.lower(value)
+}
+
+
+/**
  * Errors that can cross the FFI boundary. Deliberately flat and
  * string-carrying rather than mirroring each source crate's error type
  * exactly — UniFFI generates a Swift `enum FfiError: Error` from this,
@@ -1125,6 +1332,18 @@ public enum FfiError {
     
     
     case DimensionMismatch(message: String
+    )
+    /**
+     * Carries any `nc_optimize::OptimizeError` (a solver reporting
+     * "not implemented" for a problem shape it doesn't handle, or a
+     * numerical failure like a non-positive-definite normal-equations
+     * matrix in `InteriorPointSolver`). Kept as a separate variant
+     * from `DimensionMismatch` rather than folding solver errors into
+     * that one — they're a different failure category, not a
+     * dimension problem, and a caller may reasonably want to tell them
+     * apart.
+     */
+    case SolverError(message: String
     )
 }
 
@@ -1140,6 +1359,9 @@ public struct FfiConverterTypeFfiError: FfiConverterRustBuffer {
 
         
         case 1: return .DimensionMismatch(
+            message: try FfiConverterString.read(from: &buf)
+            )
+        case 2: return .SolverError(
             message: try FfiConverterString.read(from: &buf)
             )
 
@@ -1158,6 +1380,11 @@ public struct FfiConverterTypeFfiError: FfiConverterRustBuffer {
             writeInt(&buf, Int32(1))
             FfiConverterString.write(message, into: &buf)
             
+        
+        case let .SolverError(message):
+            writeInt(&buf, Int32(2))
+            FfiConverterString.write(message, into: &buf)
+            
         }
     }
 }
@@ -1166,6 +1393,99 @@ public struct FfiConverterTypeFfiError: FfiConverterRustBuffer {
 extension FfiError: Equatable, Hashable {}
 
 extension FfiError: Error { }
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/**
+ * Mirrors `nc_optimize::SolveStatus`.
+ */
+
+public enum FfiSolveStatus {
+    
+    case optimal
+    case infeasible
+    case unbounded
+    case iterationLimit
+}
+
+
+public struct FfiConverterTypeFfiSolveStatus: FfiConverterRustBuffer {
+    typealias SwiftType = FfiSolveStatus
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiSolveStatus {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .optimal
+        
+        case 2: return .infeasible
+        
+        case 3: return .unbounded
+        
+        case 4: return .iterationLimit
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: FfiSolveStatus, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .optimal:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .infeasible:
+            writeInt(&buf, Int32(2))
+        
+        
+        case .unbounded:
+            writeInt(&buf, Int32(3))
+        
+        
+        case .iterationLimit:
+            writeInt(&buf, Int32(4))
+        
+        }
+    }
+}
+
+
+public func FfiConverterTypeFfiSolveStatus_lift(_ buf: RustBuffer) throws -> FfiSolveStatus {
+    return try FfiConverterTypeFfiSolveStatus.lift(buf)
+}
+
+public func FfiConverterTypeFfiSolveStatus_lower(_ value: FfiSolveStatus) -> RustBuffer {
+    return FfiConverterTypeFfiSolveStatus.lower(value)
+}
+
+
+
+extension FfiSolveStatus: Equatable, Hashable {}
+
+
+
+fileprivate struct FfiConverterOptionDouble: FfiConverterRustBuffer {
+    typealias SwiftType = Double?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterDouble.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterDouble.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
 
 fileprivate struct FfiConverterSequenceUInt32: FfiConverterRustBuffer {
     typealias SwiftType = [UInt32]
@@ -1228,6 +1548,28 @@ fileprivate struct FfiConverterSequenceDouble: FfiConverterRustBuffer {
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterDouble.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+fileprivate struct FfiConverterSequenceTypeFfiBound: FfiConverterRustBuffer {
+    typealias SwiftType = [FfiBound]
+
+    public static func write(_ value: [FfiBound], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeFfiBound.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [FfiBound] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [FfiBound]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeFfiBound.read(from: &buf))
         }
         return seq
     }
@@ -1315,6 +1657,35 @@ public func norm2F64(x: [Double]) -> Double {
 })
 }
 /**
+ * Solves `problem` via `nc_optimize::InteriorPointSolver` (default
+ * configuration). See that solver's module docs for its two scope
+ * boundaries: it rejects equality constraints/fixed variables outright
+ * (surfaced here as `FfiError::SolverError`, not a crash or silent
+ * wrong answer), and its unboundedness detection is heuristic.
+ */
+public func solveLpInteriorPoint(problem: FfiProblem)throws  -> FfiSolution {
+    return try  FfiConverterTypeFfiSolution.lift(try rustCallWithError(FfiConverterTypeFfiError.lift) {
+    uniffi_nc_ffi_fn_func_solve_lp_interior_point(
+        FfiConverterTypeFfiProblem.lower(problem),$0
+    )
+})
+}
+/**
+ * Solves `problem` via `nc_optimize::RevisedSimplexSolver` (default
+ * configuration). Prefer this over `solve_lp_interior_point` when
+ * exact/rigorous infeasibility or unboundedness detection matters, or
+ * the problem has equality constraints or fixed variables — see
+ * `nc_optimize::interior_point`'s module docs for why the
+ * interior-point path rejects those.
+ */
+public func solveLpSimplex(problem: FfiProblem)throws  -> FfiSolution {
+    return try  FfiConverterTypeFfiSolution.lift(try rustCallWithError(FfiConverterTypeFfiError.lift) {
+    uniffi_nc_ffi_fn_func_solve_lp_simplex(
+        FfiConverterTypeFfiProblem.lower(problem),$0
+    )
+})
+}
+/**
  * The `f32` counterpart of `spmv_f64`.
  */
 public func spmvF32(matrix: FfiCsrMatrixF32, x: [Float])throws  -> [Float] {
@@ -1371,6 +1742,12 @@ private var initializationResult: InitializationResult {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nc_ffi_checksum_func_norm2_f64() != 34231) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nc_ffi_checksum_func_solve_lp_interior_point() != 56241) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nc_ffi_checksum_func_solve_lp_simplex() != 16137) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nc_ffi_checksum_func_spmv_f32() != 8289) {
