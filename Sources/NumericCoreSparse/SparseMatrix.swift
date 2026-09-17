@@ -43,6 +43,15 @@ public struct SparseMatrix<Scalar: NCScalar> {
 
     public var nonZeroCount: Int { values.count }
 
+    /// Raw CSR components — exposed for `NumericCoreAMPL`'s `Presolve.swift`,
+    /// which needs to hand a constraint matrix's raw arrays to
+    /// `NCBindings.FFIProblem` when solving via `NCBindings.FFIKernels.solveLPSimplex`/
+    /// `.solveLPInteriorPoint`. Read-only — `SparseMatrix` stays
+    /// otherwise immutable.
+    public var csrRowPointers: [Int] { rowPointers }
+    public var csrColumnIndices: [Int] { columnIndices }
+    public var csrValues: [Scalar] { values }
+
     /// Sparse matrix-vector product: `result = self * x`.
     public func multiplying(_ x: Vector<Scalar>) throws -> Vector<Scalar> {
         guard x.count == cols else {
@@ -93,6 +102,8 @@ extension FFIError {
         switch self {
         case .dimensionMismatch(let message):
             return .dimensionMismatch(message)
+        case .solverError(let message):
+            return .unsupportedOperation(message)
         case .unknown(let message):
             return .unsupportedOperation(message)
         }

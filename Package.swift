@@ -92,7 +92,7 @@ let package = Package(
 
         .target(
             name: "NumericCoreAMPL",
-            dependencies: ["NumericCore", "NumericCoreSparse"]
+            dependencies: ["NumericCore", "NumericCoreSparse", "NCBindings"]
             // Add "Grammar", "Parser", "Lexer" here once the DSL front end
             // is implemented against those packages instead of ad hoc
             // parsing.

@@ -55,3 +55,23 @@ Concretely in this codebase:
   Rejected: adds real complexity to the LP path for capabilities that
   may never be exercised, and risks guessing wrong about what NLP's
   actual data model needs before any NLP work has started.
+
+## Update (LP: both solvers implemented, wired through to AMPL)
+`nc-optimize::{RevisedSimplexSolver, InteriorPointSolver}` are both
+real, tested `Solver` implementations now (`StubSolver` is gone from
+the active path) — see `Rust-NumericCore`'s ADR 0004 for the full
+detail on each (formulation, scope boundaries, cross-validation between
+the two on shared test problems). **Solver selection is explicit, not
+policy-based** — `NumericCoreAMPL`'s `CompiledProblem.solve(using:)`
+(`Solve.swift`) takes an `LPSolverKind` the caller picks, mirroring the
+Rust-side decision rather than adding a `DispatchPolicy`-style
+auto-selector.
+
+The full loop from AMPL source text to a solved LP is closed:
+`AMPLParser.parse(_:)` → `Model.compile()` → `.solve(using:)`, crossing
+into Rust via `nc-ffi`'s `solve_lp_simplex`/`solve_lp_interior_point`
+(new `NCBindings` types: `FFIProblem`/`FFIBound`/`FFISolution`/
+`FFISolveStatus`, plus a new `FFIError.solverError` case for any
+`OptimizeError` — see ADR 0005's update). `docs/design/ampl-grammar.md`'s
+own worked example is one of the end-to-end tests
+(`SolveTests.swift`), checked against both solvers.

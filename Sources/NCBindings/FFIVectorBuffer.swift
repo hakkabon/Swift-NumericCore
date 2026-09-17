@@ -101,6 +101,8 @@ extension FfiError {
         switch self {
         case .DimensionMismatch(let message):
             return .dimensionMismatch(message)
+        case .SolverError(let message):
+            return .solverError(message)
         }
     }
 }
