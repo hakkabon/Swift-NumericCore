@@ -85,6 +85,21 @@ not Swift `camelCase` — noted here since it's the one naming guess in
 `FFIBridge.swift` that turned out wrong; everything else (function
 names, record field names) matched the predicted convention.
 
+## Update (LP solving wired through)
+`FFIKernels.solveLPSimplex`/`.solveLPInteriorPoint` (`FFIBridge.swift`)
+call the Rust-side `solve_lp_simplex`/`solve_lp_interior_point` added in
+`nc-ffi` — see `Rust-NumericCore`'s ADR 0005 update for the Rust-side
+detail. `FFIError` gained a `.solverError(String)` case (mirroring the
+new Rust-side `FfiError::SolverError`); every existing exhaustive
+`switch` over `FFIError`/`FfiError` in `NumericCore`, `NumericCoreSparse`,
+and `NCBindings` needed a matching case added — a useful reminder that
+adding a variant to a shared error type is not a purely additive change
+on the Swift side, unlike adding a new free function. `FfiSolveStatus`
+(a plain `uniffi::Enum`, not `uniffi::Error`) is the one new naming
+guess in this update — whether its fieldless cases follow the same
+PascalCase-preservation confirmed for `FfiError` is *not yet confirmed*
+for a plain enum; see `FFIBridge.swift`'s note on this.
+
 ## Alternatives considered
 - **cbindgen + hand-rolled C ABI** (the original sketch). Rejected once
   the `Layout` precedent was identified — no reason to introduce a

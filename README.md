@@ -67,7 +67,7 @@ Swift-NumericCore/
 │   ├── NumericCoreMPS/        # Metal Performance Shaders backend (scaffold)
 │   ├── NumericCoreSparse/     # SparseMatrix<T> (CSR), SpMV
 │   ├── NumericCoreGraph/      # bridge to NetworkGraph/Layout — adjacency matrices
-│   └── NumericCoreAMPL/       # AMPL-style modeling language — lexer/parser/presolve implemented
+│   └── NumericCoreAMPL/       # AMPL-style modeling language — lexer/parser/presolve/solve, full loop closed
 ├── Tests/
 └── docs/
     ├── decisions/             # full ADR set for the NumericCore project
@@ -107,11 +107,12 @@ Swift-NumericCore/
 - `NumericCoreAMPL` — `Model` (variables/params/constraints/objective),
   a hand-rolled lexer/parser for the grammar in
   `docs/design/ampl-grammar.md` (`AMPLLexer.swift`/`AMPLParser.swift`),
-  and presolve (`Model.compile() -> CompiledProblem`, `Presolve.swift`).
-  Not yet built on the `Grammar`/`Lexer`/`Parser` packages originally
-  sketched for this — see `Model.swift`'s module docs for why. The
-  solver call-through (`CompiledProblem` → `nc-optimize::Solver` via
-  `NCBindings`) is the one piece still unbuilt.
+  presolve (`Model.compile() -> CompiledProblem`, `Presolve.swift`), and
+  now solving (`CompiledProblem.solve(using:)`, `Solve.swift`) via
+  `nc-ffi`'s `solve_lp_simplex`/`solve_lp_interior_point` — a complete
+  path from AMPL source text to a solved LP. Not yet built on the
+  `Grammar`/`Lexer`/`Parser` packages originally sketched for this —
+  see `Model.swift`'s module docs for why.
 
 Confirmed building on a real Mac toolchain as of the last full review;
 anything added after that point in a given conversation may not be

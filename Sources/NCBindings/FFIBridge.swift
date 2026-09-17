@@ -35,8 +35,19 @@
 /// Rust `PascalCase` (`FfiError.DimensionMismatch`), *not* Swift
 /// `camelCase`. `FFIKernels.translate` matches on `.DimensionMismatch` —
 /// do not "fix" it to `.dimensionMismatch`; that will not compile.
+///
+/// `FfiSolveStatus` (added for `solveLPSimplex`/`solveLPInteriorPoint`
+/// below) is a plain `uniffi::Enum`, not a `uniffi::Error` — the
+/// PascalCase-preservation above is *confirmed* for the error-derive
+/// path specifically; whether a plain enum's fieldless cases follow the
+/// same rule or get camelCased is an **unconfirmed extension** of that
+/// evidence. `FFIKernels.translate(status:)` matches on `.Optimal`
+/// (PascalCase) as the primary guess; if the compiler disagrees, this
+/// is the one spot to fix, matching the "fix it locally" pattern this
+/// whole file follows.
 public enum FFIError: Error {
     case dimensionMismatch(String)
+    case solverError(String)
     case unknown(String)
 }
 
@@ -200,6 +211,135 @@ public enum FFIKernels {
         switch ffiError {
         case .DimensionMismatch(let message):
             return .dimensionMismatch(message)
+        case .SolverError(let message):
+            return .solverError(message)
         }
+    }
+}
+
+// MARK: - LP solving
+
+/// Mirrors `nc-ffi::FfiBound` — `nil` means unbounded in that
+/// direction, same convention as `nc_optimize::Bound`.
+public struct FFIBound {
+    public let lower: Double?
+    public let upper: Double?
+
+    public init(lower: Double?, upper: Double?) {
+        self.lower = lower
+        self.upper = upper
+    }
+}
+
+/// Mirrors `nc-ffi::FfiProblem`. The constraint matrix is given in raw
+/// CSR components (matching `SparseMatrix`'s own internal shape,
+/// exposed via its `csrRowPointers`/`csrColumnIndices`/`csrValues`
+/// accessors) rather than as an `FFIMatrix`-style dense type — LPs of
+/// any real size have sparse constraint matrices, and `NumericCoreAMPL`
+/// already builds a `SparseMatrix` in `Presolve.swift`.
+public struct FFIProblem {
+    public let objective: [Double]
+    public let constraintRows: Int
+    public let constraintCols: Int
+    public let constraintRowPointers: [Int]
+    public let constraintColumnIndices: [Int]
+    public let constraintValues: [Double]
+    public let rowBounds: [FFIBound]
+    public let varBounds: [FFIBound]
+
+    public init(
+        objective: [Double],
+        constraintRows: Int,
+        constraintCols: Int,
+        constraintRowPointers: [Int],
+        constraintColumnIndices: [Int],
+        constraintValues: [Double],
+        rowBounds: [FFIBound],
+        varBounds: [FFIBound]
+    ) {
+        self.objective = objective
+        self.constraintRows = constraintRows
+        self.constraintCols = constraintCols
+        self.constraintRowPointers = constraintRowPointers
+        self.constraintColumnIndices = constraintColumnIndices
+        self.constraintValues = constraintValues
+        self.rowBounds = rowBounds
+        self.varBounds = varBounds
+    }
+}
+
+/// Mirrors `nc-ffi::FfiSolveStatus`. See the naming caveat on
+/// `FFIError`'s doc comment above — this is the one place that
+/// depends on the *unconfirmed* extension of the PascalCase-enum-case
+/// evidence.
+public enum FFISolveStatus {
+    case optimal
+    case infeasible
+    case unbounded
+    case iterationLimit
+}
+
+/// Mirrors `nc-ffi::FfiSolution`.
+public struct FFISolution {
+    public let variableValues: [Double]
+    public let objectiveValue: Double
+    public let status: FFISolveStatus
+}
+
+extension FFIKernels {
+    /// Solves via `nc-optimize::RevisedSimplexSolver`. See that
+    /// solver's Rust-side module docs for when to prefer it over
+    /// `solveLPInteriorPoint` (rigorous infeasibility/unboundedness
+    /// detection, equality constraints, fixed variables).
+    public static func solveLPSimplex(_ problem: FFIProblem) throws -> FFISolution {
+        do {
+            let result = try solveLpSimplex(problem: makeFfiProblem(problem))
+            return makeFFISolution(result)
+        } catch {
+            throw Self.translate(error)
+        }
+    }
+
+    /// Solves via `nc-optimize::InteriorPointSolver`. Throws
+    /// `FFIError.solverError` (not a crash, not a silently wrong
+    /// answer) if `problem` has an equality-constrained row or a fixed
+    /// variable — see that solver's Rust-side module docs.
+    public static func solveLPInteriorPoint(_ problem: FFIProblem) throws -> FFISolution {
+        do {
+            let result = try solveLpInteriorPoint(problem: makeFfiProblem(problem))
+            return makeFFISolution(result)
+        } catch {
+            throw Self.translate(error)
+        }
+    }
+
+    private static func makeFfiProblem(_ problem: FFIProblem) -> FfiProblem {
+        FfiProblem(
+            objective: problem.objective,
+            constraints: FfiCsrMatrixF64(
+                rows: UInt32(problem.constraintRows),
+                cols: UInt32(problem.constraintCols),
+                rowPtr: problem.constraintRowPointers.map { UInt32($0) },
+                colIndices: problem.constraintColumnIndices.map { UInt32($0) },
+                values: problem.constraintValues
+            ),
+            rowBounds: problem.rowBounds.map { FfiBound(lower: $0.lower, upper: $0.upper) },
+            varBounds: problem.varBounds.map { FfiBound(lower: $0.lower, upper: $0.upper) }
+        )
+    }
+
+    private static func makeFFISolution(_ result: FfiSolution) -> FFISolution {
+        let status: FFISolveStatus
+        switch result.status {
+        case .Optimal: status = .optimal
+        case .Infeasible: status = .infeasible
+        case .Unbounded: status = .unbounded
+        case .IterationLimit: status = .iterationLimit
+        }
+        return FFISolution(
+            variableValues: result.variableValues,
+            objectiveValue: result.objectiveValue,
+            status: status
+        )
     }
 }

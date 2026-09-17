@@ -159,6 +159,8 @@ extension FFIError {
         switch self {
         case .dimensionMismatch(let message):
             return .dimensionMismatch(message)
+        case .solverError(let message):
+            return .unsupportedOperation(message)
         case .unknown(let message):
             return .unsupportedOperation(message)
         }

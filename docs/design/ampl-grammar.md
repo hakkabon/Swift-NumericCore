@@ -116,12 +116,14 @@ distinguish the two, but the semantics require it).
    earning its complexity yet — revisit if/when `set`/indexed-expression
    support is added).
 4. ~~`Presolve.swift` — `Model` → `CompiledProblem`~~ — done.
-5. **Not yet done**: wiring `CompiledProblem` through `NCBindings` to
-   `nc-optimize::Solver` (currently `StubSolver`, reporting
-   "not implemented" — see ADR 0004). This is the next real step:
-   an `nc-ffi` export taking a `CompiledProblem`-shaped payload and
-   returning a `Solution`, mirroring the pattern already established
-   for `matmul_f64`/etc.
+5. ~~Wiring `CompiledProblem` through `NCBindings` to
+   `nc-optimize::Solver`~~ — done: `Solve.swift`'s
+   `CompiledProblem.solve(using:)`, backed by `nc-ffi`'s
+   `solve_lp_simplex`/`solve_lp_interior_point`. `AMPLParser.parse(_:)`
+   → `Model.compile()` → `.solve(using:)` is now a complete path from
+   AMPL source text to an actual solved LP — this doc's own worked
+   example, above, is one of the tests (`SolveTests.swift`) exercising
+   exactly that path, checked against both solvers.
 6. **Not yet done**: migrating the lexer/parser to the
    `hakkabon/Grammar`/`Lexer`/`Parser` packages, if that's still
    wanted, once their exact public APIs are in hand to write against.
