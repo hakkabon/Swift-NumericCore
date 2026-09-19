@@ -1,5 +1,19 @@
 # Frameworks/
 
+**Transitional — this directory is being phased out.** As of ADR 0010,
+`Package.swift`'s `NumericCoreFFI` binary target is moving to a remote
+`url:`/`checksum:` pin instead of vendoring the compiled framework
+here. The first successful run of `.github/workflows/update-ffi.yml`
+after a Rust-NumericCore release exists will remove this directory
+automatically as part of its update PR — nothing to do by hand beyond
+merging that PR. See ADR 0010 for the full pipeline and ADR 0009 for
+why this directory existed in the first place.
+
+Everything below describes the outgoing local-vendoring approach, kept
+for reference until the directory is actually removed.
+
+---
+
 This directory holds `NumericCoreFFI.xcframework` — the compiled
 Rust core (`nc-ffi`), built by
 [`Rust-NumericCore`](https://github.com/hakkabon/Rust-NumericCore)'s

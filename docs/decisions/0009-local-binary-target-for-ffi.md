@@ -69,3 +69,13 @@ need to move in lockstep with the binary automatically.
   location at resolve time" outside the `url:`/`checksum:` mechanism
   itself; a custom plugin doing this is more moving parts than the
   problem currently justifies.
+
+## Update (superseded — see ADR 0010)
+The "What to do before this changes" section above turned out to
+predict its own trigger accurately: `Rust-NumericCore` now has real
+release automation (`release.yml`, tag-triggered), so the local-path
+vendoring this ADR justified is no longer the better tradeoff.
+`Package.swift`'s `NumericCoreFFI` target moves to the remote
+`url:`/`checksum:` form, kept in sync automatically — see ADR 0010 for
+the full pipeline. This ADR is kept for the historical reasoning, not
+because the local-path approach is still active.
