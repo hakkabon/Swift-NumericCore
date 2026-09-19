@@ -53,23 +53,24 @@ final class AMPLParserTests: XCTestCase {
     }
 
     func testParsesParameterAndFoldsIntoExpression() throws {
+        // The grammar's `term = [number] identifier | number` only
+        // allows a *number* immediately before an identifier as a
+        // coefficient (`2.5 x`) — not another identifier. So a param
+        // can't be written directly adjacent to a variable ("rate x")
+        // as a coefficient; it has to appear as its own term, joined by
+        // "+"/"-" like any other term. `rate + x` below is the valid
+        // way to exercise param folding (rate -> constant 2.5) and
+        // variable resolution (x -> coefficient 1) together.
         let source = """
         param rate := 2.5;
         var x >= 0;
-        minimize cost: rate x;
+        minimize cost: rate + x;
         """
         let model = try AMPLParser.parse(source)
         let objective = try XCTUnwrap(model.objective)
 
-        // "rate x" -> coefficient 1 times identifier "rate", but "rate"
-        // is a param, not a variable, so it folds into the constant as
-        // 1 * 2.5, contributing nothing to the variable coefficients.
-        // (Real usage would more naturally write "2.5 x" directly, or a
-        // param used as a coefficient like "rate x" with rate meant to
-        // scale x — this test's shape exists to exercise param
-        // resolution specifically, not to prescribe idiomatic style.)
         XCTAssertEqual(objective.expression.constant, 2.5)
-        XCTAssertNil(objective.expression.coefficients[0])
+        XCTAssertEqual(objective.expression.coefficients[0], 1)
     }
 
     func testParsesLeadingNegativeCoefficient() throws {
