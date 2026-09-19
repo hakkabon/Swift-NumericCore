@@ -28,26 +28,23 @@ let package = Package(
     ],
     targets: [
         // The compiled Rust core (nc-ffi), built by
-        // Rust-NumericCore/scripts/build-xcframework.sh. Wired as a
-        // *local path* binary target for now — see
-        // Frameworks/README.md for how it gets there
-        // (scripts/update-ffi.sh, or automatically via
-        // .github/workflows/update-ffi.yml on each Rust-NumericCore
-        // version tag) and ADR 0009 for why local-path
-        // rather than a remote URL, and what changes once
-        // Rust-NumericCore starts tagging releases:
-        //
-        //   .binaryTarget(
-        //       name: "NumericCoreFFI",
-        //       url: "https://github.com/hakkabon/Rust-NumericCore/releases/download/vX.Y.Z/NumericCoreFFI.xcframework.zip",
-        //       checksum: "<from the release body — Rust-NumericCore's release.yml prints it>"
-        //   ),
+        // Rust-NumericCore/scripts/build-xcframework.sh and published
+        // as a checksummed GitHub release asset. Consumed as a remote
+        // binaryTarget — no local vendoring, no Rust toolchain needed
+        // to build this package. See ADR 0010 for the automated
+        // release/sync pipeline (Rust-NumericCore's release.yml tags →
+        // builds → publishes → dispatches; this repo's
+        // .github/workflows/update-ffi.yml picks that up, updates the
+        // url/checksum below via scripts/set_ffi_binary_target.py, and
+        // opens a PR) and ADR 0009 for the local-path approach this
+        // superseded.
         //
         // Note: `Sources/NCBindings/Generated/nc_ffi.swift` must always be
         // refreshed in lockstep with the framework (same release's
         // `nc_ffi.swift` asset) — a framework without matching bindings
         // (or vice versa) links or misbehaves, and SPM will not catch
-        // the mismatch for you.
+        // the mismatch for you. The automated workflow keeps both in
+        // sync in one PR; if updating by hand, do the same.
         .binaryTarget(
             name: "NumericCoreFFI",
             path: "Frameworks/NumericCoreFFI.xcframework"

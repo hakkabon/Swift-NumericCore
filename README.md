@@ -10,31 +10,14 @@ This is the Swift half of the project. The Rust half
 (kernels/sparse/solvers, consumed via UniFFI) lives in
 [`Rust-NumericCore`](https://github.com/hakkabon/Rust-NumericCore) —
 see `docs/decisions/0008-split-into-two-repos.md` for why they're
-split. **This package now has a real build-time dependency on the Rust
-core**, via a binary target checked into `Frameworks/` (see ADR 0009)
-— this is a change from earlier versions of this README, which
-described a purely-Swift-standalone package; that was true only until
-`NCBindings` was wired to the real FFI (ADR 0005/0006's updates).
+split. **This package has a real build-time dependency on the Rust
+core**, consumed as a remote SPM `binaryTarget` (`url:`/`checksum:`)
+pointing at a `Rust-NumericCore` release — see ADR 0010 for the
+automated pipeline that keeps that pin current, and ADR 0009 for the
+local-vendoring approach it replaced.
 
 **Not related to Apple's `swift-numerics`.** The similar name is a
 known, deliberately-avoided near-collision — see ADR 0008.
-
-## ⚠️ Before building: populate the FFI artifacts
-
-`Frameworks/NumericCoreFFI.xcframework` and
-`Sources/NCBindings/Generated/*.swift` must exist and match each other
-before `swift build` will succeed — `NCBindings/FFIBridge.swift`
-references symbols from the generated file directly. If you're reading
-this from a fresh clone (or a patch applied without the artifacts
-committed alongside it), run:
-
-```bash
-# with Rust-NumericCore checked out as a sibling directory
-./scripts/update-ffi.sh
-```
-
-then commit both directories together. See `Frameworks/README.md` and
-`Sources/NCBindings/Generated/README.md`.
 
 ## Adding as a dependency
 
@@ -55,8 +38,7 @@ or build step on their end.
 
 ```
 Swift-NumericCore/
-├── Frameworks/
-│   └── NumericCoreFFI.xcframework   # compiled Rust core — checked in, see ADR 0009
+├── Frameworks/                 # transitional — removed once update-ffi.yml's first flip lands (ADR 0010)
 ├── Sources/
 │   ├── NCBindings/
 │   │   ├── FFIBridge.swift          # hand-written adapter — see its header comment

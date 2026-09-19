@@ -1,19 +1,25 @@
 name: Update Rust FFI
 
-# Vendors a new Rust-NumericCore release into this repo's checked-in
-# Frameworks/NumericCoreFFI.xcframework + Sources/NCBindings/Generated/
-# (the local-path binaryTarget layout from ADR 0009) and opens a PR.
+# Keeps Swift-NumericCore's NumericCoreFFI binaryTarget pointed at the
+# latest Rust-NumericCore release: refreshes Package.swift's `url:`/
+# `checksum:` (via scripts/set_ffi_binary_target.py) and
+# Sources/NCBindings/Generated/*.swift, then opens a PR.
+#
+# Supersedes the local-path/vendored-Frameworks approach from ADR 0009
+# — see ADR 0010. The first successful run of this workflow after this
+# change performs the one-time flip: Package.swift's NumericCoreFFI
+# target moves from a local `path:` to a remote `url:`/`checksum:`, and
+# the now-redundant Frameworks/ directory is removed from the repo.
+# Every run after that is just a checksum/tag/bindings refresh.
 #
 # Triggers, in order of preference:
 #   1. repository_dispatch `rust-release` — sent by Rust-NumericCore's
-#      `release.yml` on every version-tag push (needs its
-#      SWIFT_NUMERICCORE_DISPATCH_TOKEN secret; no secret needed here).
+#      release.yml on every version-tag push.
 #   2. weekly schedule — polls Rust-NumericCore's `latest` release, so a
 #      missed dispatch still converges within a week.
-#   3. manual workflow_dispatch with an explicit `rust_tag`.
-#
-# The last-vendored tag is tracked in Frameworks/FFI_VERSION. If the
-# resolved tag already matches, the job exits without opening a PR.
+#   3. manual workflow_dispatch with an explicit `rust_tag` — use this
+#      right after Rust-NumericCore's very first tagged release, to
+#      perform the initial flip without waiting on the schedule.
 
 on:
   repository_dispatch:
@@ -23,7 +29,7 @@ on:
   workflow_dispatch:
     inputs:
       rust_tag:
-        description: "Rust-NumericCore tag to vendor (e.g. v0.2.0). Empty = latest release."
+        description: "Rust-NumericCore tag to sync (e.g. v0.1.0). Empty = latest release."
         required: false
         default: ""
 
@@ -40,7 +46,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Resolve tag to vendor
+      - name: Resolve tag to sync
         id: tag
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -55,15 +61,24 @@ jobs:
             TAG=$(gh release view --repo "${RUST_REPO}" --json tagName -q .tagName)
           fi
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
-          echo "Resolved Rust tag: ${TAG}"
-          echo "Current vendored: $(cat Frameworks/FFI_VERSION)"
 
-      - name: Skip if already vendored
+          # Best-effort extraction of the currently-pinned tag from
+          # Package.swift's existing binaryTarget block, so the "skip if
+          # already up to date" check below works without a separate
+          # tracking file. Empty on the very first run (local `path:`
+          # form has no "download/" substring to match) - correctly
+          # treated as "needs update" in that case.
+          CURRENT=$(grep -A2 'name: "NumericCoreFFI"' Package.swift \
+            | grep -oE 'download/[^/]+' | sed 's#download/##' || true)
+          echo "current=${CURRENT}" >> "$GITHUB_OUTPUT"
+          echo "Resolved tag: ${TAG}; currently pinned: ${CURRENT:-<none - local path>}"
+
+      - name: Skip if already up to date
         id: check
         run: |
-          if [ "$(cat Frameworks/FFI_VERSION)" = "${{ steps.tag.outputs.tag }}" ]; then
+          if [ "${{ steps.tag.outputs.current }}" = "${{ steps.tag.outputs.tag }}" ]; then
             echo "up_to_date=true" >> "$GITHUB_OUTPUT"
-            echo "Already at ${{ steps.tag.outputs.tag }} — nothing to do."
+            echo "Already pinned to ${{ steps.tag.outputs.tag }} - nothing to do."
           else
             echo "up_to_date=false" >> "$GITHUB_OUTPUT"
           fi
@@ -78,30 +93,44 @@ jobs:
             --pattern "NumericCoreFFI.xcframework.zip" \
             --pattern "nc_ffi.swift" \
             --dir /tmp/ffi-update --clobber
-          ls -la /tmp/ffi-update
-
-      - name: Vendor framework + bindings
-        if: steps.check.outputs.up_to_date == 'false'
-        run: |
-          rm -rf Frameworks/NumericCoreFFI.xcframework
-          unzip -q /tmp/ffi-update/NumericCoreFFI.xcframework.zip -d Frameworks/
-          find Sources/NCBindings/Generated -name "*.swift" -delete
-          cp /tmp/ffi-update/nc_ffi.swift Sources/NCBindings/Generated/
-          echo -n "${{ steps.tag.outputs.tag }}" > Frameworks/FFI_VERSION
 
       - name: Validate Headers layout
         if: steps.check.outputs.up_to_date == 'false'
         run: |
-          for slice in Frameworks/NumericCoreFFI.xcframework/*/; do
+          # Same guard Rust-NumericCore's release.yml already ran before
+          # publishing - repeated here since this is the last point
+          # before the artifact gets pinned by checksum. See
+          # Frameworks/README.md's "Why Headers/module.modulemap must
+          # exist" section for why this matters (canImport(nc_ffiFFI)
+          # silently evaluates false without it, and the link fails with
+          # undefined uniffi_*/ffi_* symbols).
+          rm -rf /tmp/ffi-check && mkdir -p /tmp/ffi-check
+          unzip -q /tmp/ffi-update/NumericCoreFFI.xcframework.zip -d /tmp/ffi-check
+          for slice in /tmp/ffi-check/NumericCoreFFI.xcframework/*/; do
             test -f "${slice}/Headers/module.modulemap" \
               || { echo "missing ${slice}/Headers/module.modulemap" >&2; exit 1; }
           done
-          if ls Frameworks/NumericCoreFFI.xcframework/*/Headers/*.swift >/dev/null 2>&1; then
-            echo "stray *.swift inside XCFramework Headers/" >&2; exit 1
-          fi
-          # Without module.modulemap, canImport(nc_ffiFFI) is false and the
-          # link fails with undefined uniffi_*/ffi_* symbols — see ADR 0009
-          # and scripts/update-ffi.sh.
+
+      - name: Compute checksum
+        if: steps.check.outputs.up_to_date == 'false'
+        id: checksum
+        run: |
+          CHECKSUM=$(swift package compute-checksum /tmp/ffi-update/NumericCoreFFI.xcframework.zip)
+          echo "checksum=${CHECKSUM}" >> "$GITHUB_OUTPUT"
+
+      - name: Flip/update Package.swift's binaryTarget
+        if: steps.check.outputs.up_to_date == 'false'
+        run: |
+          python3 scripts/set_ffi_binary_target.py \
+            "${{ steps.tag.outputs.tag }}" \
+            "${{ steps.checksum.outputs.checksum }}"
+
+      - name: Refresh bindings + remove obsolete Frameworks/
+        if: steps.check.outputs.up_to_date == 'false'
+        run: |
+          find Sources/NCBindings/Generated -name "*.swift" -delete
+          cp /tmp/ffi-update/nc_ffi.swift Sources/NCBindings/Generated/
+          git rm -r --ignore-unmatch --quiet Frameworks/ || true
 
       - name: Build + test
         if: steps.check.outputs.up_to_date == 'false'
@@ -115,18 +144,23 @@ jobs:
         with:
           branch: "ffi/update-${{ steps.tag.outputs.tag }}"
           delete-branch: true
-          title: "Vendor Rust-NumericCore ${{ steps.tag.outputs.tag }} (FFI)"
+          title: "Sync NumericCoreFFI to ${{ steps.tag.outputs.tag }}"
           body: |
-            Automated FFI vendor update.
+            Automated FFI sync.
 
             - Rust release: https://github.com/${{ env.RUST_REPO }}/releases/tag/${{ steps.tag.outputs.tag }}
-            - Refreshed `Frameworks/NumericCoreFFI.xcframework` (+ `FFI_VERSION`)
-              and `Sources/NCBindings/Generated/nc_ffi.swift` from that release's assets.
+            - `Package.swift`'s `NumericCoreFFI` binary target now points at
+              this release's checksummed asset (ADR 0010).
+            - Refreshed `Sources/NCBindings/Generated/nc_ffi.swift`.
+            - If this was the first run since the remote-binaryTarget
+              switch, `Frameworks/` was removed - it's no longer needed.
             - `swift build` + `swift test` passed on the update runner.
 
-            If the UniFFI interface changed (new/renamed functions or types),
-            `Sources/NCBindings/FFIBridge.swift` may need a follow-up — it is
-            the only hand-written file that names generated symbols directly.
+            If the UniFFI interface changed (new/renamed functions or
+            types), `Sources/NCBindings/FFIBridge.swift` may need a
+            follow-up - it is the only hand-written file that names
+            generated symbols directly.
           add-paths: |
-            Frameworks/
+            Package.swift
             Sources/NCBindings/Generated/
+            Frameworks/
