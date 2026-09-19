@@ -8,11 +8,11 @@ import Foundation
 // might be in a separate module, or it might be compiled inline into
 // this module. This is a bit of light hackery to work with both.
 #if canImport(nc_ffiFFI)
-import nc_ffiFFI
+    import nc_ffiFFI
 #endif
 
-fileprivate extension RustBuffer {
-    // Allocate a new buffer, copying the contents of a `UInt8` array.
+private extension RustBuffer {
+    /// Allocate a new buffer, copying the contents of a `UInt8` array.
     init(bytes: [UInt8]) {
         let rbuf = bytes.withUnsafeBufferPointer { ptr in
             RustBuffer.from(ptr)
@@ -21,21 +21,21 @@ fileprivate extension RustBuffer {
     }
 
     static func empty() -> RustBuffer {
-        RustBuffer(capacity: 0, len:0, data: nil)
+        RustBuffer(capacity: 0, len: 0, data: nil)
     }
 
     static func from(_ ptr: UnsafeBufferPointer<UInt8>) -> RustBuffer {
         try! rustCall { ffi_nc_ffi_rustbuffer_from_bytes(ForeignBytes(bufferPointer: ptr), $0) }
     }
 
-    // Frees the buffer in place.
-    // The buffer must not be used after this is called.
+    /// Frees the buffer in place.
+    /// The buffer must not be used after this is called.
     func deallocate() {
         try! rustCall { ffi_nc_ffi_rustbuffer_free(self, $0) }
     }
 }
 
-fileprivate extension ForeignBytes {
+private extension ForeignBytes {
     init(bufferPointer: UnsafeBufferPointer<UInt8>) {
         self.init(len: Int32(bufferPointer.count), data: bufferPointer.baseAddress)
     }
@@ -48,7 +48,7 @@ fileprivate extension ForeignBytes {
 // Helper classes/extensions that don't change.
 // Someday, this will be in a library of its own.
 
-fileprivate extension Data {
+private extension Data {
     init(rustBuffer: RustBuffer) {
         // TODO: This copies the buffer. Can we read directly from a
         // Rust buffer?
@@ -70,15 +70,15 @@ fileprivate extension Data {
 //
 // Instead, the read() method and these helper functions input a tuple of data
 
-fileprivate func createReader(data: Data) -> (data: Data, offset: Data.Index) {
+private func createReader(data: Data) -> (data: Data, offset: Data.Index) {
     (data: data, offset: 0)
 }
 
-// Reads an integer at the current offset, in big-endian order, and advances
-// the offset on success. Throws if reading the integer would move the
-// offset past the end of the buffer.
-fileprivate func readInt<T: FixedWidthInteger>(_ reader: inout (data: Data, offset: Data.Index)) throws -> T {
-    let range = reader.offset..<reader.offset + MemoryLayout<T>.size
+/// Reads an integer at the current offset, in big-endian order, and advances
+/// the offset on success. Throws if reading the integer would move the
+/// offset past the end of the buffer.
+private func readInt<T: FixedWidthInteger>(_ reader: inout (data: Data, offset: Data.Index)) throws -> T {
+    let range = reader.offset ..< reader.offset + MemoryLayout<T>.size
     guard reader.data.count >= range.upperBound else {
         throw UniffiInternalError.bufferOverflow
     }
@@ -88,38 +88,38 @@ fileprivate func readInt<T: FixedWidthInteger>(_ reader: inout (data: Data, offs
         return value as! T
     }
     var value: T = 0
-    let _ = withUnsafeMutableBytes(of: &value, { reader.data.copyBytes(to: $0, from: range)})
+    let _ = withUnsafeMutableBytes(of: &value) { reader.data.copyBytes(to: $0, from: range) }
     reader.offset = range.upperBound
     return value.bigEndian
 }
 
-// Reads an arbitrary number of bytes, to be used to read
-// raw bytes, this is useful when lifting strings
-fileprivate func readBytes(_ reader: inout (data: Data, offset: Data.Index), count: Int) throws -> Array<UInt8> {
-    let range = reader.offset..<(reader.offset+count)
+/// Reads an arbitrary number of bytes, to be used to read
+/// raw bytes, this is useful when lifting strings
+private func readBytes(_ reader: inout (data: Data, offset: Data.Index), count: Int) throws -> [UInt8] {
+    let range = reader.offset ..< (reader.offset + count)
     guard reader.data.count >= range.upperBound else {
         throw UniffiInternalError.bufferOverflow
     }
     var value = [UInt8](repeating: 0, count: count)
-    value.withUnsafeMutableBufferPointer({ buffer in
+    value.withUnsafeMutableBufferPointer { buffer in
         reader.data.copyBytes(to: buffer, from: range)
-    })
+    }
     reader.offset = range.upperBound
     return value
 }
 
-// Reads a float at the current offset.
-fileprivate func readFloat(_ reader: inout (data: Data, offset: Data.Index)) throws -> Float {
-    return Float(bitPattern: try readInt(&reader))
+/// Reads a float at the current offset.
+private func readFloat(_ reader: inout (data: Data, offset: Data.Index)) throws -> Float {
+    return try Float(bitPattern: readInt(&reader))
 }
 
-// Reads a float at the current offset.
-fileprivate func readDouble(_ reader: inout (data: Data, offset: Data.Index)) throws -> Double {
-    return Double(bitPattern: try readInt(&reader))
+/// Reads a float at the current offset.
+private func readDouble(_ reader: inout (data: Data, offset: Data.Index)) throws -> Double {
+    return try Double(bitPattern: readInt(&reader))
 }
 
-// Indicates if the offset has reached the end of the buffer.
-fileprivate func hasRemaining(_ reader: (data: Data, offset: Data.Index)) -> Bool {
+/// Indicates if the offset has reached the end of the buffer.
+private func hasRemaining(_ reader: (data: Data, offset: Data.Index)) -> Bool {
     return reader.offset < reader.data.count
 }
 
@@ -127,34 +127,34 @@ fileprivate func hasRemaining(_ reader: (data: Data, offset: Data.Index)) -> Boo
 // struct, but we use standalone functions instead in order to make external
 // types work.  See the above discussion on Readers for details.
 
-fileprivate func createWriter() -> [UInt8] {
+private func createWriter() -> [UInt8] {
     return []
 }
 
-fileprivate func writeBytes<S>(_ writer: inout [UInt8], _ byteArr: S) where S: Sequence, S.Element == UInt8 {
+private func writeBytes<S: Sequence>(_ writer: inout [UInt8], _ byteArr: S) where S.Element == UInt8 {
     writer.append(contentsOf: byteArr)
 }
 
-// Writes an integer in big-endian order.
-//
-// Warning: make sure what you are trying to write
-// is in the correct type!
-fileprivate func writeInt<T: FixedWidthInteger>(_ writer: inout [UInt8], _ value: T) {
+/// Writes an integer in big-endian order.
+///
+/// Warning: make sure what you are trying to write
+/// is in the correct type!
+private func writeInt<T: FixedWidthInteger>(_ writer: inout [UInt8], _ value: T) {
     var value = value.bigEndian
     withUnsafeBytes(of: &value) { writer.append(contentsOf: $0) }
 }
 
-fileprivate func writeFloat(_ writer: inout [UInt8], _ value: Float) {
+private func writeFloat(_ writer: inout [UInt8], _ value: Float) {
     writeInt(&writer, value.bitPattern)
 }
 
-fileprivate func writeDouble(_ writer: inout [UInt8], _ value: Double) {
+private func writeDouble(_ writer: inout [UInt8], _ value: Double) {
     writeInt(&writer, value.bitPattern)
 }
 
-// Protocol for types that transfer other types across the FFI. This is
-// analogous go the Rust trait of the same name.
-fileprivate protocol FfiConverter {
+/// Protocol for types that transfer other types across the FFI. This is
+/// analogous go the Rust trait of the same name.
+private protocol FfiConverter {
     associatedtype FfiType
     associatedtype SwiftType
 
@@ -164,8 +164,8 @@ fileprivate protocol FfiConverter {
     static func write(_ value: SwiftType, into buf: inout [UInt8])
 }
 
-// Types conforming to `Primitive` pass themselves directly over the FFI.
-fileprivate protocol FfiConverterPrimitive: FfiConverter where FfiType == SwiftType { }
+/// Types conforming to `Primitive` pass themselves directly over the FFI.
+private protocol FfiConverterPrimitive: FfiConverter where FfiType == SwiftType {}
 
 extension FfiConverterPrimitive {
     public static func lift(_ value: FfiType) throws -> SwiftType {
@@ -177,9 +177,9 @@ extension FfiConverterPrimitive {
     }
 }
 
-// Types conforming to `FfiConverterRustBuffer` lift and lower into a `RustBuffer`.
-// Used for complex types where it's hard to write a custom lift/lower.
-fileprivate protocol FfiConverterRustBuffer: FfiConverter where FfiType == RustBuffer {}
+/// Types conforming to `FfiConverterRustBuffer` lift and lower into a `RustBuffer`.
+/// Used for complex types where it's hard to write a custom lift/lower.
+private protocol FfiConverterRustBuffer: FfiConverter where FfiType == RustBuffer {}
 
 extension FfiConverterRustBuffer {
     public static func lift(_ buf: RustBuffer) throws -> SwiftType {
@@ -193,14 +193,15 @@ extension FfiConverterRustBuffer {
     }
 
     public static func lower(_ value: SwiftType) -> RustBuffer {
-          var writer = createWriter()
-          write(value, into: &writer)
-          return RustBuffer(bytes: writer)
+        var writer = createWriter()
+        write(value, into: &writer)
+        return RustBuffer(bytes: writer)
     }
 }
-// An error type for FFI errors. These errors occur at the UniFFI level, not
-// the library level.
-fileprivate enum UniffiInternalError: LocalizedError {
+
+/// An error type for FFI errors. These errors occur at the UniFFI level, not
+/// the library level.
+private enum UniffiInternalError: LocalizedError {
     case bufferOverflow
     case incompleteData
     case unexpectedOptionalTag
@@ -211,7 +212,7 @@ fileprivate enum UniffiInternalError: LocalizedError {
     case unexpectedStaleHandle
     case rustPanic(_ message: String)
 
-    public var errorDescription: String? {
+    var errorDescription: String? {
         switch self {
         case .bufferOverflow: return "Reading the requested value would read past the end of the buffer"
         case .incompleteData: return "The buffer still has data after lifting its containing value"
@@ -226,24 +227,24 @@ fileprivate enum UniffiInternalError: LocalizedError {
     }
 }
 
-fileprivate extension NSLock {
+private extension NSLock {
     func withLock<T>(f: () throws -> T) rethrows -> T {
-        self.lock()
+        lock()
         defer { self.unlock() }
         return try f()
     }
 }
 
-fileprivate let CALL_SUCCESS: Int8 = 0
-fileprivate let CALL_ERROR: Int8 = 1
-fileprivate let CALL_UNEXPECTED_ERROR: Int8 = 2
-fileprivate let CALL_CANCELLED: Int8 = 3
+private let CALL_SUCCESS: Int8 = 0
+private let CALL_ERROR: Int8 = 1
+private let CALL_UNEXPECTED_ERROR: Int8 = 2
+private let CALL_CANCELLED: Int8 = 3
 
-fileprivate extension RustCallStatus {
+private extension RustCallStatus {
     init() {
         self.init(
             code: CALL_SUCCESS,
-            errorBuf: RustBuffer.init(
+            errorBuf: RustBuffer(
                 capacity: 0,
                 len: 0,
                 data: nil
@@ -258,7 +259,8 @@ private func rustCall<T>(_ callback: (UnsafeMutablePointer<RustCallStatus>) -> T
 
 private func rustCallWithError<T>(
     _ errorHandler: @escaping (RustBuffer) throws -> Error,
-    _ callback: (UnsafeMutablePointer<RustCallStatus>) -> T) throws -> T {
+    _ callback: (UnsafeMutablePointer<RustCallStatus>) -> T
+) throws -> T {
     try makeRustCall(callback, errorHandler: errorHandler)
 }
 
@@ -267,7 +269,7 @@ private func makeRustCall<T>(
     errorHandler: ((RustBuffer) throws -> Error)?
 ) throws -> T {
     uniffiEnsureInitialized()
-    var callStatus = RustCallStatus.init()
+    var callStatus = RustCallStatus()
     let returnedVal = callback(&callStatus)
     try uniffiCheckCallStatus(callStatus: callStatus, errorHandler: errorHandler)
     return returnedVal
@@ -278,44 +280,44 @@ private func uniffiCheckCallStatus(
     errorHandler: ((RustBuffer) throws -> Error)?
 ) throws {
     switch callStatus.code {
-        case CALL_SUCCESS:
-            return
+    case CALL_SUCCESS:
+        return
 
-        case CALL_ERROR:
-            if let errorHandler = errorHandler {
-                throw try errorHandler(callStatus.errorBuf)
-            } else {
-                callStatus.errorBuf.deallocate()
-                throw UniffiInternalError.unexpectedRustCallError
-            }
+    case CALL_ERROR:
+        if let errorHandler = errorHandler {
+            throw try errorHandler(callStatus.errorBuf)
+        } else {
+            callStatus.errorBuf.deallocate()
+            throw UniffiInternalError.unexpectedRustCallError
+        }
 
-        case CALL_UNEXPECTED_ERROR:
-            // When the rust code sees a panic, it tries to construct a RustBuffer
-            // with the message.  But if that code panics, then it just sends back
-            // an empty buffer.
-            if callStatus.errorBuf.len > 0 {
-                throw UniffiInternalError.rustPanic(try FfiConverterString.lift(callStatus.errorBuf))
-            } else {
-                callStatus.errorBuf.deallocate()
-                throw UniffiInternalError.rustPanic("Rust panic")
-            }
+    case CALL_UNEXPECTED_ERROR:
+        // When the rust code sees a panic, it tries to construct a RustBuffer
+        // with the message.  But if that code panics, then it just sends back
+        // an empty buffer.
+        if callStatus.errorBuf.len > 0 {
+            throw try UniffiInternalError.rustPanic(FfiConverterString.lift(callStatus.errorBuf))
+        } else {
+            callStatus.errorBuf.deallocate()
+            throw UniffiInternalError.rustPanic("Rust panic")
+        }
 
-        case CALL_CANCELLED:
-            fatalError("Cancellation not supported yet")
+    case CALL_CANCELLED:
+        fatalError("Cancellation not supported yet")
 
-        default:
-            throw UniffiInternalError.unexpectedRustCallStatusCode
+    default:
+        throw UniffiInternalError.unexpectedRustCallStatusCode
     }
 }
 
 private func uniffiTraitInterfaceCall<T>(
     callStatus: UnsafeMutablePointer<RustCallStatus>,
     makeCall: () throws -> T,
-    writeReturn: (T) -> ()
+    writeReturn: (T) -> Void
 ) {
     do {
         try writeReturn(makeCall())
-    } catch let error {
+    } catch {
         callStatus.pointee.code = CALL_UNEXPECTED_ERROR
         callStatus.pointee.errorBuf = FfiConverterString.lower(String(describing: error))
     }
@@ -324,7 +326,7 @@ private func uniffiTraitInterfaceCall<T>(
 private func uniffiTraitInterfaceCallWithError<T, E>(
     callStatus: UnsafeMutablePointer<RustCallStatus>,
     makeCall: () throws -> T,
-    writeReturn: (T) -> (),
+    writeReturn: (T) -> Void,
     lowerError: (E) -> RustBuffer
 ) {
     do {
@@ -337,7 +339,8 @@ private func uniffiTraitInterfaceCallWithError<T, E>(
         callStatus.pointee.errorBuf = FfiConverterString.lower(String(describing: error))
     }
 }
-fileprivate class UniffiHandleMap<T> {
+
+private class UniffiHandleMap<T> {
     private var map: [UInt64: T] = [:]
     private let lock = NSLock()
     private var currentHandle: UInt64 = 1
@@ -351,7 +354,7 @@ fileprivate class UniffiHandleMap<T> {
         }
     }
 
-     func get(handle: UInt64) throws -> T {
+    func get(handle: UInt64) throws -> T {
         try lock.withLock {
             guard let obj = map[handle] else {
                 throw UniffiInternalError.unexpectedStaleHandle
@@ -371,73 +374,69 @@ fileprivate class UniffiHandleMap<T> {
     }
 
     var count: Int {
-        get {
-            map.count
-        }
+        map.count
     }
 }
-
 
 // Public interface members begin here.
 
-
-fileprivate struct FfiConverterUInt32: FfiConverterPrimitive {
+private struct FfiConverterUInt32: FfiConverterPrimitive {
     typealias FfiType = UInt32
     typealias SwiftType = UInt32
 
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UInt32 {
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UInt32 {
         return try lift(readInt(&buf))
     }
 
-    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+    static func write(_ value: SwiftType, into buf: inout [UInt8]) {
         writeInt(&buf, lower(value))
     }
 }
 
-fileprivate struct FfiConverterUInt64: FfiConverterPrimitive {
+private struct FfiConverterUInt64: FfiConverterPrimitive {
     typealias FfiType = UInt64
     typealias SwiftType = UInt64
 
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UInt64 {
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UInt64 {
         return try lift(readInt(&buf))
     }
 
-    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+    static func write(_ value: SwiftType, into buf: inout [UInt8]) {
         writeInt(&buf, lower(value))
     }
 }
 
-fileprivate struct FfiConverterFloat: FfiConverterPrimitive {
+private struct FfiConverterFloat: FfiConverterPrimitive {
     typealias FfiType = Float
     typealias SwiftType = Float
 
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Float {
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Float {
         return try lift(readFloat(&buf))
     }
 
-    public static func write(_ value: Float, into buf: inout [UInt8]) {
+    static func write(_ value: Float, into buf: inout [UInt8]) {
         writeFloat(&buf, lower(value))
     }
 }
 
-fileprivate struct FfiConverterDouble: FfiConverterPrimitive {
+private struct FfiConverterDouble: FfiConverterPrimitive {
     typealias FfiType = Double
     typealias SwiftType = Double
 
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Double {
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Double {
         return try lift(readDouble(&buf))
     }
 
-    public static func write(_ value: Double, into buf: inout [UInt8]) {
+    static func write(_ value: Double, into buf: inout [UInt8]) {
         writeDouble(&buf, lower(value))
     }
 }
 
-fileprivate struct FfiConverterString: FfiConverter {
+private struct FfiConverterString: FfiConverter {
     typealias SwiftType = String
     typealias FfiType = RustBuffer
 
-    public static func lift(_ value: RustBuffer) throws -> String {
+    static func lift(_ value: RustBuffer) throws -> String {
         defer {
             value.deallocate()
         }
@@ -448,7 +447,7 @@ fileprivate struct FfiConverterString: FfiConverter {
         return String(bytes: bytes, encoding: String.Encoding.utf8)!
     }
 
-    public static func lower(_ value: String) -> RustBuffer {
+    static func lower(_ value: String) -> RustBuffer {
         return value.utf8CString.withUnsafeBufferPointer { ptr in
             // The swift string gives us int8_t, we want uint8_t.
             ptr.withMemoryRebound(to: UInt8.self) { ptr in
@@ -459,43 +458,39 @@ fileprivate struct FfiConverterString: FfiConverter {
         }
     }
 
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> String {
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> String {
         let len: Int32 = try readInt(&buf)
-        return String(bytes: try readBytes(&buf, count: Int(len)), encoding: String.Encoding.utf8)!
+        return try String(bytes: readBytes(&buf, count: Int(len)), encoding: String.Encoding.utf8)!
     }
 
-    public static func write(_ value: String, into buf: inout [UInt8]) {
+    static func write(_ value: String, into buf: inout [UInt8]) {
         let len = Int32(value.utf8.count)
         writeInt(&buf, len)
         writeBytes(&buf, value.utf8)
     }
 }
 
-
-
-
 /**
  * The `f32` counterpart of `FfiVectorF64`.
  */
-public protocol FfiVectorF32Protocol : AnyObject {
-    
-    func axpyInPlace(alpha: Float, other: FfiVectorF32) throws 
-    
-    func dot(other: FfiVectorF32) throws  -> Float
-    
-    func len()  -> UInt64
-    
-    func norm2()  -> Float
-    
-    func toVec()  -> [Float]
-    
+public protocol FfiVectorF32Protocol: AnyObject {
+    func axpyInPlace(alpha: Float, other: FfiVectorF32) throws
+
+    func dot(other: FfiVectorF32) throws -> Float
+
+    func len() -> UInt64
+
+    func norm2() -> Float
+
+    func toVec() -> [Float]
 }
 
 /**
  * The `f32` counterpart of `FfiVectorF64`.
  */
 open class FfiVectorF32:
-    FfiVectorF32Protocol {
+    FfiVectorF32Protocol
+{
     fileprivate let pointer: UnsafeMutableRawPointer!
 
     /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
@@ -506,7 +501,7 @@ open class FfiVectorF32:
     // TODO: We'd like this to be `private` but for Swifty reasons,
     // we can't implement `FfiConverter` without making this `required` and we can't
     // make it `required` without making it `public`.
-    required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
+    public required init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
         self.pointer = pointer
     }
 
@@ -515,22 +510,23 @@ open class FfiVectorF32:
     ///
     /// - Warning:
     ///     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
-    public init(noPointer: NoPointer) {
-        self.pointer = nil
+    public init(noPointer _: NoPointer) {
+        pointer = nil
     }
 
     public func uniffiClonePointer() -> UnsafeMutableRawPointer {
         return try! rustCall { uniffi_nc_ffi_fn_clone_ffivectorf32(self.pointer, $0) }
     }
-public convenience init(data: [Float]) {
-    let pointer =
-        try! rustCall() {
-    uniffi_nc_ffi_fn_constructor_ffivectorf32_new(
-        FfiConverterSequenceFloat.lower(data),$0
-    )
-}
-    self.init(unsafeFromRawPointer: pointer)
-}
+
+    public convenience init(data: [Float]) {
+        let pointer =
+            try! rustCall {
+                uniffi_nc_ffi_fn_constructor_ffivectorf32_new(
+                    FfiConverterSequenceFloat.lower(data), $0
+                )
+            }
+        self.init(unsafeFromRawPointer: pointer)
+    }
 
     deinit {
         guard let pointer = pointer else {
@@ -540,51 +536,41 @@ public convenience init(data: [Float]) {
         try! rustCall { uniffi_nc_ffi_fn_free_ffivectorf32(pointer, $0) }
     }
 
-    
+    open func axpyInPlace(alpha: Float, other: FfiVectorF32) throws {
+        try rustCallWithError(FfiConverterTypeFfiError.lift) {
+            uniffi_nc_ffi_fn_method_ffivectorf32_axpy_in_place(self.uniffiClonePointer(),
+                                                               FfiConverterFloat.lower(alpha),
+                                                               FfiConverterTypeFfiVectorF32.lower(other), $0)
+        }
+    }
 
-    
-open func axpyInPlace(alpha: Float, other: FfiVectorF32)throws  {try rustCallWithError(FfiConverterTypeFfiError.lift) {
-    uniffi_nc_ffi_fn_method_ffivectorf32_axpy_in_place(self.uniffiClonePointer(),
-        FfiConverterFloat.lower(alpha),
-        FfiConverterTypeFfiVectorF32.lower(other),$0
-    )
-}
-}
-    
-open func dot(other: FfiVectorF32)throws  -> Float {
-    return try  FfiConverterFloat.lift(try rustCallWithError(FfiConverterTypeFfiError.lift) {
-    uniffi_nc_ffi_fn_method_ffivectorf32_dot(self.uniffiClonePointer(),
-        FfiConverterTypeFfiVectorF32.lower(other),$0
-    )
-})
-}
-    
-open func len() -> UInt64 {
-    return try!  FfiConverterUInt64.lift(try! rustCall() {
-    uniffi_nc_ffi_fn_method_ffivectorf32_len(self.uniffiClonePointer(),$0
-    )
-})
-}
-    
-open func norm2() -> Float {
-    return try!  FfiConverterFloat.lift(try! rustCall() {
-    uniffi_nc_ffi_fn_method_ffivectorf32_norm2(self.uniffiClonePointer(),$0
-    )
-})
-}
-    
-open func toVec() -> [Float] {
-    return try!  FfiConverterSequenceFloat.lift(try! rustCall() {
-    uniffi_nc_ffi_fn_method_ffivectorf32_to_vec(self.uniffiClonePointer(),$0
-    )
-})
-}
-    
+    open func dot(other: FfiVectorF32) throws -> Float {
+        return try FfiConverterFloat.lift(rustCallWithError(FfiConverterTypeFfiError.lift) {
+            uniffi_nc_ffi_fn_method_ffivectorf32_dot(self.uniffiClonePointer(),
+                                                     FfiConverterTypeFfiVectorF32.lower(other), $0)
+        })
+    }
 
+    open func len() -> UInt64 {
+        return try! FfiConverterUInt64.lift(try! rustCall {
+            uniffi_nc_ffi_fn_method_ffivectorf32_len(self.uniffiClonePointer(), $0)
+        })
+    }
+
+    open func norm2() -> Float {
+        return try! FfiConverterFloat.lift(try! rustCall {
+            uniffi_nc_ffi_fn_method_ffivectorf32_norm2(self.uniffiClonePointer(), $0)
+        })
+    }
+
+    open func toVec() -> [Float] {
+        return try! FfiConverterSequenceFloat.lift(try! rustCall {
+            uniffi_nc_ffi_fn_method_ffivectorf32_to_vec(self.uniffiClonePointer(), $0)
+        })
+    }
 }
 
 public struct FfiConverterTypeFfiVectorF32: FfiConverter {
-
     typealias FfiType = UnsafeMutableRawPointer
     typealias SwiftType = FfiVectorF32
 
@@ -601,7 +587,7 @@ public struct FfiConverterTypeFfiVectorF32: FfiConverter {
         // The Rust code won't compile if a pointer won't fit in a UInt64.
         // We have to go via `UInt` because that's the thing that's the size of a pointer.
         let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
-        if (ptr == nil) {
+        if ptr == nil {
             throw UniffiInternalError.unexpectedNullPointer
         }
         return try lift(ptr!)
@@ -614,9 +600,6 @@ public struct FfiConverterTypeFfiVectorF32: FfiConverter {
     }
 }
 
-
-
-
 public func FfiConverterTypeFfiVectorF32_lift(_ pointer: UnsafeMutableRawPointer) throws -> FfiVectorF32 {
     return try FfiConverterTypeFfiVectorF32.lift(pointer)
 }
@@ -625,9 +608,6 @@ public func FfiConverterTypeFfiVectorF32_lower(_ value: FfiVectorF32) -> UnsafeM
     return FfiConverterTypeFfiVectorF32.lower(value)
 }
 
-
-
-
 /**
  * A reference-counted `f64` vector buffer living entirely in Rust —
  * see this file's module docs for why this exists alongside the
@@ -635,27 +615,25 @@ public func FfiConverterTypeFfiVectorF32_lower(_ value: FfiVectorF32) -> UnsafeM
  * is required here (not just `RefCell`) because UniFFI objects cross
  * the FFI boundary as `Arc<Self>`, which needs `Send + Sync`.
  */
-public protocol FfiVectorF64Protocol : AnyObject {
-    
+public protocol FfiVectorF64Protocol: AnyObject {
     /**
      * `self <- self + alpha * other`, entirely in Rust — no data
      * crosses the FFI boundary for this call beyond the two handles
      * and the scalar `alpha`.
      */
-    func axpyInPlace(alpha: Double, other: FfiVectorF64) throws 
-    
-    func dot(other: FfiVectorF64) throws  -> Double
-    
-    func len()  -> UInt64
-    
-    func norm2()  -> Double
-    
+    func axpyInPlace(alpha: Double, other: FfiVectorF64) throws
+
+    func dot(other: FfiVectorF64) throws -> Double
+
+    func len() -> UInt64
+
+    func norm2() -> Double
+
     /**
      * The one copy back out to Swift — call once, at the end of a
      * chain of in-place operations, not after every step.
      */
-    func toVec()  -> [Double]
-    
+    func toVec() -> [Double]
 }
 
 /**
@@ -666,7 +644,8 @@ public protocol FfiVectorF64Protocol : AnyObject {
  * the FFI boundary as `Arc<Self>`, which needs `Send + Sync`.
  */
 open class FfiVectorF64:
-    FfiVectorF64Protocol {
+    FfiVectorF64Protocol
+{
     fileprivate let pointer: UnsafeMutableRawPointer!
 
     /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
@@ -677,7 +656,7 @@ open class FfiVectorF64:
     // TODO: We'd like this to be `private` but for Swifty reasons,
     // we can't implement `FfiConverter` without making this `required` and we can't
     // make it `required` without making it `public`.
-    required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
+    public required init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
         self.pointer = pointer
     }
 
@@ -686,22 +665,23 @@ open class FfiVectorF64:
     ///
     /// - Warning:
     ///     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
-    public init(noPointer: NoPointer) {
-        self.pointer = nil
+    public init(noPointer _: NoPointer) {
+        pointer = nil
     }
 
     public func uniffiClonePointer() -> UnsafeMutableRawPointer {
         return try! rustCall { uniffi_nc_ffi_fn_clone_ffivectorf64(self.pointer, $0) }
     }
-public convenience init(data: [Double]) {
-    let pointer =
-        try! rustCall() {
-    uniffi_nc_ffi_fn_constructor_ffivectorf64_new(
-        FfiConverterSequenceDouble.lower(data),$0
-    )
-}
-    self.init(unsafeFromRawPointer: pointer)
-}
+
+    public convenience init(data: [Double]) {
+        let pointer =
+            try! rustCall {
+                uniffi_nc_ffi_fn_constructor_ffivectorf64_new(
+                    FfiConverterSequenceDouble.lower(data), $0
+                )
+            }
+        self.init(unsafeFromRawPointer: pointer)
+    }
 
     deinit {
         guard let pointer = pointer else {
@@ -711,60 +691,50 @@ public convenience init(data: [Double]) {
         try! rustCall { uniffi_nc_ffi_fn_free_ffivectorf64(pointer, $0) }
     }
 
-    
-
-    
     /**
      * `self <- self + alpha * other`, entirely in Rust — no data
      * crosses the FFI boundary for this call beyond the two handles
      * and the scalar `alpha`.
      */
-open func axpyInPlace(alpha: Double, other: FfiVectorF64)throws  {try rustCallWithError(FfiConverterTypeFfiError.lift) {
-    uniffi_nc_ffi_fn_method_ffivectorf64_axpy_in_place(self.uniffiClonePointer(),
-        FfiConverterDouble.lower(alpha),
-        FfiConverterTypeFfiVectorF64.lower(other),$0
-    )
-}
-}
-    
-open func dot(other: FfiVectorF64)throws  -> Double {
-    return try  FfiConverterDouble.lift(try rustCallWithError(FfiConverterTypeFfiError.lift) {
-    uniffi_nc_ffi_fn_method_ffivectorf64_dot(self.uniffiClonePointer(),
-        FfiConverterTypeFfiVectorF64.lower(other),$0
-    )
-})
-}
-    
-open func len() -> UInt64 {
-    return try!  FfiConverterUInt64.lift(try! rustCall() {
-    uniffi_nc_ffi_fn_method_ffivectorf64_len(self.uniffiClonePointer(),$0
-    )
-})
-}
-    
-open func norm2() -> Double {
-    return try!  FfiConverterDouble.lift(try! rustCall() {
-    uniffi_nc_ffi_fn_method_ffivectorf64_norm2(self.uniffiClonePointer(),$0
-    )
-})
-}
-    
+    open func axpyInPlace(alpha: Double, other: FfiVectorF64) throws {
+        try rustCallWithError(FfiConverterTypeFfiError.lift) {
+            uniffi_nc_ffi_fn_method_ffivectorf64_axpy_in_place(self.uniffiClonePointer(),
+                                                               FfiConverterDouble.lower(alpha),
+                                                               FfiConverterTypeFfiVectorF64.lower(other), $0)
+        }
+    }
+
+    open func dot(other: FfiVectorF64) throws -> Double {
+        return try FfiConverterDouble.lift(rustCallWithError(FfiConverterTypeFfiError.lift) {
+            uniffi_nc_ffi_fn_method_ffivectorf64_dot(self.uniffiClonePointer(),
+                                                     FfiConverterTypeFfiVectorF64.lower(other), $0)
+        })
+    }
+
+    open func len() -> UInt64 {
+        return try! FfiConverterUInt64.lift(try! rustCall {
+            uniffi_nc_ffi_fn_method_ffivectorf64_len(self.uniffiClonePointer(), $0)
+        })
+    }
+
+    open func norm2() -> Double {
+        return try! FfiConverterDouble.lift(try! rustCall {
+            uniffi_nc_ffi_fn_method_ffivectorf64_norm2(self.uniffiClonePointer(), $0)
+        })
+    }
+
     /**
      * The one copy back out to Swift — call once, at the end of a
      * chain of in-place operations, not after every step.
      */
-open func toVec() -> [Double] {
-    return try!  FfiConverterSequenceDouble.lift(try! rustCall() {
-    uniffi_nc_ffi_fn_method_ffivectorf64_to_vec(self.uniffiClonePointer(),$0
-    )
-})
-}
-    
-
+    open func toVec() -> [Double] {
+        return try! FfiConverterSequenceDouble.lift(try! rustCall {
+            uniffi_nc_ffi_fn_method_ffivectorf64_to_vec(self.uniffiClonePointer(), $0)
+        })
+    }
 }
 
 public struct FfiConverterTypeFfiVectorF64: FfiConverter {
-
     typealias FfiType = UnsafeMutableRawPointer
     typealias SwiftType = FfiVectorF64
 
@@ -781,7 +751,7 @@ public struct FfiConverterTypeFfiVectorF64: FfiConverter {
         // The Rust code won't compile if a pointer won't fit in a UInt64.
         // We have to go via `UInt` because that's the thing that's the size of a pointer.
         let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
-        if (ptr == nil) {
+        if ptr == nil {
             throw UniffiInternalError.unexpectedNullPointer
         }
         return try lift(ptr!)
@@ -794,9 +764,6 @@ public struct FfiConverterTypeFfiVectorF64: FfiConverter {
     }
 }
 
-
-
-
 public func FfiConverterTypeFfiVectorF64_lift(_ pointer: UnsafeMutableRawPointer) throws -> FfiVectorF64 {
     return try FfiConverterTypeFfiVectorF64.lift(pointer)
 }
@@ -804,7 +771,6 @@ public func FfiConverterTypeFfiVectorF64_lift(_ pointer: UnsafeMutableRawPointer
 public func FfiConverterTypeFfiVectorF64_lower(_ value: FfiVectorF64) -> UnsafeMutableRawPointer {
     return FfiConverterTypeFfiVectorF64.lower(value)
 }
-
 
 /**
  * Mirrors `nc_optimize::Bound`. `None` means unbounded in that
@@ -814,18 +780,16 @@ public struct FfiBound {
     public var lower: Double?
     public var upper: Double?
 
-    // Default memberwise initializers are never public by default, so we
-    // declare one manually.
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
     public init(lower: Double?, upper: Double?) {
         self.lower = lower
         self.upper = upper
     }
 }
 
-
-
 extension FfiBound: Equatable, Hashable {
-    public static func ==(lhs: FfiBound, rhs: FfiBound) -> Bool {
+    public static func == (lhs: FfiBound, rhs: FfiBound) -> Bool {
         if lhs.lower != rhs.lower {
             return false
         }
@@ -841,14 +805,13 @@ extension FfiBound: Equatable, Hashable {
     }
 }
 
-
 public struct FfiConverterTypeFfiBound: FfiConverterRustBuffer {
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiBound {
         return
             try FfiBound(
-                lower: FfiConverterOptionDouble.read(from: &buf), 
+                lower: FfiConverterOptionDouble.read(from: &buf),
                 upper: FfiConverterOptionDouble.read(from: &buf)
-        )
+            )
     }
 
     public static func write(_ value: FfiBound, into buf: inout [UInt8]) {
@@ -857,7 +820,6 @@ public struct FfiConverterTypeFfiBound: FfiConverterRustBuffer {
     }
 }
 
-
 public func FfiConverterTypeFfiBound_lift(_ buf: RustBuffer) throws -> FfiBound {
     return try FfiConverterTypeFfiBound.lift(buf)
 }
@@ -865,7 +827,6 @@ public func FfiConverterTypeFfiBound_lift(_ buf: RustBuffer) throws -> FfiBound 
 public func FfiConverterTypeFfiBound_lower(_ value: FfiBound) -> RustBuffer {
     return FfiConverterTypeFfiBound.lower(value)
 }
-
 
 /**
  * The `f32` counterpart of `FfiCsrMatrixF64`.
@@ -877,8 +838,8 @@ public struct FfiCsrMatrixF32 {
     public var colIndices: [UInt32]
     public var values: [Float]
 
-    // Default memberwise initializers are never public by default, so we
-    // declare one manually.
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
     public init(rows: UInt32, cols: UInt32, rowPtr: [UInt32], colIndices: [UInt32], values: [Float]) {
         self.rows = rows
         self.cols = cols
@@ -888,10 +849,8 @@ public struct FfiCsrMatrixF32 {
     }
 }
 
-
-
 extension FfiCsrMatrixF32: Equatable, Hashable {
-    public static func ==(lhs: FfiCsrMatrixF32, rhs: FfiCsrMatrixF32) -> Bool {
+    public static func == (lhs: FfiCsrMatrixF32, rhs: FfiCsrMatrixF32) -> Bool {
         if lhs.rows != rhs.rows {
             return false
         }
@@ -919,17 +878,16 @@ extension FfiCsrMatrixF32: Equatable, Hashable {
     }
 }
 
-
 public struct FfiConverterTypeFfiCsrMatrixF32: FfiConverterRustBuffer {
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiCsrMatrixF32 {
         return
             try FfiCsrMatrixF32(
-                rows: FfiConverterUInt32.read(from: &buf), 
-                cols: FfiConverterUInt32.read(from: &buf), 
-                rowPtr: FfiConverterSequenceUInt32.read(from: &buf), 
-                colIndices: FfiConverterSequenceUInt32.read(from: &buf), 
+                rows: FfiConverterUInt32.read(from: &buf),
+                cols: FfiConverterUInt32.read(from: &buf),
+                rowPtr: FfiConverterSequenceUInt32.read(from: &buf),
+                colIndices: FfiConverterSequenceUInt32.read(from: &buf),
                 values: FfiConverterSequenceFloat.read(from: &buf)
-        )
+            )
     }
 
     public static func write(_ value: FfiCsrMatrixF32, into buf: inout [UInt8]) {
@@ -941,7 +899,6 @@ public struct FfiConverterTypeFfiCsrMatrixF32: FfiConverterRustBuffer {
     }
 }
 
-
 public func FfiConverterTypeFfiCsrMatrixF32_lift(_ buf: RustBuffer) throws -> FfiCsrMatrixF32 {
     return try FfiConverterTypeFfiCsrMatrixF32.lift(buf)
 }
@@ -949,7 +906,6 @@ public func FfiConverterTypeFfiCsrMatrixF32_lift(_ buf: RustBuffer) throws -> Ff
 public func FfiConverterTypeFfiCsrMatrixF32_lower(_ value: FfiCsrMatrixF32) -> RustBuffer {
     return FfiConverterTypeFfiCsrMatrixF32.lower(value)
 }
-
 
 /**
  * A CSR sparse `f64` matrix crossing the FFI boundary — field names and
@@ -962,8 +918,8 @@ public struct FfiCsrMatrixF64 {
     public var colIndices: [UInt32]
     public var values: [Double]
 
-    // Default memberwise initializers are never public by default, so we
-    // declare one manually.
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
     public init(rows: UInt32, cols: UInt32, rowPtr: [UInt32], colIndices: [UInt32], values: [Double]) {
         self.rows = rows
         self.cols = cols
@@ -973,10 +929,8 @@ public struct FfiCsrMatrixF64 {
     }
 }
 
-
-
 extension FfiCsrMatrixF64: Equatable, Hashable {
-    public static func ==(lhs: FfiCsrMatrixF64, rhs: FfiCsrMatrixF64) -> Bool {
+    public static func == (lhs: FfiCsrMatrixF64, rhs: FfiCsrMatrixF64) -> Bool {
         if lhs.rows != rhs.rows {
             return false
         }
@@ -1004,17 +958,16 @@ extension FfiCsrMatrixF64: Equatable, Hashable {
     }
 }
 
-
 public struct FfiConverterTypeFfiCsrMatrixF64: FfiConverterRustBuffer {
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiCsrMatrixF64 {
         return
             try FfiCsrMatrixF64(
-                rows: FfiConverterUInt32.read(from: &buf), 
-                cols: FfiConverterUInt32.read(from: &buf), 
-                rowPtr: FfiConverterSequenceUInt32.read(from: &buf), 
-                colIndices: FfiConverterSequenceUInt32.read(from: &buf), 
+                rows: FfiConverterUInt32.read(from: &buf),
+                cols: FfiConverterUInt32.read(from: &buf),
+                rowPtr: FfiConverterSequenceUInt32.read(from: &buf),
+                colIndices: FfiConverterSequenceUInt32.read(from: &buf),
                 values: FfiConverterSequenceDouble.read(from: &buf)
-        )
+            )
     }
 
     public static func write(_ value: FfiCsrMatrixF64, into buf: inout [UInt8]) {
@@ -1026,7 +979,6 @@ public struct FfiConverterTypeFfiCsrMatrixF64: FfiConverterRustBuffer {
     }
 }
 
-
 public func FfiConverterTypeFfiCsrMatrixF64_lift(_ buf: RustBuffer) throws -> FfiCsrMatrixF64 {
     return try FfiConverterTypeFfiCsrMatrixF64.lift(buf)
 }
@@ -1034,7 +986,6 @@ public func FfiConverterTypeFfiCsrMatrixF64_lift(_ buf: RustBuffer) throws -> Ff
 public func FfiConverterTypeFfiCsrMatrixF64_lower(_ value: FfiCsrMatrixF64) -> RustBuffer {
     return FfiConverterTypeFfiCsrMatrixF64.lower(value)
 }
-
 
 /**
  * The `f32` counterpart of `FfiMatrixF64`.
@@ -1044,8 +995,8 @@ public struct FfiMatrixF32 {
     public var cols: UInt32
     public var data: [Float]
 
-    // Default memberwise initializers are never public by default, so we
-    // declare one manually.
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
     public init(rows: UInt32, cols: UInt32, data: [Float]) {
         self.rows = rows
         self.cols = cols
@@ -1053,10 +1004,8 @@ public struct FfiMatrixF32 {
     }
 }
 
-
-
 extension FfiMatrixF32: Equatable, Hashable {
-    public static func ==(lhs: FfiMatrixF32, rhs: FfiMatrixF32) -> Bool {
+    public static func == (lhs: FfiMatrixF32, rhs: FfiMatrixF32) -> Bool {
         if lhs.rows != rhs.rows {
             return false
         }
@@ -1076,15 +1025,14 @@ extension FfiMatrixF32: Equatable, Hashable {
     }
 }
 
-
 public struct FfiConverterTypeFfiMatrixF32: FfiConverterRustBuffer {
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiMatrixF32 {
         return
             try FfiMatrixF32(
-                rows: FfiConverterUInt32.read(from: &buf), 
-                cols: FfiConverterUInt32.read(from: &buf), 
+                rows: FfiConverterUInt32.read(from: &buf),
+                cols: FfiConverterUInt32.read(from: &buf),
                 data: FfiConverterSequenceFloat.read(from: &buf)
-        )
+            )
     }
 
     public static func write(_ value: FfiMatrixF32, into buf: inout [UInt8]) {
@@ -1094,7 +1042,6 @@ public struct FfiConverterTypeFfiMatrixF32: FfiConverterRustBuffer {
     }
 }
 
-
 public func FfiConverterTypeFfiMatrixF32_lift(_ buf: RustBuffer) throws -> FfiMatrixF32 {
     return try FfiConverterTypeFfiMatrixF32.lift(buf)
 }
@@ -1102,7 +1049,6 @@ public func FfiConverterTypeFfiMatrixF32_lift(_ buf: RustBuffer) throws -> FfiMa
 public func FfiConverterTypeFfiMatrixF32_lower(_ value: FfiMatrixF32) -> RustBuffer {
     return FfiConverterTypeFfiMatrixF32.lower(value)
 }
-
 
 /**
  * A dense `f64` matrix crossing the FFI boundary, column-major
@@ -1114,8 +1060,8 @@ public struct FfiMatrixF64 {
     public var cols: UInt32
     public var data: [Double]
 
-    // Default memberwise initializers are never public by default, so we
-    // declare one manually.
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
     public init(rows: UInt32, cols: UInt32, data: [Double]) {
         self.rows = rows
         self.cols = cols
@@ -1123,10 +1069,8 @@ public struct FfiMatrixF64 {
     }
 }
 
-
-
 extension FfiMatrixF64: Equatable, Hashable {
-    public static func ==(lhs: FfiMatrixF64, rhs: FfiMatrixF64) -> Bool {
+    public static func == (lhs: FfiMatrixF64, rhs: FfiMatrixF64) -> Bool {
         if lhs.rows != rhs.rows {
             return false
         }
@@ -1146,15 +1090,14 @@ extension FfiMatrixF64: Equatable, Hashable {
     }
 }
 
-
 public struct FfiConverterTypeFfiMatrixF64: FfiConverterRustBuffer {
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiMatrixF64 {
         return
             try FfiMatrixF64(
-                rows: FfiConverterUInt32.read(from: &buf), 
-                cols: FfiConverterUInt32.read(from: &buf), 
+                rows: FfiConverterUInt32.read(from: &buf),
+                cols: FfiConverterUInt32.read(from: &buf),
                 data: FfiConverterSequenceDouble.read(from: &buf)
-        )
+            )
     }
 
     public static func write(_ value: FfiMatrixF64, into buf: inout [UInt8]) {
@@ -1164,7 +1107,6 @@ public struct FfiConverterTypeFfiMatrixF64: FfiConverterRustBuffer {
     }
 }
 
-
 public func FfiConverterTypeFfiMatrixF64_lift(_ buf: RustBuffer) throws -> FfiMatrixF64 {
     return try FfiConverterTypeFfiMatrixF64.lift(buf)
 }
@@ -1172,7 +1114,6 @@ public func FfiConverterTypeFfiMatrixF64_lift(_ buf: RustBuffer) throws -> FfiMa
 public func FfiConverterTypeFfiMatrixF64_lower(_ value: FfiMatrixF64) -> RustBuffer {
     return FfiConverterTypeFfiMatrixF64.lower(value)
 }
-
 
 /**
  * Mirrors `nc_optimize::Problem`, with the constraint matrix crossing
@@ -1185,8 +1126,8 @@ public struct FfiProblem {
     public var rowBounds: [FfiBound]
     public var varBounds: [FfiBound]
 
-    // Default memberwise initializers are never public by default, so we
-    // declare one manually.
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
     public init(objective: [Double], constraints: FfiCsrMatrixF64, rowBounds: [FfiBound], varBounds: [FfiBound]) {
         self.objective = objective
         self.constraints = constraints
@@ -1195,10 +1136,8 @@ public struct FfiProblem {
     }
 }
 
-
-
 extension FfiProblem: Equatable, Hashable {
-    public static func ==(lhs: FfiProblem, rhs: FfiProblem) -> Bool {
+    public static func == (lhs: FfiProblem, rhs: FfiProblem) -> Bool {
         if lhs.objective != rhs.objective {
             return false
         }
@@ -1222,16 +1161,15 @@ extension FfiProblem: Equatable, Hashable {
     }
 }
 
-
 public struct FfiConverterTypeFfiProblem: FfiConverterRustBuffer {
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiProblem {
         return
             try FfiProblem(
-                objective: FfiConverterSequenceDouble.read(from: &buf), 
-                constraints: FfiConverterTypeFfiCsrMatrixF64.read(from: &buf), 
-                rowBounds: FfiConverterSequenceTypeFfiBound.read(from: &buf), 
+                objective: FfiConverterSequenceDouble.read(from: &buf),
+                constraints: FfiConverterTypeFfiCsrMatrixF64.read(from: &buf),
+                rowBounds: FfiConverterSequenceTypeFfiBound.read(from: &buf),
                 varBounds: FfiConverterSequenceTypeFfiBound.read(from: &buf)
-        )
+            )
     }
 
     public static func write(_ value: FfiProblem, into buf: inout [UInt8]) {
@@ -1242,7 +1180,6 @@ public struct FfiConverterTypeFfiProblem: FfiConverterRustBuffer {
     }
 }
 
-
 public func FfiConverterTypeFfiProblem_lift(_ buf: RustBuffer) throws -> FfiProblem {
     return try FfiConverterTypeFfiProblem.lift(buf)
 }
@@ -1250,7 +1187,6 @@ public func FfiConverterTypeFfiProblem_lift(_ buf: RustBuffer) throws -> FfiProb
 public func FfiConverterTypeFfiProblem_lower(_ value: FfiProblem) -> RustBuffer {
     return FfiConverterTypeFfiProblem.lower(value)
 }
-
 
 /**
  * Mirrors `nc_optimize::Solution`.
@@ -1260,8 +1196,8 @@ public struct FfiSolution {
     public var objectiveValue: Double
     public var status: FfiSolveStatus
 
-    // Default memberwise initializers are never public by default, so we
-    // declare one manually.
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
     public init(variableValues: [Double], objectiveValue: Double, status: FfiSolveStatus) {
         self.variableValues = variableValues
         self.objectiveValue = objectiveValue
@@ -1269,10 +1205,8 @@ public struct FfiSolution {
     }
 }
 
-
-
 extension FfiSolution: Equatable, Hashable {
-    public static func ==(lhs: FfiSolution, rhs: FfiSolution) -> Bool {
+    public static func == (lhs: FfiSolution, rhs: FfiSolution) -> Bool {
         if lhs.variableValues != rhs.variableValues {
             return false
         }
@@ -1292,15 +1226,14 @@ extension FfiSolution: Equatable, Hashable {
     }
 }
 
-
 public struct FfiConverterTypeFfiSolution: FfiConverterRustBuffer {
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiSolution {
         return
             try FfiSolution(
-                variableValues: FfiConverterSequenceDouble.read(from: &buf), 
-                objectiveValue: FfiConverterDouble.read(from: &buf), 
+                variableValues: FfiConverterSequenceDouble.read(from: &buf),
+                objectiveValue: FfiConverterDouble.read(from: &buf),
                 status: FfiConverterTypeFfiSolveStatus.read(from: &buf)
-        )
+            )
     }
 
     public static func write(_ value: FfiSolution, into buf: inout [UInt8]) {
@@ -1310,7 +1243,6 @@ public struct FfiConverterTypeFfiSolution: FfiConverterRustBuffer {
     }
 }
 
-
 public func FfiConverterTypeFfiSolution_lift(_ buf: RustBuffer) throws -> FfiSolution {
     return try FfiConverterTypeFfiSolution.lift(buf)
 }
@@ -1318,7 +1250,6 @@ public func FfiConverterTypeFfiSolution_lift(_ buf: RustBuffer) throws -> FfiSol
 public func FfiConverterTypeFfiSolution_lower(_ value: FfiSolution) -> RustBuffer {
     return FfiConverterTypeFfiSolution.lower(value)
 }
-
 
 /**
  * Errors that can cross the FFI boundary. Deliberately flat and
@@ -1328,11 +1259,7 @@ public func FfiConverterTypeFfiSolution_lower(_ value: FfiSolution) -> RustBuffe
  * `NCError` at the call site, not re-expose this type to application code.
  */
 public enum FfiError {
-
-    
-    
-    case DimensionMismatch(message: String
-    )
+    case DimensionMismatch(message: String)
     /**
      * Carries any `nc_optimize::OptimizeError` (a solver reporting
      * "not implemented" for a problem shape it doesn't handle, or a
@@ -1343,10 +1270,8 @@ public enum FfiError {
      * dimension problem, and a caller may reasonably want to tell them
      * apart.
      */
-    case SolverError(message: String
-    )
+    case SolverError(message: String)
 }
-
 
 public struct FfiConverterTypeFfiError: FfiConverterRustBuffer {
     typealias SwiftType = FfiError
@@ -1354,60 +1279,47 @@ public struct FfiConverterTypeFfiError: FfiConverterRustBuffer {
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiError {
         let variant: Int32 = try readInt(&buf)
         switch variant {
-
-        
-
-        
-        case 1: return .DimensionMismatch(
-            message: try FfiConverterString.read(from: &buf)
-            )
-        case 2: return .SolverError(
-            message: try FfiConverterString.read(from: &buf)
+        case 1: return try .DimensionMismatch(
+                message: FfiConverterString.read(from: &buf)
             )
 
-         default: throw UniffiInternalError.unexpectedEnumCase
+        case 2: return try .SolverError(
+                message: FfiConverterString.read(from: &buf)
+            )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
         }
     }
 
     public static func write(_ value: FfiError, into buf: inout [UInt8]) {
         switch value {
-
-        
-
-        
-        
         case let .DimensionMismatch(message):
             writeInt(&buf, Int32(1))
             FfiConverterString.write(message, into: &buf)
-            
-        
+
         case let .SolverError(message):
             writeInt(&buf, Int32(2))
             FfiConverterString.write(message, into: &buf)
-            
         }
     }
 }
 
-
 extension FfiError: Equatable, Hashable {}
 
-extension FfiError: Error { }
+extension FfiError: Error {}
 
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
-/**
+/* 
  * Mirrors `nc_optimize::SolveStatus`.
  */
 
 public enum FfiSolveStatus {
-    
     case optimal
     case infeasible
     case unbounded
     case iterationLimit
 }
-
 
 public struct FfiConverterTypeFfiSolveStatus: FfiConverterRustBuffer {
     typealias SwiftType = FfiSolveStatus
@@ -1415,42 +1327,34 @@ public struct FfiConverterTypeFfiSolveStatus: FfiConverterRustBuffer {
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiSolveStatus {
         let variant: Int32 = try readInt(&buf)
         switch variant {
-        
         case 1: return .optimal
-        
+
         case 2: return .infeasible
-        
+
         case 3: return .unbounded
-        
+
         case 4: return .iterationLimit
-        
+
         default: throw UniffiInternalError.unexpectedEnumCase
         }
     }
 
     public static func write(_ value: FfiSolveStatus, into buf: inout [UInt8]) {
         switch value {
-        
-        
         case .optimal:
             writeInt(&buf, Int32(1))
-        
-        
+
         case .infeasible:
             writeInt(&buf, Int32(2))
-        
-        
+
         case .unbounded:
             writeInt(&buf, Int32(3))
-        
-        
+
         case .iterationLimit:
             writeInt(&buf, Int32(4))
-        
         }
     }
 }
-
 
 public func FfiConverterTypeFfiSolveStatus_lift(_ buf: RustBuffer) throws -> FfiSolveStatus {
     return try FfiConverterTypeFfiSolveStatus.lift(buf)
@@ -1460,16 +1364,12 @@ public func FfiConverterTypeFfiSolveStatus_lower(_ value: FfiSolveStatus) -> Rus
     return FfiConverterTypeFfiSolveStatus.lower(value)
 }
 
-
-
 extension FfiSolveStatus: Equatable, Hashable {}
 
-
-
-fileprivate struct FfiConverterOptionDouble: FfiConverterRustBuffer {
+private struct FfiConverterOptionDouble: FfiConverterRustBuffer {
     typealias SwiftType = Double?
 
-    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+    static func write(_ value: SwiftType, into buf: inout [UInt8]) {
         guard let value = value else {
             writeInt(&buf, Int8(0))
             return
@@ -1478,7 +1378,7 @@ fileprivate struct FfiConverterOptionDouble: FfiConverterRustBuffer {
         FfiConverterDouble.write(value, into: &buf)
     }
 
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterDouble.read(from: &buf)
@@ -1487,10 +1387,10 @@ fileprivate struct FfiConverterOptionDouble: FfiConverterRustBuffer {
     }
 }
 
-fileprivate struct FfiConverterSequenceUInt32: FfiConverterRustBuffer {
+private struct FfiConverterSequenceUInt32: FfiConverterRustBuffer {
     typealias SwiftType = [UInt32]
 
-    public static func write(_ value: [UInt32], into buf: inout [UInt8]) {
+    static func write(_ value: [UInt32], into buf: inout [UInt8]) {
         let len = Int32(value.count)
         writeInt(&buf, len)
         for item in value {
@@ -1498,21 +1398,21 @@ fileprivate struct FfiConverterSequenceUInt32: FfiConverterRustBuffer {
         }
     }
 
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [UInt32] {
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [UInt32] {
         let len: Int32 = try readInt(&buf)
         var seq = [UInt32]()
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
-            seq.append(try FfiConverterUInt32.read(from: &buf))
+            try seq.append(FfiConverterUInt32.read(from: &buf))
         }
         return seq
     }
 }
 
-fileprivate struct FfiConverterSequenceFloat: FfiConverterRustBuffer {
+private struct FfiConverterSequenceFloat: FfiConverterRustBuffer {
     typealias SwiftType = [Float]
 
-    public static func write(_ value: [Float], into buf: inout [UInt8]) {
+    static func write(_ value: [Float], into buf: inout [UInt8]) {
         let len = Int32(value.count)
         writeInt(&buf, len)
         for item in value {
@@ -1520,21 +1420,21 @@ fileprivate struct FfiConverterSequenceFloat: FfiConverterRustBuffer {
         }
     }
 
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [Float] {
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [Float] {
         let len: Int32 = try readInt(&buf)
         var seq = [Float]()
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
-            seq.append(try FfiConverterFloat.read(from: &buf))
+            try seq.append(FfiConverterFloat.read(from: &buf))
         }
         return seq
     }
 }
 
-fileprivate struct FfiConverterSequenceDouble: FfiConverterRustBuffer {
+private struct FfiConverterSequenceDouble: FfiConverterRustBuffer {
     typealias SwiftType = [Double]
 
-    public static func write(_ value: [Double], into buf: inout [UInt8]) {
+    static func write(_ value: [Double], into buf: inout [UInt8]) {
         let len = Int32(value.count)
         writeInt(&buf, len)
         for item in value {
@@ -1542,21 +1442,21 @@ fileprivate struct FfiConverterSequenceDouble: FfiConverterRustBuffer {
         }
     }
 
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [Double] {
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [Double] {
         let len: Int32 = try readInt(&buf)
         var seq = [Double]()
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
-            seq.append(try FfiConverterDouble.read(from: &buf))
+            try seq.append(FfiConverterDouble.read(from: &buf))
         }
         return seq
     }
 }
 
-fileprivate struct FfiConverterSequenceTypeFfiBound: FfiConverterRustBuffer {
+private struct FfiConverterSequenceTypeFfiBound: FfiConverterRustBuffer {
     typealias SwiftType = [FfiBound]
 
-    public static func write(_ value: [FfiBound], into buf: inout [UInt8]) {
+    static func write(_ value: [FfiBound], into buf: inout [UInt8]) {
         let len = Int32(value.count)
         writeInt(&buf, len)
         for item in value {
@@ -1564,98 +1464,107 @@ fileprivate struct FfiConverterSequenceTypeFfiBound: FfiConverterRustBuffer {
         }
     }
 
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [FfiBound] {
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [FfiBound] {
         let len: Int32 = try readInt(&buf)
         var seq = [FfiBound]()
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
-            seq.append(try FfiConverterTypeFfiBound.read(from: &buf))
+            try seq.append(FfiConverterTypeFfiBound.read(from: &buf))
         }
         return seq
     }
 }
+
 /**
  * The `f32` counterpart of `axpy_f64`.
  */
-public func axpyF32(alpha: Float, x: [Float], y: [Float])throws  -> [Float] {
-    return try  FfiConverterSequenceFloat.lift(try rustCallWithError(FfiConverterTypeFfiError.lift) {
-    uniffi_nc_ffi_fn_func_axpy_f32(
-        FfiConverterFloat.lower(alpha),
-        FfiConverterSequenceFloat.lower(x),
-        FfiConverterSequenceFloat.lower(y),$0
-    )
-})
+public func axpyF32(alpha: Float, x: [Float], y: [Float]) throws -> [Float] {
+    return try FfiConverterSequenceFloat.lift(rustCallWithError(FfiConverterTypeFfiError.lift) {
+        uniffi_nc_ffi_fn_func_axpy_f32(
+            FfiConverterFloat.lower(alpha),
+            FfiConverterSequenceFloat.lower(x),
+            FfiConverterSequenceFloat.lower(y), $0
+        )
+    })
 }
+
 /**
  * `result = alpha * x + y`. Returns a new vector rather than mutating,
  * since UniFFI's proc-macro surface passes by value/copy anyway (see
  * module docs) — an `inout`-style Swift API is layered on top of this
  * in `NCBindings`, not expressed here.
  */
-public func axpyF64(alpha: Double, x: [Double], y: [Double])throws  -> [Double] {
-    return try  FfiConverterSequenceDouble.lift(try rustCallWithError(FfiConverterTypeFfiError.lift) {
-    uniffi_nc_ffi_fn_func_axpy_f64(
-        FfiConverterDouble.lower(alpha),
-        FfiConverterSequenceDouble.lower(x),
-        FfiConverterSequenceDouble.lower(y),$0
-    )
-})
+public func axpyF64(alpha: Double, x: [Double], y: [Double]) throws -> [Double] {
+    return try FfiConverterSequenceDouble.lift(rustCallWithError(FfiConverterTypeFfiError.lift) {
+        uniffi_nc_ffi_fn_func_axpy_f64(
+            FfiConverterDouble.lower(alpha),
+            FfiConverterSequenceDouble.lower(x),
+            FfiConverterSequenceDouble.lower(y), $0
+        )
+    })
 }
+
 /**
  * The `f32` counterpart of `dot_f64`.
  */
-public func dotF32(x: [Float], y: [Float])throws  -> Float {
-    return try  FfiConverterFloat.lift(try rustCallWithError(FfiConverterTypeFfiError.lift) {
-    uniffi_nc_ffi_fn_func_dot_f32(
-        FfiConverterSequenceFloat.lower(x),
-        FfiConverterSequenceFloat.lower(y),$0
-    )
-})
+public func dotF32(x: [Float], y: [Float]) throws -> Float {
+    return try FfiConverterFloat.lift(rustCallWithError(FfiConverterTypeFfiError.lift) {
+        uniffi_nc_ffi_fn_func_dot_f32(
+            FfiConverterSequenceFloat.lower(x),
+            FfiConverterSequenceFloat.lower(y), $0
+        )
+    })
 }
-public func dotF64(x: [Double], y: [Double])throws  -> Double {
-    return try  FfiConverterDouble.lift(try rustCallWithError(FfiConverterTypeFfiError.lift) {
-    uniffi_nc_ffi_fn_func_dot_f64(
-        FfiConverterSequenceDouble.lower(x),
-        FfiConverterSequenceDouble.lower(y),$0
-    )
-})
+
+public func dotF64(x: [Double], y: [Double]) throws -> Double {
+    return try FfiConverterDouble.lift(rustCallWithError(FfiConverterTypeFfiError.lift) {
+        uniffi_nc_ffi_fn_func_dot_f64(
+            FfiConverterSequenceDouble.lower(x),
+            FfiConverterSequenceDouble.lower(y), $0
+        )
+    })
 }
+
 /**
  * The `f32` counterpart of `matmul_f64`.
  */
-public func matmulF32(a: FfiMatrixF32, b: FfiMatrixF32)throws  -> FfiMatrixF32 {
-    return try  FfiConverterTypeFfiMatrixF32.lift(try rustCallWithError(FfiConverterTypeFfiError.lift) {
-    uniffi_nc_ffi_fn_func_matmul_f32(
-        FfiConverterTypeFfiMatrixF32.lower(a),
-        FfiConverterTypeFfiMatrixF32.lower(b),$0
-    )
-})
+public func matmulF32(a: FfiMatrixF32, b: FfiMatrixF32) throws -> FfiMatrixF32 {
+    return try FfiConverterTypeFfiMatrixF32.lift(rustCallWithError(FfiConverterTypeFfiError.lift) {
+        uniffi_nc_ffi_fn_func_matmul_f32(
+            FfiConverterTypeFfiMatrixF32.lower(a),
+            FfiConverterTypeFfiMatrixF32.lower(b), $0
+        )
+    })
 }
-public func matmulF64(a: FfiMatrixF64, b: FfiMatrixF64)throws  -> FfiMatrixF64 {
-    return try  FfiConverterTypeFfiMatrixF64.lift(try rustCallWithError(FfiConverterTypeFfiError.lift) {
-    uniffi_nc_ffi_fn_func_matmul_f64(
-        FfiConverterTypeFfiMatrixF64.lower(a),
-        FfiConverterTypeFfiMatrixF64.lower(b),$0
-    )
-})
+
+public func matmulF64(a: FfiMatrixF64, b: FfiMatrixF64) throws -> FfiMatrixF64 {
+    return try FfiConverterTypeFfiMatrixF64.lift(rustCallWithError(FfiConverterTypeFfiError.lift) {
+        uniffi_nc_ffi_fn_func_matmul_f64(
+            FfiConverterTypeFfiMatrixF64.lower(a),
+            FfiConverterTypeFfiMatrixF64.lower(b), $0
+        )
+    })
 }
+
 /**
  * The `f32` counterpart of `norm2_f64`.
  */
 public func norm2F32(x: [Float]) -> Float {
-    return try!  FfiConverterFloat.lift(try! rustCall() {
-    uniffi_nc_ffi_fn_func_norm2_f32(
-        FfiConverterSequenceFloat.lower(x),$0
-    )
-})
+    return try! FfiConverterFloat.lift(try! rustCall {
+        uniffi_nc_ffi_fn_func_norm2_f32(
+            FfiConverterSequenceFloat.lower(x), $0
+        )
+    })
 }
+
 public func norm2F64(x: [Double]) -> Double {
-    return try!  FfiConverterDouble.lift(try! rustCall() {
-    uniffi_nc_ffi_fn_func_norm2_f64(
-        FfiConverterSequenceDouble.lower(x),$0
-    )
-})
+    return try! FfiConverterDouble.lift(try! rustCall {
+        uniffi_nc_ffi_fn_func_norm2_f64(
+            FfiConverterSequenceDouble.lower(x), $0
+        )
+    })
 }
+
 /**
  * Solves `problem` via `nc_optimize::InteriorPointSolver` (default
  * configuration). See that solver's module docs for its two scope
@@ -1663,13 +1572,14 @@ public func norm2F64(x: [Double]) -> Double {
  * (surfaced here as `FfiError::SolverError`, not a crash or silent
  * wrong answer), and its unboundedness detection is heuristic.
  */
-public func solveLpInteriorPoint(problem: FfiProblem)throws  -> FfiSolution {
-    return try  FfiConverterTypeFfiSolution.lift(try rustCallWithError(FfiConverterTypeFfiError.lift) {
-    uniffi_nc_ffi_fn_func_solve_lp_interior_point(
-        FfiConverterTypeFfiProblem.lower(problem),$0
-    )
-})
+public func solveLpInteriorPoint(problem: FfiProblem) throws -> FfiSolution {
+    return try FfiConverterTypeFfiSolution.lift(rustCallWithError(FfiConverterTypeFfiError.lift) {
+        uniffi_nc_ffi_fn_func_solve_lp_interior_point(
+            FfiConverterTypeFfiProblem.lower(problem), $0
+        )
+    })
 }
+
 /**
  * Solves `problem` via `nc_optimize::RevisedSimplexSolver` (default
  * configuration). Prefer this over `solve_lp_interior_point` when
@@ -1678,31 +1588,33 @@ public func solveLpInteriorPoint(problem: FfiProblem)throws  -> FfiSolution {
  * `nc_optimize::interior_point`'s module docs for why the
  * interior-point path rejects those.
  */
-public func solveLpSimplex(problem: FfiProblem)throws  -> FfiSolution {
-    return try  FfiConverterTypeFfiSolution.lift(try rustCallWithError(FfiConverterTypeFfiError.lift) {
-    uniffi_nc_ffi_fn_func_solve_lp_simplex(
-        FfiConverterTypeFfiProblem.lower(problem),$0
-    )
-})
+public func solveLpSimplex(problem: FfiProblem) throws -> FfiSolution {
+    return try FfiConverterTypeFfiSolution.lift(rustCallWithError(FfiConverterTypeFfiError.lift) {
+        uniffi_nc_ffi_fn_func_solve_lp_simplex(
+            FfiConverterTypeFfiProblem.lower(problem), $0
+        )
+    })
 }
+
 /**
  * The `f32` counterpart of `spmv_f64`.
  */
-public func spmvF32(matrix: FfiCsrMatrixF32, x: [Float])throws  -> [Float] {
-    return try  FfiConverterSequenceFloat.lift(try rustCallWithError(FfiConverterTypeFfiError.lift) {
-    uniffi_nc_ffi_fn_func_spmv_f32(
-        FfiConverterTypeFfiCsrMatrixF32.lower(matrix),
-        FfiConverterSequenceFloat.lower(x),$0
-    )
-})
+public func spmvF32(matrix: FfiCsrMatrixF32, x: [Float]) throws -> [Float] {
+    return try FfiConverterSequenceFloat.lift(rustCallWithError(FfiConverterTypeFfiError.lift) {
+        uniffi_nc_ffi_fn_func_spmv_f32(
+            FfiConverterTypeFfiCsrMatrixF32.lower(matrix),
+            FfiConverterSequenceFloat.lower(x), $0
+        )
+    })
 }
-public func spmvF64(matrix: FfiCsrMatrixF64, x: [Double])throws  -> [Double] {
-    return try  FfiConverterSequenceDouble.lift(try rustCallWithError(FfiConverterTypeFfiError.lift) {
-    uniffi_nc_ffi_fn_func_spmv_f64(
-        FfiConverterTypeFfiCsrMatrixF64.lower(matrix),
-        FfiConverterSequenceDouble.lower(x),$0
-    )
-})
+
+public func spmvF64(matrix: FfiCsrMatrixF64, x: [Double]) throws -> [Double] {
+    return try FfiConverterSequenceDouble.lift(rustCallWithError(FfiConverterTypeFfiError.lift) {
+        uniffi_nc_ffi_fn_func_spmv_f64(
+            FfiConverterTypeFfiCsrMatrixF64.lower(matrix),
+            FfiConverterSequenceDouble.lower(x), $0
+        )
+    })
 }
 
 private enum InitializationResult {
@@ -1710,8 +1622,9 @@ private enum InitializationResult {
     case contractVersionMismatch
     case apiChecksumMismatch
 }
-// Use a global variables to perform the versioning checks. Swift ensures that
-// the code inside is only computed once.
+
+/// Use a global variables to perform the versioning checks. Swift ensures that
+/// the code inside is only computed once.
 private var initializationResult: InitializationResult {
     // Get the bindings contract version from our ComponentInterface
     let bindings_contract_version = 26
@@ -1720,76 +1633,76 @@ private var initializationResult: InitializationResult {
     if bindings_contract_version != scaffolding_contract_version {
         return InitializationResult.contractVersionMismatch
     }
-    if (uniffi_nc_ffi_checksum_func_axpy_f32() != 32161) {
+    if uniffi_nc_ffi_checksum_func_axpy_f32() != 32161 {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nc_ffi_checksum_func_axpy_f64() != 23243) {
+    if uniffi_nc_ffi_checksum_func_axpy_f64() != 23243 {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nc_ffi_checksum_func_dot_f32() != 28514) {
+    if uniffi_nc_ffi_checksum_func_dot_f32() != 28514 {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nc_ffi_checksum_func_dot_f64() != 22855) {
+    if uniffi_nc_ffi_checksum_func_dot_f64() != 22855 {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nc_ffi_checksum_func_matmul_f32() != 54411) {
+    if uniffi_nc_ffi_checksum_func_matmul_f32() != 54411 {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nc_ffi_checksum_func_matmul_f64() != 53784) {
+    if uniffi_nc_ffi_checksum_func_matmul_f64() != 53784 {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nc_ffi_checksum_func_norm2_f32() != 50338) {
+    if uniffi_nc_ffi_checksum_func_norm2_f32() != 50338 {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nc_ffi_checksum_func_norm2_f64() != 34231) {
+    if uniffi_nc_ffi_checksum_func_norm2_f64() != 34231 {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nc_ffi_checksum_func_solve_lp_interior_point() != 56241) {
+    if uniffi_nc_ffi_checksum_func_solve_lp_interior_point() != 56241 {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nc_ffi_checksum_func_solve_lp_simplex() != 16137) {
+    if uniffi_nc_ffi_checksum_func_solve_lp_simplex() != 16137 {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nc_ffi_checksum_func_spmv_f32() != 8289) {
+    if uniffi_nc_ffi_checksum_func_spmv_f32() != 8289 {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nc_ffi_checksum_func_spmv_f64() != 5376) {
+    if uniffi_nc_ffi_checksum_func_spmv_f64() != 5376 {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nc_ffi_checksum_method_ffivectorf32_axpy_in_place() != 51042) {
+    if uniffi_nc_ffi_checksum_method_ffivectorf32_axpy_in_place() != 51042 {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nc_ffi_checksum_method_ffivectorf32_dot() != 11674) {
+    if uniffi_nc_ffi_checksum_method_ffivectorf32_dot() != 11674 {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nc_ffi_checksum_method_ffivectorf32_len() != 48323) {
+    if uniffi_nc_ffi_checksum_method_ffivectorf32_len() != 48323 {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nc_ffi_checksum_method_ffivectorf32_norm2() != 62614) {
+    if uniffi_nc_ffi_checksum_method_ffivectorf32_norm2() != 62614 {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nc_ffi_checksum_method_ffivectorf32_to_vec() != 56913) {
+    if uniffi_nc_ffi_checksum_method_ffivectorf32_to_vec() != 56913 {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nc_ffi_checksum_method_ffivectorf64_axpy_in_place() != 59867) {
+    if uniffi_nc_ffi_checksum_method_ffivectorf64_axpy_in_place() != 59867 {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nc_ffi_checksum_method_ffivectorf64_dot() != 64696) {
+    if uniffi_nc_ffi_checksum_method_ffivectorf64_dot() != 64696 {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nc_ffi_checksum_method_ffivectorf64_len() != 31366) {
+    if uniffi_nc_ffi_checksum_method_ffivectorf64_len() != 31366 {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nc_ffi_checksum_method_ffivectorf64_norm2() != 34247) {
+    if uniffi_nc_ffi_checksum_method_ffivectorf64_norm2() != 34247 {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nc_ffi_checksum_method_ffivectorf64_to_vec() != 62940) {
+    if uniffi_nc_ffi_checksum_method_ffivectorf64_to_vec() != 62940 {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nc_ffi_checksum_constructor_ffivectorf32_new() != 38782) {
+    if uniffi_nc_ffi_checksum_constructor_ffivectorf32_new() != 38782 {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nc_ffi_checksum_constructor_ffivectorf64_new() != 59672) {
+    if uniffi_nc_ffi_checksum_constructor_ffivectorf64_new() != 59672 {
         return InitializationResult.apiChecksumMismatch
     }
 
