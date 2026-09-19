@@ -97,7 +97,8 @@ let package = Package(
 
         .testTarget(
             name: "NumericCoreTests",
-            dependencies: ["NumericCore", "NumericCoreAccelerate", "NumericCoreSparse", "NumericCoreGraph", "NCBindings"]
+            dependencies: ["NumericCore", "NumericCoreAccelerate", "NumericCoreSparse", "NumericCoreGraph", "NCBindings"],
+            resources: [.copy("Fixtures")]
         ),
 
         .testTarget(

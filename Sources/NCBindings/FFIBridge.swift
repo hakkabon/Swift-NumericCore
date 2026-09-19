@@ -331,10 +331,10 @@ extension FFIKernels {
     private static func makeFFISolution(_ result: FfiSolution) -> FFISolution {
         let status: FFISolveStatus
         switch result.status {
-        case .Optimal: status = .optimal
-        case .Infeasible: status = .infeasible
-        case .Unbounded: status = .unbounded
-        case .IterationLimit: status = .iterationLimit
+        case .optimal: status = .optimal
+        case .infeasible: status = .infeasible
+        case .unbounded: status = .unbounded
+        case .iterationLimit: status = .iterationLimit
         }
         return FFISolution(
             variableValues: result.variableValues,
