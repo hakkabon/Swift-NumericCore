@@ -371,6 +371,16 @@ float uniffi_nc_ffi_fn_func_norm2_f32(RustBuffer x, RustCallStatus *_Nonnull out
 double uniffi_nc_ffi_fn_func_norm2_f64(RustBuffer x, RustCallStatus *_Nonnull out_status
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_NC_FFI_FN_FUNC_SOLVE_LP_INTERIOR_POINT
+#define UNIFFI_FFIDEF_UNIFFI_NC_FFI_FN_FUNC_SOLVE_LP_INTERIOR_POINT
+RustBuffer uniffi_nc_ffi_fn_func_solve_lp_interior_point(RustBuffer problem, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_NC_FFI_FN_FUNC_SOLVE_LP_SIMPLEX
+#define UNIFFI_FFIDEF_UNIFFI_NC_FFI_FN_FUNC_SOLVE_LP_SIMPLEX
+RustBuffer uniffi_nc_ffi_fn_func_solve_lp_simplex(RustBuffer problem, RustCallStatus *_Nonnull out_status
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_NC_FFI_FN_FUNC_SPMV_F32
 #define UNIFFI_FFIDEF_UNIFFI_NC_FFI_FN_FUNC_SPMV_F32
 RustBuffer uniffi_nc_ffi_fn_func_spmv_f32(RustBuffer matrix, RustBuffer x, RustCallStatus *_Nonnull out_status
@@ -706,6 +716,18 @@ uint16_t uniffi_nc_ffi_checksum_func_norm2_f32(void
 #ifndef UNIFFI_FFIDEF_UNIFFI_NC_FFI_CHECKSUM_FUNC_NORM2_F64
 #define UNIFFI_FFIDEF_UNIFFI_NC_FFI_CHECKSUM_FUNC_NORM2_F64
 uint16_t uniffi_nc_ffi_checksum_func_norm2_f64(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_NC_FFI_CHECKSUM_FUNC_SOLVE_LP_INTERIOR_POINT
+#define UNIFFI_FFIDEF_UNIFFI_NC_FFI_CHECKSUM_FUNC_SOLVE_LP_INTERIOR_POINT
+uint16_t uniffi_nc_ffi_checksum_func_solve_lp_interior_point(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_NC_FFI_CHECKSUM_FUNC_SOLVE_LP_SIMPLEX
+#define UNIFFI_FFIDEF_UNIFFI_NC_FFI_CHECKSUM_FUNC_SOLVE_LP_SIMPLEX
+uint16_t uniffi_nc_ffi_checksum_func_solve_lp_simplex(void
     
 );
 #endif
