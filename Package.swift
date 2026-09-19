@@ -47,7 +47,8 @@ let package = Package(
         // sync in one PR; if updating by hand, do the same.
         .binaryTarget(
             name: "NumericCoreFFI",
-            path: "Frameworks/NumericCoreFFI.xcframework"
+            url: "https://github.com/hakkabon/Rust-NumericCore/releases/download/v0.3.0/NumericCoreFFI.xcframework.zip",
+            checksum: "69a56d5f3856b5737d0beb2b2fc7331ca4876c50518bc2195679eab39c940c89"
         ),
 
         // Thin Swift wrapper around the UniFFI-generated bindings
