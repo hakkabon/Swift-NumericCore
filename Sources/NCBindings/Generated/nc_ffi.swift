@@ -432,6 +432,27 @@ private struct FfiConverterDouble: FfiConverterPrimitive {
     }
 }
 
+private struct FfiConverterBool: FfiConverter {
+    typealias FfiType = Int8
+    typealias SwiftType = Bool
+
+    static func lift(_ value: Int8) throws -> Bool {
+        return value != 0
+    }
+
+    static func lower(_ value: Bool) -> Int8 {
+        return value ? 1 : 0
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Bool {
+        return try lift(readInt(&buf))
+    }
+
+    static func write(_ value: Bool, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
 private struct FfiConverterString: FfiConverter {
     typealias SwiftType = String
     typealias FfiType = RustBuffer
@@ -1252,6 +1273,106 @@ public func FfiConverterTypeFfiSolution_lower(_ value: FfiSolution) -> RustBuffe
 }
 
 /**
+ * Observable outcome of a sparse weighted or penalized least-squares solve.
+ *
+ * `converged` refers to the relative normal residual of the augmented CGLS
+ * system. An unconverged result is diagnostic information, not a valid fitted
+ * model; callers must require `converged` before using `solution` for
+ * inference or prediction.
+ */
+public struct FfiSparseStatisticalSolveResult {
+    public var solution: [Double]
+    public var iterations: UInt64
+    public var residualNorm: Double
+    public var converged: Bool
+    public var weightedResidualSumOfSquares: Double
+    public var penaltyContribution: Double
+    public var objective: Double
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(solution: [Double], iterations: UInt64, residualNorm: Double, converged: Bool, weightedResidualSumOfSquares: Double, penaltyContribution: Double, objective: Double) {
+        self.solution = solution
+        self.iterations = iterations
+        self.residualNorm = residualNorm
+        self.converged = converged
+        self.weightedResidualSumOfSquares = weightedResidualSumOfSquares
+        self.penaltyContribution = penaltyContribution
+        self.objective = objective
+    }
+}
+
+extension FfiSparseStatisticalSolveResult: Equatable, Hashable {
+    public static func == (lhs: FfiSparseStatisticalSolveResult, rhs: FfiSparseStatisticalSolveResult) -> Bool {
+        if lhs.solution != rhs.solution {
+            return false
+        }
+        if lhs.iterations != rhs.iterations {
+            return false
+        }
+        if lhs.residualNorm != rhs.residualNorm {
+            return false
+        }
+        if lhs.converged != rhs.converged {
+            return false
+        }
+        if lhs.weightedResidualSumOfSquares != rhs.weightedResidualSumOfSquares {
+            return false
+        }
+        if lhs.penaltyContribution != rhs.penaltyContribution {
+            return false
+        }
+        if lhs.objective != rhs.objective {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(solution)
+        hasher.combine(iterations)
+        hasher.combine(residualNorm)
+        hasher.combine(converged)
+        hasher.combine(weightedResidualSumOfSquares)
+        hasher.combine(penaltyContribution)
+        hasher.combine(objective)
+    }
+}
+
+public struct FfiConverterTypeFfiSparseStatisticalSolveResult: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiSparseStatisticalSolveResult {
+        return
+            try FfiSparseStatisticalSolveResult(
+                solution: FfiConverterSequenceDouble.read(from: &buf),
+                iterations: FfiConverterUInt64.read(from: &buf),
+                residualNorm: FfiConverterDouble.read(from: &buf),
+                converged: FfiConverterBool.read(from: &buf),
+                weightedResidualSumOfSquares: FfiConverterDouble.read(from: &buf),
+                penaltyContribution: FfiConverterDouble.read(from: &buf),
+                objective: FfiConverterDouble.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: FfiSparseStatisticalSolveResult, into buf: inout [UInt8]) {
+        FfiConverterSequenceDouble.write(value.solution, into: &buf)
+        FfiConverterUInt64.write(value.iterations, into: &buf)
+        FfiConverterDouble.write(value.residualNorm, into: &buf)
+        FfiConverterBool.write(value.converged, into: &buf)
+        FfiConverterDouble.write(value.weightedResidualSumOfSquares, into: &buf)
+        FfiConverterDouble.write(value.penaltyContribution, into: &buf)
+        FfiConverterDouble.write(value.objective, into: &buf)
+    }
+}
+
+public func FfiConverterTypeFfiSparseStatisticalSolveResult_lift(_ buf: RustBuffer) throws -> FfiSparseStatisticalSolveResult {
+    return try FfiConverterTypeFfiSparseStatisticalSolveResult.lift(buf)
+}
+
+public func FfiConverterTypeFfiSparseStatisticalSolveResult_lower(_ value: FfiSparseStatisticalSolveResult) -> RustBuffer {
+    return FfiConverterTypeFfiSparseStatisticalSolveResult.lower(value)
+}
+
+/**
  * Errors that can cross the FFI boundary. Deliberately flat and
  * string-carrying rather than mirroring each source crate's error type
  * exactly — UniFFI generates a Swift `enum FfiError: Error` from this,
@@ -1597,6 +1718,43 @@ public func solveLpSimplex(problem: FfiProblem) throws -> FfiSolution {
 }
 
 /**
+ * Solve `min Σᵢ wᵢ(yᵢ − xᵢᵀβ)² + λ‖Pβ‖²` using matrix-free CGLS over
+ * CSR design and penalty operators. `penalty` must have one column per
+ * design coefficient and `penalty_weight` must be finite and positive.
+ */
+public func solveSparsePenalizedWeightedLeastSquares(design: FfiCsrMatrixF64, response: [Double], weights: [Double], penalty: FfiCsrMatrixF64, penaltyWeight: Double, maxIterations: UInt64, tolerance: Double) throws -> FfiSparseStatisticalSolveResult {
+    return try FfiConverterTypeFfiSparseStatisticalSolveResult.lift(rustCallWithError(FfiConverterTypeFfiError.lift) {
+        uniffi_nc_ffi_fn_func_solve_sparse_penalized_weighted_least_squares(
+            FfiConverterTypeFfiCsrMatrixF64.lower(design),
+            FfiConverterSequenceDouble.lower(response),
+            FfiConverterSequenceDouble.lower(weights),
+            FfiConverterTypeFfiCsrMatrixF64.lower(penalty),
+            FfiConverterDouble.lower(penaltyWeight),
+            FfiConverterUInt64.lower(maxIterations),
+            FfiConverterDouble.lower(tolerance), $0
+        )
+    })
+}
+
+/**
+ * Solve `min Σᵢ wᵢ(yᵢ − xᵢᵀβ)²` using CGLS over a CSR design matrix.
+ *
+ * Zero weights exclude observations. The solve is intentionally iterative;
+ * inspect `converged` before accepting the returned coefficients.
+ */
+public func solveSparseWeightedLeastSquares(design: FfiCsrMatrixF64, response: [Double], weights: [Double], maxIterations: UInt64, tolerance: Double) throws -> FfiSparseStatisticalSolveResult {
+    return try FfiConverterTypeFfiSparseStatisticalSolveResult.lift(rustCallWithError(FfiConverterTypeFfiError.lift) {
+        uniffi_nc_ffi_fn_func_solve_sparse_weighted_least_squares(
+            FfiConverterTypeFfiCsrMatrixF64.lower(design),
+            FfiConverterSequenceDouble.lower(response),
+            FfiConverterSequenceDouble.lower(weights),
+            FfiConverterUInt64.lower(maxIterations),
+            FfiConverterDouble.lower(tolerance), $0
+        )
+    })
+}
+
+/**
  * The `f32` counterpart of `spmv_f64`.
  */
 public func spmvF32(matrix: FfiCsrMatrixF32, x: [Float]) throws -> [Float] {
@@ -1661,6 +1819,12 @@ private var initializationResult: InitializationResult {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_nc_ffi_checksum_func_solve_lp_simplex() != 16137 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_nc_ffi_checksum_func_solve_sparse_penalized_weighted_least_squares() != 25980 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_nc_ffi_checksum_func_solve_sparse_weighted_least_squares() != 5954 {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_nc_ffi_checksum_func_spmv_f32() != 8289 {
