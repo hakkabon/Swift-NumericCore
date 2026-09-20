@@ -82,6 +82,51 @@ public struct FFIMatrixFloat {
     }
 }
 
+/// A `Double` CSR matrix crossing the hand-written Swift/Rust boundary.
+///
+/// This deliberately mirrors the public raw CSR accessors on
+/// `NumericCoreSparse.SparseMatrix`, while keeping generated UniFFI record
+/// names out of the public Swift-facing adapter API.
+public struct FFICSRMatrix: Sendable, Hashable {
+    public let rows: Int
+    public let cols: Int
+    public let rowPointers: [Int]
+    public let columnIndices: [Int]
+    public let values: [Double]
+
+    public init(
+        rows: Int, cols: Int, rowPointers: [Int], columnIndices: [Int], values: [Double]
+    ) {
+        self.rows = rows
+        self.cols = cols
+        self.rowPointers = rowPointers
+        self.columnIndices = columnIndices
+        self.values = values
+    }
+}
+
+/// Stable Swift representation of a sparse statistical solve performed in
+/// Rust. `converged` must be true before `solution` is used as a fitted model.
+public struct FFISparseStatisticalSolveResult: Sendable, Hashable {
+    public let solution: [Double]
+    public let iterations: Int
+    public let residualNorm: Double
+    public let converged: Bool
+    public let weightedResidualSumOfSquares: Double
+    public let penaltyContribution: Double
+    public let objective: Double
+
+    fileprivate init(_ result: FfiSparseStatisticalSolveResult) {
+        solution = result.solution
+        iterations = Int(result.iterations)
+        residualNorm = result.residualNorm
+        converged = result.converged
+        weightedResidualSumOfSquares = result.weightedResidualSumOfSquares
+        penaltyContribution = result.penaltyContribution
+        objective = result.objective
+    }
+}
+
 /// Thin wrappers over the generated free functions. Each one:
 /// 1. converts Swift `Int`/`FFIMatrix` inputs to the generated types'
 ///    expected shape (`UInt32`, `FfiMatrixF64`, ...),
@@ -198,6 +243,85 @@ public enum FFIKernels {
         } catch {
             throw Self.translate(error)
         }
+    }
+
+    /// Runs the portable CSR CGLS solve for
+    /// `min Σ wᵢ(yᵢ - xᵢᵀβ)²`. Zero weights exclude observations.
+    ///
+    /// This is intentionally a result-returning iterative API: a numerical
+    /// iteration limit yields `converged == false`, not a silently accepted
+    /// fit. Shape and non-finite input failures are thrown.
+    public static func solveSparseWeightedLeastSquares(
+        design: FFICSRMatrix,
+        response: [Double],
+        weights: [Double],
+        maxIterations: Int,
+        tolerance: Double
+    ) throws -> FFISparseStatisticalSolveResult {
+        do {
+            let result = try NCBindings.solveSparseWeightedLeastSquares(
+                design: makeFfiCSRMatrix(design),
+                response: response,
+                weights: weights,
+                maxIterations: try ffiUInt64(maxIterations, name: "maxIterations"),
+                tolerance: tolerance
+            )
+            return FFISparseStatisticalSolveResult(result)
+        } catch {
+            throw Self.translate(error)
+        }
+    }
+
+    /// Runs the portable CSR CGLS solve for
+    /// `min Σ wᵢ(yᵢ - xᵢᵀβ)² + λ‖Pβ‖²` without materializing normal
+    /// equations. `penalty` must have one column per design coefficient.
+    public static func solveSparsePenalizedWeightedLeastSquares(
+        design: FFICSRMatrix,
+        response: [Double],
+        weights: [Double],
+        penalty: FFICSRMatrix,
+        penaltyWeight: Double,
+        maxIterations: Int,
+        tolerance: Double
+    ) throws -> FFISparseStatisticalSolveResult {
+        do {
+            let result = try NCBindings.solveSparsePenalizedWeightedLeastSquares(
+                design: makeFfiCSRMatrix(design),
+                response: response,
+                weights: weights,
+                penalty: makeFfiCSRMatrix(penalty),
+                penaltyWeight: penaltyWeight,
+                maxIterations: try ffiUInt64(maxIterations, name: "maxIterations"),
+                tolerance: tolerance
+            )
+            return FFISparseStatisticalSolveResult(result)
+        } catch {
+            throw Self.translate(error)
+        }
+    }
+
+    private static func makeFfiCSRMatrix(_ matrix: FFICSRMatrix) throws -> FfiCsrMatrixF64 {
+        FfiCsrMatrixF64(
+            rows: try ffiUInt32(matrix.rows, name: "rows"),
+            cols: try ffiUInt32(matrix.cols, name: "cols"),
+            rowPtr: try matrix.rowPointers.map { try ffiUInt32($0, name: "row pointer") },
+            colIndices: try matrix.columnIndices.map { try ffiUInt32($0, name: "column index") },
+            values: matrix.values
+        )
+    }
+
+    private static func ffiUInt32(_ value: Int, name: String) throws -> UInt32 {
+        guard let converted = UInt32(exactly: value) else {
+            throw FFIError.dimensionMismatch("\(name) must be in 0...\(UInt32.max)")
+        }
+        return converted
+    }
+
+    private static func ffiUInt64(_ value: Int, name: String) throws -> UInt64 {
+        guard let converted = UInt64(exactly: value) else {
+            throw FFIError.dimensionMismatch("\(name) must be non-negative")
+        }
+        return converted
     }
 
     /// Translates the generated `FfiError` into this file's stable
