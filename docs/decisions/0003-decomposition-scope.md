@@ -64,6 +64,25 @@ doesn't verify symmetry, only positive-definiteness, so silently
 routing arbitrary input through it would be a correctness trap for any
 caller that can't guarantee SPD-ness. Callers opt in explicitly.
 
+## Update (weighted and penalized QR for statistical clients)
+
+GAM and likelihood-model evolution introduces weighted least-squares and
+quadratic penalties, but it does not justify a new decomposition: both reduce
+to one augmented least-squares problem. `StatisticalSolver` now exposes
+weighted QR and penalized weighted QR in its row-major statistical boundary.
+For weights `W` and penalty operator `P`, it solves `[W½X; √λP]β ≈ [W½y; 0]`
+through the existing rank-checked QR backend. This deliberately avoids forming
+`XᵀWX + λPᵀP`: normal equations square the condition number and hide the
+rank-deficiency verdict DataLens relies on.
+
+The API returns coefficients plus weighted residual and penalty objective
+components, while leaving penalty choice, basis construction, EDF, and
+covariance interpretation to a statistical consumer. Zero weights exclude a
+row; negative/non-finite weights, invalid shapes, and still-rank-deficient
+augmented designs fail closed as `nil`. No Rust FFI surface is added because
+this Apple statistical path is backed directly by Accelerate/LAPACK, just like
+the existing QR/Cholesky APIs.
+
 ## Update (LU implemented)
 `NumericCoreAccelerate/LUSolve.swift` adds `solveLU(_:_:)` via
 `dgetrf_`/`dgetrs_` (general square systems, no symmetry assumed) and

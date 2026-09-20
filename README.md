@@ -83,6 +83,9 @@ Swift-NumericCore/
   `Swift-DataLens`'s `LinAlg`/`Regression` seam. `StatisticalSolver`
   provides that seam directly in row-major array form, centralizing the
   Matrix/Vector boundary and nil-verdict contract for statistical clients.
+  It also provides weighted and penalized weighted least squares through
+  augmented QR, with objective components and positive-weight row counts:
+  the stable numerical substrate for future GAM bases and IRLS updates.
 - `NumericCoreSparse` — `SparseMatrix<T>` (CSR); `multiplying` (SpMV)
   calls through to `nc-sparse` via `NCBindings` for both `Double` and
   `Float`.

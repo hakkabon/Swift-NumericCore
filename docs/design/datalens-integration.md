@@ -21,6 +21,35 @@ single conversion to `Matrix`/`Vector`, and returns nil for invalid shape,
 rank deficiency, non-definiteness, or backend failure. New statistical
 clients should use it rather than repeating the conversion wrapper.
 
+## Weighted and penalized least squares for additive-model evolution
+
+`StatisticalSolver.weightedLeastSquares(design:response:weights:)` solves
+
+```
+min Σᵢ wᵢ(yᵢ − xᵢᵀβ)²
+```
+
+by scaling each positive-weight row and response by `√wᵢ`, then using the
+same rank-checked QR path. Zero-weight rows are excluded; negative, non-finite,
+underdetermined, and rank-deficient inputs return `nil`. The returned
+`StatisticalLeastSquaresResult` carries coefficients, weighted RSS, and the
+active-row count without inventing model-specific degrees of freedom.
+
+`penalizedWeightedLeastSquares` additionally appends `√λP` and zero response
+rows to solve
+
+```
+min Σᵢ wᵢ(yᵢ − xᵢᵀβ)² + λ‖Pβ‖².
+```
+
+This is the appropriate primitive for penalized smooth bases and IRLS updates:
+it does **not** form `XᵀWX + λPᵀP`, so it does not square the augmented
+design's condition number. Its result separates the weighted residual and
+penalty contributions, enabling a statistical caller to report the exact
+objective it optimized. This is numerical infrastructure only; selection of
+the penalty, basis, effective degrees of freedom, and uncertainty remains the
+statistical package's responsibility.
+
 ## Suggested `LinAlg.swift` body
 
 ```swift
