@@ -15,6 +15,12 @@ and `.solve(_:_:)` (see `QRSolve.swift`) implement the same contract —
 `init(rows: [[Double]])` and `.rowMajorArray` (see `Matrix.swift`) exist
 specifically to make the boundary conversion trivial.
 
+`StatisticalSolver` now packages that boundary as the supported statistical
+entry point: it accepts row-major `[[Double]]`/`[Double]`, performs the
+single conversion to `Matrix`/`Vector`, and returns nil for invalid shape,
+rank deficiency, non-definiteness, or backend failure. New statistical
+clients should use it rather than repeating the conversion wrapper.
+
 ## Suggested `LinAlg.swift` body
 
 ```swift

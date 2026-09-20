@@ -80,7 +80,9 @@ Swift-NumericCore/
   minimum-norm solution). All `Double` only, called directly rather than
   through `Dispatcher` — see ADR 0003. See
   `docs/design/datalens-integration.md` for how this maps onto
-  `Swift-DataLens`'s `LinAlg`/`Regression` seam.
+  `Swift-DataLens`'s `LinAlg`/`Regression` seam. `StatisticalSolver`
+  provides that seam directly in row-major array form, centralizing the
+  Matrix/Vector boundary and nil-verdict contract for statistical clients.
 - `NumericCoreSparse` — `SparseMatrix<T>` (CSR); `multiplying` (SpMV)
   calls through to `nc-sparse` via `NCBindings` for both `Double` and
   `Float`.

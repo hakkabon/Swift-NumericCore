@@ -26,18 +26,16 @@ final class SolverConformanceTests: XCTestCase {
         XCTAssertEqual(fixture.schemaVersion, 1)
 
         for item in fixture.cases {
-            let matrix = try Matrix<Double>(rows: item.matrix)
-            let response = Vector(item.response)
-            let actual = try AccelerateBackend.solve(matrix, response)
+            let actual = StatisticalSolver.solve(item.matrix, item.response)
             if let expected = item.expected {
                 let solved = try XCTUnwrap(actual, "missing solution for \(item.name)")
                 XCTAssertEqual(solved.count, expected.count)
-                for (lhs, rhs) in zip(solved.storage, expected) {
+                for (lhs, rhs) in zip(solved, expected) {
                     XCTAssertEqual(lhs, rhs, accuracy: fixture.tolerance, item.name)
                 }
                 if item.positiveDefinite {
-                    let spd = try XCTUnwrap(try AccelerateBackend.solveSPD(matrix, response))
-                    for (lhs, rhs) in zip(spd.storage, expected) {
+                    let spd = try XCTUnwrap(StatisticalSolver.solveSPD(item.matrix, item.response))
+                    for (lhs, rhs) in zip(spd, expected) {
                         XCTAssertEqual(lhs, rhs, accuracy: fixture.tolerance, item.name)
                     }
                 }
@@ -45,5 +43,18 @@ final class SolverConformanceTests: XCTestCase {
                 XCTAssertNil(actual, "expected singular verdict for \(item.name)")
             }
         }
+    }
+
+    func testStatisticalSolverLeastSquaresAndInvalidShapes() throws {
+        let leastSquares = try XCTUnwrap(StatisticalSolver.leastSquares(
+            design: [[1, 0], [1, 1], [1, 2]], response: [1, 3, 5]
+        ))
+        XCTAssertEqual(leastSquares.count, 2)
+        XCTAssertEqual(leastSquares[0], 1, accuracy: 1e-12)
+        XCTAssertEqual(leastSquares[1], 2, accuracy: 1e-12)
+        XCTAssertNil(StatisticalSolver.leastSquares(design: [[1, 1], [2, 2]], response: [1, 2]))
+        XCTAssertNil(StatisticalSolver.leastSquares(design: [[1]], response: [1, 2]))
+        XCTAssertNil(StatisticalSolver.solve([[1, 2], [2, 4]], [3, 6]))
+        XCTAssertNil(StatisticalSolver.solveSPD([[1, 2], [2, 1]], [3, 3]))
     }
 }
