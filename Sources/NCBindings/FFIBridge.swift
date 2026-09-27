@@ -31,20 +31,18 @@
 /// `RustFallbackBackend`'s or `SparseMatrix`'s public API should need
 /// to change.
 ///
-/// Note (verified against UniFFI 0.27.3 output): enum cases keep their
-/// Rust `PascalCase` (`FfiError.DimensionMismatch`), *not* Swift
-/// `camelCase`. `FFIKernels.translate` matches on `.DimensionMismatch` —
-/// do not "fix" it to `.dimensionMismatch`; that will not compile.
+/// Note (verified against UniFFI 0.27.3 output): `FfiError` (a
+/// `uniffi::Error`) keeps its Rust `PascalCase` case names
+/// (`FfiError.DimensionMismatch`), *not* Swift `camelCase` —
+/// `FFIKernels.translate` matches on `.DimensionMismatch`; do not "fix"
+/// it to `.dimensionMismatch`, that will not compile.
 ///
-/// `FfiSolveStatus` (added for `solveLPSimplex`/`solveLPInteriorPoint`
-/// below) is a plain `uniffi::Enum`, not a `uniffi::Error` — the
-/// PascalCase-preservation above is *confirmed* for the error-derive
-/// path specifically; whether a plain enum's fieldless cases follow the
-/// same rule or get camelCased is an **unconfirmed extension** of that
-/// evidence. `FFIKernels.translate(status:)` matches on `.Optimal`
-/// (PascalCase) as the primary guess; if the compiler disagrees, this
-/// is the one spot to fix, matching the "fix it locally" pattern this
-/// whole file follows.
+/// `FfiSolveStatus` (a plain `uniffi::Enum`, not `uniffi::Error`) does
+/// *not* follow that same rule — its fieldless cases camelCase as
+/// usual (`.optimal`, not `.Optimal`), confirmed once real generated
+/// bindings existed. `FfiError`'s PascalCase behavior is specific to
+/// the error-derive path, not a general "UniFFI enums stay PascalCase"
+/// rule — worth remembering as two separate facts, not one.
 public enum FFIError: Error {
     case dimensionMismatch(String)
     case solverError(String)
@@ -370,6 +368,12 @@ public struct FFIProblem {
     public let constraintValues: [Double]
     public let rowBounds: [FFIBound]
     public let varBounds: [FFIBound]
+    /// Mirrors `nc-ffi::FfiProblem.is_integer`. Empty means "all
+    /// continuous" (the Rust side treats an empty list this way too —
+    /// see `to_domain_problem`'s comment there) — defaults to `[]` so
+    /// existing call sites built before this field existed keep
+    /// compiling and behaving identically.
+    public let isInteger: [Bool]
 
     public init(
         objective: [Double],
@@ -379,7 +383,8 @@ public struct FFIProblem {
         constraintColumnIndices: [Int],
         constraintValues: [Double],
         rowBounds: [FFIBound],
-        varBounds: [FFIBound]
+        varBounds: [FFIBound],
+        isInteger: [Bool] = []
     ) {
         self.objective = objective
         self.constraintRows = constraintRows
@@ -389,6 +394,7 @@ public struct FFIProblem {
         self.constraintValues = constraintValues
         self.rowBounds = rowBounds
         self.varBounds = varBounds
+        self.isInteger = isInteger
     }
 }
 
@@ -437,6 +443,22 @@ extension FFIKernels {
         }
     }
 
+    /// Solves via `nc-optimize::BranchAndBoundSolver` (MILP —
+    /// LP-relaxation branch-and-bound). `problem.isInteger` selects
+    /// which variables are integer-restricted; empty means "all
+    /// continuous" (see `FFIProblem.isInteger`'s doc comment), which
+    /// degrades to a plain LP solve with no branching — harmless, but
+    /// if that's actually what's wanted, calling `solveLPSimplex`
+    /// directly is the more direct route.
+    public static func solveMILP(_ problem: FFIProblem) throws -> FFISolution {
+        do {
+            let result = try solveMilpBranchAndBound(problem: makeFfiProblem(problem))
+            return makeFFISolution(result)
+        } catch {
+            throw Self.translate(error)
+        }
+    }
+
     private static func makeFfiProblem(_ problem: FFIProblem) -> FfiProblem {
         FfiProblem(
             objective: problem.objective,
@@ -448,7 +470,8 @@ extension FFIKernels {
                 values: problem.constraintValues
             ),
             rowBounds: problem.rowBounds.map { FfiBound(lower: $0.lower, upper: $0.upper) },
-            varBounds: problem.varBounds.map { FfiBound(lower: $0.lower, upper: $0.upper) }
+            varBounds: problem.varBounds.map { FfiBound(lower: $0.lower, upper: $0.upper) },
+            isInteger: problem.isInteger
         )
     }
 

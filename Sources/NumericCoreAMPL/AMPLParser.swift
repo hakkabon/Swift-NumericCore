@@ -137,14 +137,31 @@ private struct ParserState {
 
         var lower: Double? = 0
         var upper: Double?
-        if case .symbol(">=") = current.kind {
-            (lower, upper) = try parseBoundClause()
-        } else if case .symbol("<=") = current.kind {
-            (lower, upper) = try parseBoundClause()
+        var isInteger = false
+
+        // bound_clause and "integer" may appear in either order (and
+        // "integer" may appear without any bound_clause at all) — this
+        // is a deliberate extension beyond the literal EBNF (which only
+        // documents bound_clause), for the same reason `linear_expr`'s
+        // leading-sign extension exists: real models need to write
+        // `var x integer;` and `var x >= 0 integer;` both, and forcing
+        // one fixed order would be an arbitrary restriction with no
+        // grammatical reason behind it.
+        while true {
+            if case .symbol(">=") = current.kind {
+                (lower, upper) = try parseBoundClause()
+            } else if case .symbol("<=") = current.kind {
+                (lower, upper) = try parseBoundClause()
+            } else if current.kind == .keyword("integer") {
+                _ = advance()
+                isInteger = true
+            } else {
+                break
+            }
         }
 
         try expectSymbol(";")
-        model.addVariable(name, lowerBound: lower, upperBound: upper)
+        model.addVariable(name, lowerBound: lower, upperBound: upper, isInteger: isInteger)
     }
 
     // MARK: - bound_clause

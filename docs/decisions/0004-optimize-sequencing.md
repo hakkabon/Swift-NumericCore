@@ -75,3 +75,34 @@ into Rust via `nc-ffi`'s `solve_lp_simplex`/`solve_lp_interior_point`
 `OptimizeError` — see ADR 0005's update). `docs/design/ampl-grammar.md`'s
 own worked example is one of the end-to-end tests
 (`SolveTests.swift`), checked against both solvers.
+
+## Update (MILP: BranchAndBoundSolver wired through to AMPL)
+`nc-optimize::BranchAndBoundSolver` — see `Rust-NumericCore`'s ADR 0004
+update for the algorithm itself (LP-relaxation branch-and-bound,
+`RevisedSimplexSolver` as the required relaxation solver, scope
+boundaries) — is now reachable from AMPL source text end to end. Three
+coordinated changes made that possible:
+
+- **Grammar**: `var_decl` gained an `integer` qualifier
+  (`docs/design/ampl-grammar.md`'s EBNF, `AMPLLexer`/`AMPLParser`),
+  usable in either order relative to `bound_clause`
+  (`var x integer >= 0;` and `var x >= 0 integer;` both parse
+  identically) — a deliberate extension for the same reason
+  `linear_expr`'s leading-sign extension exists: an arbitrary fixed
+  ordering would be a restriction with no grammatical justification.
+- **`Model`/`CompiledProblem`**: `Model.addVariable(_:isInteger:)` and
+  `CompiledProblem.variableIsInteger` carry the flag through presolve.
+- **`Solve.swift`**: `LPSolverKind` (kept that name for continuity
+  rather than renamed to `SolverKind`, despite now covering MILP too)
+  gained `.branchAndBound`, calling `nc-ffi`'s new
+  `solve_milp_branch_and_bound` via `FFIProblem`'s new `isInteger`
+  field (default `[]`, so every pre-existing LP call site kept
+  compiling unchanged).
+
+`docs/design/ampl-grammar.md`'s MILP example is the concrete
+end-to-end test in `SolveTests.swift` — solved via `.branchAndBound`
+(integer optimum `(4, 0)`, objective `20`) and, on the identical model,
+via `.simplex` (LP relaxation's fractional optimum `(3, 1.5)`,
+objective `21`), deliberately checking both rather than only the
+"obviously correct" solver choice, so the contrast itself is verified
+rather than assumed.

@@ -2,10 +2,12 @@ import NCBindings
 import NumericCore
 import NumericCoreSparse
 
-/// Which of `nc-optimize`'s two solvers to use — explicit, not
+/// Which of `nc-optimize`'s solvers to use — explicit, not
 /// policy-based (per the explicit-solver-selection decision from the
 /// simplex-vs-interior-point scoping discussion; see `Rust-NumericCore`'s
-/// ADR 0004 update).
+/// ADR 0004 update). Despite the name (kept for continuity with
+/// existing callers rather than renamed to `SolverKind`), this now
+/// covers MILP too via `.branchAndBound`.
 public enum LPSolverKind {
     /// `nc-optimize::RevisedSimplexSolver`. Handles equality constraints
     /// and fixed variables; rigorous (not heuristic) infeasibility and
@@ -17,6 +19,13 @@ public enum LPSolverKind {
     /// Rust-side module docs); unboundedness detection is heuristic,
     /// not certificate-based.
     case interiorPoint
+    /// `nc-optimize::BranchAndBoundSolver` — LP-relaxation
+    /// branch-and-bound, the only option that honors
+    /// `Model.addVariable(_:isInteger:)`/the AMPL grammar's `integer`
+    /// qualifier. `.simplex`/`.interiorPoint` both ignore integrality
+    /// entirely and solve the LP relaxation regardless — pick this one
+    /// whenever the model actually declared an integer variable.
+    case branchAndBound
 }
 
 public enum LPSolveStatus: Equatable {
@@ -41,7 +50,9 @@ extension CompiledProblem {
     /// solver, crossing the FFI boundary via `NCBindings`. This is the
     /// step `docs/design/ampl-grammar.md`'s "Next steps" listed as not
     /// yet done — `AMPLParser.parse(_:)` → `Model.compile()` → here is
-    /// now a complete path from AMPL source text to an actual solved LP.
+    /// a complete path from AMPL source text to an actual solved LP or
+    /// MILP (the latter via `.branchAndBound`, once a model declares an
+    /// `integer` variable).
     public func solve(using solver: LPSolverKind = .simplex) throws -> LPSolution {
         let ffiProblem = FFIProblem(
             objective: objective.storage,
@@ -51,7 +62,8 @@ extension CompiledProblem {
             constraintColumnIndices: constraints.csrColumnIndices,
             constraintValues: constraints.csrValues,
             rowBounds: rowBounds.map { FFIBound(lower: $0.lower, upper: $0.upper) },
-            varBounds: zip(variableLowerBounds, variableUpperBounds).map { FFIBound(lower: $0.0, upper: $0.1) }
+            varBounds: zip(variableLowerBounds, variableUpperBounds).map { FFIBound(lower: $0.0, upper: $0.1) },
+            isInteger: variableIsInteger
         )
 
         let result: FFISolution
@@ -60,6 +72,8 @@ extension CompiledProblem {
             result = try FFIKernels.solveLPSimplex(ffiProblem)
         case .interiorPoint:
             result = try FFIKernels.solveLPInteriorPoint(ffiProblem)
+        case .branchAndBound:
+            result = try FFIKernels.solveMILP(ffiProblem)
         }
 
         let status: LPSolveStatus

@@ -110,4 +110,33 @@ final class AMPLParserTests: XCTestCase {
         let model = try AMPLParser.parse(source)
         XCTAssertEqual(model.constraints[0].relation, .equal)
     }
+
+    func testIntegerQualifierAfterBounds() throws {
+        let model = try AMPLParser.parse("var x >= 0, <= 10 integer;")
+        XCTAssertTrue(model.variableIsInteger[0])
+        XCTAssertEqual(model.variableBounds[0].lower, 0)
+        XCTAssertEqual(model.variableBounds[0].upper, 10)
+    }
+
+    func testIntegerQualifierBeforeBounds() throws {
+        // The documented extension: integer and bound_clause may
+        // appear in either order.
+        let model = try AMPLParser.parse("var x integer >= 0, <= 10;")
+        XCTAssertTrue(model.variableIsInteger[0])
+        XCTAssertEqual(model.variableBounds[0].lower, 0)
+        XCTAssertEqual(model.variableBounds[0].upper, 10)
+    }
+
+    func testIntegerQualifierWithNoBoundClauseAtAll() throws {
+        let model = try AMPLParser.parse("var x integer;")
+        XCTAssertTrue(model.variableIsInteger[0])
+        // Default lower bound (0) still applies, matching a plain
+        // "var x;" with no bound_clause at all.
+        XCTAssertEqual(model.variableBounds[0].lower, 0)
+    }
+
+    func testVariableWithoutIntegerQualifierIsContinuous() throws {
+        let model = try AMPLParser.parse("var x >= 0;")
+        XCTAssertFalse(model.variableIsInteger[0])
+    }
 }

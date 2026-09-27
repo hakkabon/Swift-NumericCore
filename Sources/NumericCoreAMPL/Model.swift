@@ -32,6 +32,7 @@ import NumericCoreSparse
 public struct Model {
     public private(set) var variableNames: [String] = []
     public private(set) var variableBounds: [(lower: Double?, upper: Double?)] = []
+    public private(set) var variableIsInteger: [Bool] = []
     public private(set) var parameterValues: [String: Double] = [:]
     public private(set) var constraints: [Constraint] = []
     public private(set) var objective: Objective?
@@ -42,14 +43,22 @@ public struct Model {
     /// `addConstraint`/`setObjective`. Named, rather than positional-only,
     /// because AMPL models are written with named variables and the
     /// eventual parser output should map directly onto this.
+    ///
+    /// `isInteger` restricts this variable to integer values when
+    /// solved via `.solve(using: .branchAndBound)` — ignored entirely
+    /// by `.simplex`/`.interiorPoint`, which always solve the LP
+    /// relaxation regardless. Mirrors `nc_optimize::Problem::is_integer`
+    /// (Rust side) — see that field's doc comment.
     @discardableResult
     public mutating func addVariable(
         _ name: String,
         lowerBound: Double? = 0,
-        upperBound: Double? = nil
+        upperBound: Double? = nil,
+        isInteger: Bool = false
     ) -> Int {
         variableNames.append(name)
         variableBounds.append((lowerBound, upperBound))
+        variableIsInteger.append(isInteger)
         return variableNames.count - 1
     }
 
@@ -148,6 +157,9 @@ public struct CompiledProblem {
     public let variableLowerBounds: [Double?]
     public let variableUpperBounds: [Double?]
     public let rowBounds: [(lower: Double?, upper: Double?)]
+    /// Per-variable integer restriction, for `.solve(using: .branchAndBound)`.
+    /// Ignored by `.simplex`/`.interiorPoint`.
+    public let variableIsInteger: [Bool]
 
     /// `+1` if the original objective was `minimize`, `-1` if
     /// `maximize`. Multiply a solver's returned objective value by this

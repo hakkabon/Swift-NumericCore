@@ -91,6 +91,7 @@ extension Model {
             variableLowerBounds: variableBounds.map { $0.lower },
             variableUpperBounds: variableBounds.map { $0.upper },
             rowBounds: rowBounds,
+            variableIsInteger: variableIsInteger,
             objectiveSign: objectiveSign
         )
     }

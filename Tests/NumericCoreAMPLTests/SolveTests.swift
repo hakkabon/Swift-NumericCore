@@ -92,4 +92,69 @@ final class SolveTests: XCTestCase {
         // equality-constrained rows outright.
         XCTAssertThrowsError(try problem.solve(using: .interiorPoint))
     }
+
+    func testBranchAndBoundSolvesAnIntegerModel() throws {
+        // Same classic MILP as nc-optimize's own branch_and_bound tests,
+        // now expressed as AMPL source and run through the full
+        // parse -> compile -> solve loop: maximize 5x+4y s.t.
+        // 6x+4y<=24, x+2y<=6, x,y>=0 integer. LP relaxation lands on a
+        // genuinely fractional vertex (3, 1.5); hand-verified integer
+        // optimum is (4, 0), objective 20.
+        let source = """
+        var x >= 0 integer;
+        var y >= 0 integer;
+
+        maximize profit: 5 x + 4 y;
+
+        subject to c1: 6 x + 4 y <= 24;
+        subject to c2: x + 2 y <= 6;
+        """
+        let model = try AMPLParser.parse(source)
+        let problem = try model.compile()
+        let solution = try problem.solve(using: .branchAndBound)
+
+        XCTAssertEqual(solution.status, .optimal)
+        XCTAssertEqual(solution.variableValues[0], 4.0, accuracy: 1e-6) // x
+        XCTAssertEqual(solution.variableValues[1], 0.0, accuracy: 1e-6) // y
+        XCTAssertEqual(solution.objectiveValue, 20.0, accuracy: 1e-6)
+    }
+
+    func testSimplexIgnoresIntegralityUnlikeBranchAndBoundOnTheSameModel() throws {
+        // The same model as above, but solved via .simplex - which
+        // ignores the "integer" qualifier entirely and returns the
+        // fractional LP relaxation optimum instead. Demonstrates why
+        // solver choice matters once a model declares an integer
+        // variable, rather than asserting it as an implicit assumption.
+        let source = """
+        var x >= 0 integer;
+        var y >= 0 integer;
+
+        maximize profit: 5 x + 4 y;
+
+        subject to c1: 6 x + 4 y <= 24;
+        subject to c2: x + 2 y <= 6;
+        """
+        let model = try AMPLParser.parse(source)
+        let problem = try model.compile()
+        let solution = try problem.solve(using: .simplex)
+
+        XCTAssertEqual(solution.status, .optimal)
+        XCTAssertEqual(solution.variableValues[0], 3.0, accuracy: 1e-6)
+        XCTAssertEqual(solution.variableValues[1], 1.5, accuracy: 1e-6)
+        XCTAssertEqual(solution.objectiveValue, 21.0, accuracy: 1e-6)
+    }
+
+    func testBranchAndBoundDetectsIntegralityInfeasibility() throws {
+        // x integer, 2x = 1 - the LP relaxation (x = 0.5) is feasible,
+        // but no integer x can ever satisfy the equality.
+        let source = """
+        var x >= 0, <= 10 integer;
+        subject to fixed: 2 x = 1;
+        minimize cost: x;
+        """
+        let model = try AMPLParser.parse(source)
+        let problem = try model.compile()
+        let solution = try problem.solve(using: .branchAndBound)
+        XCTAssertEqual(solution.status, .infeasible)
+    }
 }

@@ -91,15 +91,17 @@ Swift-NumericCore/
   `Float`.
 - `NumericCoreGraph` — adjacency-matrix construction from an edge list.
 - `NumericCoreMPS` — empty scaffold (`capabilities = []`).
-- `NumericCoreAMPL` — `Model` (variables/params/constraints/objective),
-  a hand-rolled lexer/parser for the grammar in
-  `docs/design/ampl-grammar.md` (`AMPLLexer.swift`/`AMPLParser.swift`),
-  presolve (`Model.compile() -> CompiledProblem`, `Presolve.swift`), and
-  now solving (`CompiledProblem.solve(using:)`, `Solve.swift`) via
-  `nc-ffi`'s `solve_lp_simplex`/`solve_lp_interior_point` — a complete
-  path from AMPL source text to a solved LP. Not yet built on the
-  `Grammar`/`Lexer`/`Parser` packages originally sketched for this —
-  see `Model.swift`'s module docs for why.
+- `NumericCoreAMPL` — `Model` (variables/params/constraints/objective,
+  including the `integer` qualifier), a hand-rolled lexer/parser for
+  the grammar in `docs/design/ampl-grammar.md`
+  (`AMPLLexer.swift`/`AMPLParser.swift`), presolve
+  (`Model.compile() -> CompiledProblem`, `Presolve.swift`), and solving
+  (`CompiledProblem.solve(using:)`, `Solve.swift`) via `nc-ffi`'s
+  `solve_lp_simplex`/`solve_lp_interior_point`/
+  `solve_milp_branch_and_bound` — a complete path from AMPL source text
+  to a solved LP *or* MILP. Not yet built on the `Grammar`/`Lexer`/
+  `Parser` packages originally sketched for this — see `Model.swift`'s
+  module docs for why.
 
 Confirmed building on a real Mac toolchain as of the last full review;
 anything added after that point in a given conversation may not be

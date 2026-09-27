@@ -21,7 +21,7 @@ public enum LexError: Error, Equatable {
     case unexpectedCharacter(Character, position: Int)
 }
 
-private let amplKeywords: Set<String> = ["var", "param", "subject", "to", "minimize", "maximize"]
+private let amplKeywords: Set<String> = ["var", "param", "subject", "to", "minimize", "maximize", "integer"]
 
 enum AMPLLexer {
     /// Tokenizes `source` in full, returning the token list terminated

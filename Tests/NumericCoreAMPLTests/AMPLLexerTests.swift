@@ -49,4 +49,11 @@ final class AMPLLexerTests: XCTestCase {
         let tokens = try AMPLLexer.tokenize("x_1")
         XCTAssertEqual(tokens.map(\.kind), [.identifier("x_1"), .endOfInput])
     }
+
+    func testIntegerIsAKeywordNotAnIdentifier() throws {
+        let tokens = try AMPLLexer.tokenize("var x integer;")
+        XCTAssertEqual(tokens.map(\.kind), [
+            .keyword("var"), .identifier("x"), .keyword("integer"), .symbol(";"), .endOfInput,
+        ])
+    }
 }

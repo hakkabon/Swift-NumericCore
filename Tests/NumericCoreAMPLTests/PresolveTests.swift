@@ -105,4 +105,16 @@ final class PresolveTests: XCTestCase {
         XCTAssertEqual(rowY[0], -1) // coefficient of y is -1 (moved to lhs)
         XCTAssertEqual(problem.rowBounds[0].upper, 0)
     }
+
+    func testCompiledProblemCarriesIntegerFlags() throws {
+        let source = """
+        var x integer;
+        var y >= 0;
+        minimize cost: x + y;
+        """
+        let model = try AMPLParser.parse(source)
+        let problem = try model.compile()
+
+        XCTAssertEqual(problem.variableIsInteger, [true, false])
+    }
 }

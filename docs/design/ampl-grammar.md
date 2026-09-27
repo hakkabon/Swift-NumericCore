@@ -13,8 +13,8 @@ intended as the starting grammar to hand to the existing
 `Grammar`/`Lexer`/`Parser` Swift packages (see ADR 0005's sibling
 reasoning: reuse what already exists rather than hand-rolling a new
 parser). This is **not** full AMPL — it's the smallest subset that can
-express a real LP, matching the LP-first sequencing in
-`docs/decisions/0004-optimize-sequencing.md`.
+express a real LP or MILP, matching the LP-first (then MILP)
+sequencing in `docs/decisions/0004-optimize-sequencing.md`.
 
 Deliberately excluded from this first cut: `set` declarations and
 indexed expressions (`sum {i in I} ...`), piecewise-linear terms, and
@@ -36,7 +36,7 @@ otherwise require) — see `AMPLParser`'s doc comment.
 model        = { statement } ;
 statement    = var_decl | param_decl | constraint_decl | objective_decl ;
 
-var_decl     = "var" , identifier , [ bound_clause ] , ";" ;
+var_decl     = "var" , identifier , { bound_clause | "integer" } , ";" ;
 param_decl   = "param" , identifier , ":=" , number , ";" ;
 
 bound_clause = ">=" , number
@@ -91,6 +91,31 @@ variableUpperBounds = [nil, 10]
 `objectiveSign` is `+1` for a `minimize` objective (no negation
 happened) and `-1` for `maximize` — see `CompiledProblem`'s doc comment.
 
+## MILP example — the `integer` qualifier
+
+```ampl
+var x >= 0 integer;
+var y >= 0 integer;
+
+maximize profit: 5 x + 4 y;
+
+subject to c1: 6 x + 4 y <= 24;
+subject to c2: x + 2 y <= 6;
+```
+
+`integer` may appear anywhere among a `var_decl`'s qualifiers, in
+either order relative to `bound_clause` — `var x integer >= 0;` and
+`var x >= 0 integer;` both parse identically. Solving this model needs
+`.solve(using: .branchAndBound)` specifically:
+`.simplex`/`.interiorPoint` both ignore `CompiledProblem.variableIsInteger`
+entirely and return the LP relaxation's optimum — for this exact model,
+`(x, y) = (3, 1.5)`, objective `21` — a genuinely fractional answer
+that silently satisfies neither variable's `integer` qualifier if the
+wrong solver is picked. `.branchAndBound` returns the correct integer
+optimum, `(x, y) = (4, 0)`, objective `20`. Both are exercised as tests
+in `SolveTests.swift`, specifically to make that contrast visible
+rather than assert only the "obviously correct" solver choice.
+
 ## What the parser produces
 
 `AMPLParser.parse(_:)` calls `Model`'s builder methods directly
@@ -124,8 +149,16 @@ distinguish the two, but the semantics require it).
    AMPL source text to an actual solved LP — this doc's own worked
    example, above, is one of the tests (`SolveTests.swift`) exercising
    exactly that path, checked against both solvers.
-6. **Not yet done**: migrating the lexer/parser to the
+6. ~~MILP: the `integer` qualifier, `BranchAndBoundSolver`~~ — done:
+   grammar extended (`var_decl`'s EBNF above), `Model`/`CompiledProblem`
+   carry per-variable integrality, `Solve.swift` gained
+   `.branchAndBound`, `nc-ffi` exports `solve_milp_branch_and_bound`.
+   See "MILP example" above — its two tests (solved via `.branchAndBound`
+   vs. `.simplex` on the identical model) are the concrete
+   demonstration of why solver choice matters once a model declares an
+   integer variable.
+7. **Not yet done**: migrating the lexer/parser to the
    `hakkabon/Grammar`/`Lexer`/`Parser` packages, if that's still
    wanted, once their exact public APIs are in hand to write against.
-7. **Not yet started**: `set` declarations, indexed expressions,
+8. **Not yet started**: `set` declarations, indexed expressions,
    piecewise-linear terms — deliberately deferred, per this doc's intro.

@@ -95,10 +95,23 @@ new Rust-side `FfiError::SolverError`); every existing exhaustive
 and `NCBindings` needed a matching case added — a useful reminder that
 adding a variant to a shared error type is not a purely additive change
 on the Swift side, unlike adding a new free function. `FfiSolveStatus`
-(a plain `uniffi::Enum`, not `uniffi::Error`) is the one new naming
-guess in this update — whether its fieldless cases follow the same
-PascalCase-preservation confirmed for `FfiError` is *not yet confirmed*
-for a plain enum; see `FFIBridge.swift`'s note on this.
+(a plain `uniffi::Enum`, not `uniffi::Error`) was the one new naming
+guess in this update — confirmed, once real generated bindings existed,
+to *not* follow `FfiError`'s PascalCase-preservation: a plain enum's
+fieldless cases camelCase as expected (`.optimal`, not `.Optimal`).
+`FfiError`'s PascalCase behavior is specific to the error-derive path,
+not enums generally — worth remembering distinctly rather than as one
+blanket "UniFFI enum casing" rule.
+
+## Update (MILP solving wired through)
+`FFIKernels.solveMILP` calls the Rust-side `solve_milp_branch_and_bound`
+added in `nc-ffi` — see `Rust-NumericCore`'s ADR 0004/0005 updates for
+the Rust-side detail. `FFIProblem`/`FfiProblem` both gained
+`isInteger`/`is_integer: Vec<bool>`, defaulting to `[]` on the Swift
+side and treated as "all continuous" on the Rust side — unlike the
+`FfiError` case addition above, this one *was* purely additive: every
+existing LP call site kept compiling and behaving identically without
+being touched.
 
 ## Alternatives considered
 - **cbindgen + hand-rolled C ABI** (the original sketch). Rejected once
