@@ -1296,6 +1296,78 @@ public func FfiConverterTypeFfiSolution_lower(_ value: FfiSolution) -> RustBuffe
 }
 
 /**
+ * Solver state and convergence settings. `initial_solution` is the previous
+ * coefficient vector in an IRLS loop or regularization path.
+ */
+public struct FfiSparseStatisticalSolveOptions {
+    public var maxIterations: UInt64
+    public var tolerance: Double
+    public var initialSolution: [Double]?
+    public var preconditioner: FfiSparseStatisticalPreconditioner
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(maxIterations: UInt64, tolerance: Double, initialSolution: [Double]?, preconditioner: FfiSparseStatisticalPreconditioner) {
+        self.maxIterations = maxIterations
+        self.tolerance = tolerance
+        self.initialSolution = initialSolution
+        self.preconditioner = preconditioner
+    }
+}
+
+extension FfiSparseStatisticalSolveOptions: Equatable, Hashable {
+    public static func == (lhs: FfiSparseStatisticalSolveOptions, rhs: FfiSparseStatisticalSolveOptions) -> Bool {
+        if lhs.maxIterations != rhs.maxIterations {
+            return false
+        }
+        if lhs.tolerance != rhs.tolerance {
+            return false
+        }
+        if lhs.initialSolution != rhs.initialSolution {
+            return false
+        }
+        if lhs.preconditioner != rhs.preconditioner {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(maxIterations)
+        hasher.combine(tolerance)
+        hasher.combine(initialSolution)
+        hasher.combine(preconditioner)
+    }
+}
+
+public struct FfiConverterTypeFfiSparseStatisticalSolveOptions: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiSparseStatisticalSolveOptions {
+        return
+            try FfiSparseStatisticalSolveOptions(
+                maxIterations: FfiConverterUInt64.read(from: &buf),
+                tolerance: FfiConverterDouble.read(from: &buf),
+                initialSolution: FfiConverterOptionSequenceDouble.read(from: &buf),
+                preconditioner: FfiConverterTypeFfiSparseStatisticalPreconditioner.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: FfiSparseStatisticalSolveOptions, into buf: inout [UInt8]) {
+        FfiConverterUInt64.write(value.maxIterations, into: &buf)
+        FfiConverterDouble.write(value.tolerance, into: &buf)
+        FfiConverterOptionSequenceDouble.write(value.initialSolution, into: &buf)
+        FfiConverterTypeFfiSparseStatisticalPreconditioner.write(value.preconditioner, into: &buf)
+    }
+}
+
+public func FfiConverterTypeFfiSparseStatisticalSolveOptions_lift(_ buf: RustBuffer) throws -> FfiSparseStatisticalSolveOptions {
+    return try FfiConverterTypeFfiSparseStatisticalSolveOptions.lift(buf)
+}
+
+public func FfiConverterTypeFfiSparseStatisticalSolveOptions_lower(_ value: FfiSparseStatisticalSolveOptions) -> RustBuffer {
+    return FfiConverterTypeFfiSparseStatisticalSolveOptions.lower(value)
+}
+
+/**
  * Observable outcome of a sparse weighted or penalized least-squares solve.
  *
  * `converged` refers to the relative normal residual of the augmented CGLS
@@ -1510,6 +1582,52 @@ public func FfiConverterTypeFfiSolveStatus_lower(_ value: FfiSolveStatus) -> Rus
 
 extension FfiSolveStatus: Equatable, Hashable {}
 
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/* 
+ * Scaling strategy for configurable sparse statistical solves.
+ */
+
+public enum FfiSparseStatisticalPreconditioner {
+    case none
+    case jacobi
+}
+
+public struct FfiConverterTypeFfiSparseStatisticalPreconditioner: FfiConverterRustBuffer {
+    typealias SwiftType = FfiSparseStatisticalPreconditioner
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiSparseStatisticalPreconditioner {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        case 1: return .none
+
+        case 2: return .jacobi
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: FfiSparseStatisticalPreconditioner, into buf: inout [UInt8]) {
+        switch value {
+        case .none:
+            writeInt(&buf, Int32(1))
+
+        case .jacobi:
+            writeInt(&buf, Int32(2))
+        }
+    }
+}
+
+public func FfiConverterTypeFfiSparseStatisticalPreconditioner_lift(_ buf: RustBuffer) throws -> FfiSparseStatisticalPreconditioner {
+    return try FfiConverterTypeFfiSparseStatisticalPreconditioner.lift(buf)
+}
+
+public func FfiConverterTypeFfiSparseStatisticalPreconditioner_lower(_ value: FfiSparseStatisticalPreconditioner) -> RustBuffer {
+    return FfiConverterTypeFfiSparseStatisticalPreconditioner.lower(value)
+}
+
+extension FfiSparseStatisticalPreconditioner: Equatable, Hashable {}
+
 private struct FfiConverterOptionDouble: FfiConverterRustBuffer {
     typealias SwiftType = Double?
 
@@ -1526,6 +1644,27 @@ private struct FfiConverterOptionDouble: FfiConverterRustBuffer {
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterDouble.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+private struct FfiConverterOptionSequenceDouble: FfiConverterRustBuffer {
+    typealias SwiftType = [Double]?
+
+    static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterSequenceDouble.write(value, into: &buf)
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterSequenceDouble.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
     }
@@ -1801,6 +1940,22 @@ public func solveSparsePenalizedWeightedLeastSquares(design: FfiCsrMatrixF64, re
 }
 
 /**
+ * Configurable penalized sparse solve with warm-start and preconditioning.
+ */
+public func solveSparsePenalizedWeightedLeastSquaresWithOptions(design: FfiCsrMatrixF64, response: [Double], weights: [Double], penalty: FfiCsrMatrixF64, penaltyWeight: Double, options: FfiSparseStatisticalSolveOptions) throws -> FfiSparseStatisticalSolveResult {
+    return try FfiConverterTypeFfiSparseStatisticalSolveResult.lift(rustCallWithError(FfiConverterTypeFfiError.lift) {
+        uniffi_nc_ffi_fn_func_solve_sparse_penalized_weighted_least_squares_with_options(
+            FfiConverterTypeFfiCsrMatrixF64.lower(design),
+            FfiConverterSequenceDouble.lower(response),
+            FfiConverterSequenceDouble.lower(weights),
+            FfiConverterTypeFfiCsrMatrixF64.lower(penalty),
+            FfiConverterDouble.lower(penaltyWeight),
+            FfiConverterTypeFfiSparseStatisticalSolveOptions.lower(options), $0
+        )
+    })
+}
+
+/**
  * Solve `min Σᵢ wᵢ(yᵢ − xᵢᵀβ)²` using CGLS over a CSR design matrix.
  *
  * Zero weights exclude observations. The solve is intentionally iterative;
@@ -1814,6 +1969,20 @@ public func solveSparseWeightedLeastSquares(design: FfiCsrMatrixF64, response: [
             FfiConverterSequenceDouble.lower(weights),
             FfiConverterUInt64.lower(maxIterations),
             FfiConverterDouble.lower(tolerance), $0
+        )
+    })
+}
+
+/**
+ * Configurable sparse weighted solve for IRLS and ill-scaled models.
+ */
+public func solveSparseWeightedLeastSquaresWithOptions(design: FfiCsrMatrixF64, response: [Double], weights: [Double], options: FfiSparseStatisticalSolveOptions) throws -> FfiSparseStatisticalSolveResult {
+    return try FfiConverterTypeFfiSparseStatisticalSolveResult.lift(rustCallWithError(FfiConverterTypeFfiError.lift) {
+        uniffi_nc_ffi_fn_func_solve_sparse_weighted_least_squares_with_options(
+            FfiConverterTypeFfiCsrMatrixF64.lower(design),
+            FfiConverterSequenceDouble.lower(response),
+            FfiConverterSequenceDouble.lower(weights),
+            FfiConverterTypeFfiSparseStatisticalSolveOptions.lower(options), $0
         )
     })
 }
@@ -1891,7 +2060,13 @@ private var initializationResult: InitializationResult {
     if uniffi_nc_ffi_checksum_func_solve_sparse_penalized_weighted_least_squares() != 25980 {
         return InitializationResult.apiChecksumMismatch
     }
+    if uniffi_nc_ffi_checksum_func_solve_sparse_penalized_weighted_least_squares_with_options() != 28925 {
+        return InitializationResult.apiChecksumMismatch
+    }
     if uniffi_nc_ffi_checksum_func_solve_sparse_weighted_least_squares() != 5954 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_nc_ffi_checksum_func_solve_sparse_weighted_least_squares_with_options() != 20382 {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_nc_ffi_checksum_func_spmv_f32() != 8289 {
