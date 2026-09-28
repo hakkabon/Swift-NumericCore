@@ -31,6 +31,50 @@ public enum LPSolverKind {
     case branchAndBound
 }
 
+/// Configured solver selection for production calls. The original
+/// `LPSolverKind` API remains available for source compatibility.
+public enum OptimizationSolveConfiguration: Sendable, Hashable {
+    case automatic
+    case simplex(SimplexSolveOptions = .init())
+    case interiorPoint(InteriorPointSolveOptions = .init())
+    case branchAndBound(BranchAndBoundSolveOptions = .init())
+}
+
+public struct SimplexSolveOptions: Sendable, Hashable {
+    public var maxIterations: UInt64
+    public var tolerance: Double
+    public init(maxIterations: UInt64 = 10_000, tolerance: Double = 1e-9) {
+        self.maxIterations = maxIterations
+        self.tolerance = tolerance
+    }
+}
+
+public struct InteriorPointSolveOptions: Sendable, Hashable {
+    public var maxIterations: UInt64
+    public var tolerance: Double
+    public var sigma: Double
+    public var bigBound: Double
+    public var stepFraction: Double
+    public init(maxIterations: UInt64 = 200, tolerance: Double = 1e-8,
+                sigma: Double = 0.1, bigBound: Double = 1e12,
+                stepFraction: Double = 0.995) {
+        self.maxIterations = maxIterations
+        self.tolerance = tolerance
+        self.sigma = sigma
+        self.bigBound = bigBound
+        self.stepFraction = stepFraction
+    }
+}
+
+public struct BranchAndBoundSolveOptions: Sendable, Hashable {
+    public var maxNodes: UInt64
+    public var integerTolerance: Double
+    public init(maxNodes: UInt64 = 10_000, integerTolerance: Double = 1e-6) {
+        self.maxNodes = maxNodes
+        self.integerTolerance = integerTolerance
+    }
+}
+
 public enum LPSolveStatus: Equatable {
     case optimal
     case infeasible
@@ -51,12 +95,23 @@ public struct LPSolution {
     /// Independently recomputed from the compiled problem and returned
     /// variables, rather than copied from the solver's internal state.
     public let diagnostics: OptimizationSolutionDiagnostics
+    /// Present for configured branch-and-bound calls. A nonzero gap
+    /// means the incumbent is feasible but optimality was not proven.
+    public let searchReport: MILPSearchReport?
 
     /// True only for an optimal status whose independently recomputed
     /// feasibility, integrality, and objective checks all pass.
     public func isVerified(tolerance: Double) -> Bool {
         status == .optimal && diagnostics.isVerified(tolerance: tolerance)
     }
+}
+
+public struct MILPSearchReport: Sendable, Hashable {
+    public let nodesExplored: UInt64
+    /// Corrected to the source model's objective sense.
+    public let bestBound: Double?
+    public let absoluteGap: Double?
+    public let relativeGap: Double?
 }
 
 public struct OptimizationSolutionDiagnostics: Sendable, Hashable {
@@ -85,6 +140,19 @@ extension CompiledProblem {
     /// MILP (the latter via `.branchAndBound`, once a model declares an
     /// `integer` variable).
     public func solve(using solver: LPSolverKind = .automatic) throws -> LPSolution {
+        let configuration: OptimizationSolveConfiguration
+        switch solver {
+        case .automatic: configuration = .automatic
+        case .simplex: configuration = .simplex()
+        case .interiorPoint: configuration = .interiorPoint()
+        case .branchAndBound: configuration = .branchAndBound()
+        }
+        return try solve(configuration: configuration)
+    }
+
+    public func solve(
+        configuration: OptimizationSolveConfiguration
+    ) throws -> LPSolution {
         let ffiProblem = FFIProblem(
             objective: objective.storage,
             constraintRows: constraints.rows,
@@ -98,17 +166,28 @@ extension CompiledProblem {
         )
 
         let result: FFISolution
-        switch solver {
+        var milpReport: FFIMILPSolveReport?
+        switch configuration {
         case .automatic:
             result = try variableIsInteger.contains(true)
                 ? FFIKernels.solveMILP(ffiProblem)
                 : FFIKernels.solveLPSimplex(ffiProblem)
-        case .simplex:
-            result = try FFIKernels.solveLPSimplex(ffiProblem)
-        case .interiorPoint:
-            result = try FFIKernels.solveLPInteriorPoint(ffiProblem)
-        case .branchAndBound:
-            result = try FFIKernels.solveMILP(ffiProblem)
+        case .simplex(let options):
+            result = try FFIKernels.solveLPSimplex(ffiProblem, options: .init(
+                maxIterations: options.maxIterations, tolerance: options.tolerance
+            ))
+        case .interiorPoint(let options):
+            result = try FFIKernels.solveLPInteriorPoint(ffiProblem, options: .init(
+                maxIterations: options.maxIterations, tolerance: options.tolerance,
+                sigma: options.sigma, bigBound: options.bigBound,
+                stepFraction: options.stepFraction
+            ))
+        case .branchAndBound(let options):
+            let report = try FFIKernels.solveMILP(ffiProblem, options: .init(
+                maxNodes: options.maxNodes, integerTolerance: options.integerTolerance
+            ))
+            milpReport = report
+            result = report.solution
         }
 
         let status: LPSolveStatus
@@ -130,7 +209,17 @@ extension CompiledProblem {
             status: status,
             diagnostics: solutionDiagnostics(
                 values: values, reportedObjective: correctedObjective
-            )
+            ),
+            searchReport: milpReport.map { report in
+                MILPSearchReport(
+                    nodesExplored: report.nodesExplored,
+                    bestBound: report.bestBound.map {
+                        $0 * objectiveSign + objectiveConstant
+                    },
+                    absoluteGap: report.absoluteGap,
+                    relativeGap: report.relativeGap
+                )
+            }
         )
     }
 

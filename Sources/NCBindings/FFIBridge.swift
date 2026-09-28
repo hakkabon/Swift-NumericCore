@@ -402,7 +402,7 @@ public struct FFIProblem {
 /// `FFIError`'s doc comment above — this is the one place that
 /// depends on the *unconfirmed* extension of the PascalCase-enum-case
 /// evidence.
-public enum FFISolveStatus {
+public enum FFISolveStatus: Sendable, Hashable {
     case optimal
     case infeasible
     case unbounded
@@ -410,10 +410,53 @@ public enum FFISolveStatus {
 }
 
 /// Mirrors `nc-ffi::FfiSolution`.
-public struct FFISolution {
+public struct FFISolution: Sendable, Hashable {
     public let variableValues: [Double]
     public let objectiveValue: Double
     public let status: FFISolveStatus
+}
+
+public struct FFISimplexOptions: Sendable, Hashable {
+    public var maxIterations: UInt64
+    public var tolerance: Double
+    public init(maxIterations: UInt64 = 10_000, tolerance: Double = 1e-9) {
+        self.maxIterations = maxIterations
+        self.tolerance = tolerance
+    }
+}
+
+public struct FFIInteriorPointOptions: Sendable, Hashable {
+    public var maxIterations: UInt64
+    public var tolerance: Double
+    public var sigma: Double
+    public var bigBound: Double
+    public var stepFraction: Double
+    public init(maxIterations: UInt64 = 200, tolerance: Double = 1e-8,
+                sigma: Double = 0.1, bigBound: Double = 1e12,
+                stepFraction: Double = 0.995) {
+        self.maxIterations = maxIterations
+        self.tolerance = tolerance
+        self.sigma = sigma
+        self.bigBound = bigBound
+        self.stepFraction = stepFraction
+    }
+}
+
+public struct FFIBranchAndBoundOptions: Sendable, Hashable {
+    public var maxNodes: UInt64
+    public var integerTolerance: Double
+    public init(maxNodes: UInt64 = 10_000, integerTolerance: Double = 1e-6) {
+        self.maxNodes = maxNodes
+        self.integerTolerance = integerTolerance
+    }
+}
+
+public struct FFIMILPSolveReport: Sendable, Hashable {
+    public let solution: FFISolution
+    public let nodesExplored: UInt64
+    public let bestBound: Double?
+    public let absoluteGap: Double?
+    public let relativeGap: Double?
 }
 
 extension FFIKernels {
@@ -430,6 +473,19 @@ extension FFIKernels {
         }
     }
 
+    public static func solveLPSimplex(
+        _ problem: FFIProblem, options: FFISimplexOptions
+    ) throws -> FFISolution {
+        do {
+            return makeFFISolution(try solveLpSimplexWithOptions(
+                problem: makeFfiProblem(problem),
+                options: FfiSimplexOptions(
+                    maxIterations: options.maxIterations, tolerance: options.tolerance
+                )
+            ))
+        } catch { throw Self.translate(error) }
+    }
+
     /// Solves via `nc-optimize::InteriorPointSolver`. Throws
     /// `FFIError.solverError` (not a crash, not a silently wrong
     /// answer) if `problem` has an equality-constrained row or a fixed
@@ -441,6 +497,21 @@ extension FFIKernels {
         } catch {
             throw Self.translate(error)
         }
+    }
+
+    public static func solveLPInteriorPoint(
+        _ problem: FFIProblem, options: FFIInteriorPointOptions
+    ) throws -> FFISolution {
+        do {
+            return makeFFISolution(try solveLpInteriorPointWithOptions(
+                problem: makeFfiProblem(problem),
+                options: FfiInteriorPointOptions(
+                    maxIterations: options.maxIterations, tolerance: options.tolerance,
+                    sigma: options.sigma, bigBound: options.bigBound,
+                    stepFraction: options.stepFraction
+                )
+            ))
+        } catch { throw Self.translate(error) }
     }
 
     /// Solves via `nc-optimize::BranchAndBoundSolver` (MILP —
@@ -457,6 +528,27 @@ extension FFIKernels {
         } catch {
             throw Self.translate(error)
         }
+    }
+
+    public static func solveMILP(
+        _ problem: FFIProblem, options: FFIBranchAndBoundOptions
+    ) throws -> FFIMILPSolveReport {
+        do {
+            let result = try solveMilpBranchAndBoundWithOptions(
+                problem: makeFfiProblem(problem),
+                options: FfiBranchAndBoundOptions(
+                    maxNodes: options.maxNodes,
+                    integerTolerance: options.integerTolerance
+                )
+            )
+            return FFIMILPSolveReport(
+                solution: makeFFISolution(result.solution),
+                nodesExplored: result.nodesExplored,
+                bestBound: result.bestBound,
+                absoluteGap: result.absoluteGap,
+                relativeGap: result.relativeGap
+            )
+        } catch { throw Self.translate(error) }
     }
 
     private static func makeFfiProblem(_ problem: FFIProblem) -> FfiProblem {
