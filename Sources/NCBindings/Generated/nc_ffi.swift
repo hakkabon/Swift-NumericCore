@@ -1146,14 +1146,31 @@ public struct FfiProblem {
     public var constraints: FfiCsrMatrixF64
     public var rowBounds: [FfiBound]
     public var varBounds: [FfiBound]
+    /**
+     * Mirrors `nc_optimize::Problem::is_integer`. Length must match
+     * `objective`/`var_bounds`. Ignored entirely by
+     * `solve_lp_simplex`/`solve_lp_interior_point` (an LP relaxation
+     * is well-defined regardless of its contents); only
+     * `solve_milp_branch_and_bound` reads it.
+     */
+    public var isInteger: [Bool]
 
     /// Default memberwise initializers are never public by default, so we
     /// declare one manually.
-    public init(objective: [Double], constraints: FfiCsrMatrixF64, rowBounds: [FfiBound], varBounds: [FfiBound]) {
+    public init(objective: [Double], constraints: FfiCsrMatrixF64, rowBounds: [FfiBound], varBounds: [FfiBound],
+                /* 
+                    * Mirrors `nc_optimize::Problem::is_integer`. Length must match
+                    * `objective`/`var_bounds`. Ignored entirely by
+                    * `solve_lp_simplex`/`solve_lp_interior_point` (an LP relaxation
+                    * is well-defined regardless of its contents); only
+                    * `solve_milp_branch_and_bound` reads it.
+                    */ isInteger: [Bool])
+    {
         self.objective = objective
         self.constraints = constraints
         self.rowBounds = rowBounds
         self.varBounds = varBounds
+        self.isInteger = isInteger
     }
 }
 
@@ -1171,6 +1188,9 @@ extension FfiProblem: Equatable, Hashable {
         if lhs.varBounds != rhs.varBounds {
             return false
         }
+        if lhs.isInteger != rhs.isInteger {
+            return false
+        }
         return true
     }
 
@@ -1179,6 +1199,7 @@ extension FfiProblem: Equatable, Hashable {
         hasher.combine(constraints)
         hasher.combine(rowBounds)
         hasher.combine(varBounds)
+        hasher.combine(isInteger)
     }
 }
 
@@ -1189,7 +1210,8 @@ public struct FfiConverterTypeFfiProblem: FfiConverterRustBuffer {
                 objective: FfiConverterSequenceDouble.read(from: &buf),
                 constraints: FfiConverterTypeFfiCsrMatrixF64.read(from: &buf),
                 rowBounds: FfiConverterSequenceTypeFfiBound.read(from: &buf),
-                varBounds: FfiConverterSequenceTypeFfiBound.read(from: &buf)
+                varBounds: FfiConverterSequenceTypeFfiBound.read(from: &buf),
+                isInteger: FfiConverterSequenceBool.read(from: &buf)
             )
     }
 
@@ -1198,6 +1220,7 @@ public struct FfiConverterTypeFfiProblem: FfiConverterRustBuffer {
         FfiConverterTypeFfiCsrMatrixF64.write(value.constraints, into: &buf)
         FfiConverterSequenceTypeFfiBound.write(value.rowBounds, into: &buf)
         FfiConverterSequenceTypeFfiBound.write(value.varBounds, into: &buf)
+        FfiConverterSequenceBool.write(value.isInteger, into: &buf)
     }
 }
 
@@ -1574,6 +1597,28 @@ private struct FfiConverterSequenceDouble: FfiConverterRustBuffer {
     }
 }
 
+private struct FfiConverterSequenceBool: FfiConverterRustBuffer {
+    typealias SwiftType = [Bool]
+
+    static func write(_ value: [Bool], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterBool.write(item, into: &buf)
+        }
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [Bool] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [Bool]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            try seq.append(FfiConverterBool.read(from: &buf))
+        }
+        return seq
+    }
+}
+
 private struct FfiConverterSequenceTypeFfiBound: FfiConverterRustBuffer {
     typealias SwiftType = [FfiBound]
 
@@ -1718,6 +1763,25 @@ public func solveLpSimplex(problem: FfiProblem) throws -> FfiSolution {
 }
 
 /**
+ * Solves `problem` via `nc_optimize::BranchAndBoundSolver` (default
+ * configuration — depth-first, `RevisedSimplexSolver` as the LP
+ * relaxation solver). `problem.is_integer` selects which variables are
+ * integer-restricted; an empty list is treated as "all continuous"
+ * (see `to_domain_problem`), which for this function specifically
+ * means it will solve a plain LP with no branching at all — not
+ * useful on its own, but harmless, and avoids a separate "did you mean
+ * to call solve_lp_simplex instead?" error for what is otherwise a
+ * valid (if pointless) call.
+ */
+public func solveMilpBranchAndBound(problem: FfiProblem) throws -> FfiSolution {
+    return try FfiConverterTypeFfiSolution.lift(rustCallWithError(FfiConverterTypeFfiError.lift) {
+        uniffi_nc_ffi_fn_func_solve_milp_branch_and_bound(
+            FfiConverterTypeFfiProblem.lower(problem), $0
+        )
+    })
+}
+
+/**
  * Solve `min Σᵢ wᵢ(yᵢ − xᵢᵀβ)² + λ‖Pβ‖²` using matrix-free CGLS over
  * CSR design and penalty operators. `penalty` must have one column per
  * design coefficient and `penalty_weight` must be finite and positive.
@@ -1819,6 +1883,9 @@ private var initializationResult: InitializationResult {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_nc_ffi_checksum_func_solve_lp_simplex() != 16137 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_nc_ffi_checksum_func_solve_milp_branch_and_bound() != 48191 {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_nc_ffi_checksum_func_solve_sparse_penalized_weighted_least_squares() != 25980 {
