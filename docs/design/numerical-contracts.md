@@ -41,9 +41,16 @@ that can violate integrality) and `.branchAndBound` (a verified integer result).
 Rust provides the matching `Solution::diagnostics` and
 `Solver::solve_with_diagnostics` APIs without changing the existing FFI ABI.
 
+`NumericCoreOptimization` reports nonlinear termination separately from
+thrown structural errors. Gradient, step, and objective convergence are
+distinct from iteration, line-search, and damping limits. Callback values,
+gradient dimensions, residual counts, and Jacobian dimensions are validated
+before solver arithmetic consumes them. L-BFGS reports the final gradient;
+nonlinear least squares reports residuals, half-squared-residual cost, and the
+infinity norm of `Jᵀr`.
+
 ## Compatibility
 
 The richer APIs are additive. Existing `nil`-returning dense solve methods and
 the existing FFI records retain their behavior. This lets downstream projects
 adopt diagnostics deliberately instead of requiring a flag-day migration.
-

@@ -29,7 +29,8 @@ dependencies: [
 
 then depend on whichever product(s) you need — `NumericCore` is the
 core `Matrix`/`Vector`/`Dispatcher` API; `NumericCoreAccelerate`,
-`NumericCoreSparse`, `NumericCoreGraph`, `NumericCoreAMPL` are additive.
+`NumericCoreSparse`, `NumericCoreGraph`, `NumericCoreAMPL`, and
+`NumericCoreOptimization` are additive.
 As long as the maintainer has committed working FFI artifacts (see
 above), this "just works" for a consumer — no separate Rust toolchain
 or build step on their end.
@@ -49,6 +50,7 @@ Swift-NumericCore/
 │   ├── NumericCoreMPS/        # Metal Performance Shaders backend (scaffold)
 │   ├── NumericCoreSparse/     # SparseMatrix<T> (CSR), SpMV
 │   ├── NumericCoreGraph/      # bridge to NetworkGraph/Layout — adjacency matrices
+│   ├── NumericCoreOptimization/ # L-BFGS and nonlinear least squares
 │   └── NumericCoreAMPL/       # AMPL-style modeling language — lexer/parser/presolve/solve, full loop closed
 ├── Tests/
 └── docs/
@@ -91,6 +93,10 @@ Swift-NumericCore/
   `Float`.
 - `NumericCoreGraph` — adjacency-matrix construction from an edge list.
 - `NumericCoreMPS` — empty scaffold (`capabilities = []`).
+- `NumericCoreOptimization` — closure-based smooth unconstrained L-BFGS with
+  Armijo backtracking, and analytic-Jacobian nonlinear least squares using
+  Levenberg-Marquardt damping. Both expose configuration, convergence reasons,
+  iteration/evaluation counts, and strict derivative-shape validation.
 - `NumericCoreAMPL` — `Model` (variables/params/constraints/objective,
   including the `integer` qualifier), a hand-rolled lexer/parser for
   the grammar in `docs/design/ampl-grammar.md`
