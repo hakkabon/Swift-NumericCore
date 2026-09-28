@@ -50,3 +50,16 @@ factorization needs it.
   no current consumer needs CSC at all. Building all three now is
   exactly the kind of speculative generality this project's design
   principles try to avoid.
+
+## Update — Phase 4 sparse assembly and iterative depth
+
+`SparseMatrix` now accepts unordered coordinate entries and canonicalizes them
+to CSR by sorting, duplicate coalescing, and zero removal. It also materializes
+CSR transposes and validates complete row-pointer structure at construction.
+CSC remains deferred until a sparse direct factorization actually requires it.
+
+Rust-NumericCore adds warm-started Jacobi CG, BiCGSTAB, and restarted GMRES,
+with distinct convergence, iteration-limit, and breakdown outcomes, plus
+matching UniFFI exports. Those iterative calls become Swift-facing after the
+next synchronized XCFramework/generated-bindings release; coordinate assembly
+and transpose are already available in the Swift API without that release.

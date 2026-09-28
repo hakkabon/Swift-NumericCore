@@ -31,6 +31,36 @@ final class SparseMatrixTests: XCTestCase {
         let m = try sample()
         XCTAssertThrowsError(try m.multiplying(Vector([1, 1])))
     }
+
+    func testCoordinateAssemblyCanonicalizesDuplicatesAndZeros() throws {
+        let matrix = try SparseMatrix<Double>(rows: 2, cols: 3, entries: [
+            SparseEntry(row: 1, column: 2, value: 4),
+            SparseEntry(row: 0, column: 1, value: 3),
+            SparseEntry(row: 1, column: 0, value: 2),
+            SparseEntry(row: 0, column: 1, value: -3),
+            SparseEntry(row: 1, column: 2, value: 1),
+        ])
+        XCTAssertEqual(matrix.csrRowPointers, [0, 0, 2])
+        XCTAssertEqual(matrix.csrColumnIndices, [0, 2])
+        XCTAssertEqual(matrix.csrValues, [2, 5])
+    }
+
+    func testTransposeRoundTripAndProduct() throws {
+        let matrix = try sample()
+        let transposed = try matrix.transposed()
+        XCTAssertEqual(try transposed.multiplying(Vector([4, 5])), Vector([4, 15, 8]))
+        let roundTrip = try transposed.transposed()
+        XCTAssertEqual(roundTrip.csrRowPointers, matrix.csrRowPointers)
+        XCTAssertEqual(roundTrip.csrColumnIndices, matrix.csrColumnIndices)
+        XCTAssertEqual(roundTrip.csrValues, matrix.csrValues)
+    }
+
+    func testRejectsMalformedCSRStructureAtConstruction() {
+        XCTAssertThrowsError(try SparseMatrix<Double>(
+            rows: 2, cols: 1, rowPointers: [0, 2, 1],
+            columnIndices: [0], values: [1]
+        ))
+    }
 }
 
 final class GraphBridgeTests: XCTestCase {
