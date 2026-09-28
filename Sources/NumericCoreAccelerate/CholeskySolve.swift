@@ -23,6 +23,36 @@ import NumericCore
 /// regardless of `X`). If that guarantee doesn't hold for a given
 /// caller, use `QRSolve.swift`'s general `solve(_:_:)` instead.
 extension AccelerateBackend {
+    /// Cholesky solve with explicit termination and backward residual
+    /// diagnostics. As with `solveSPD`, symmetry remains a caller precondition.
+    public static func solveSPDReport(
+        _ a: Matrix<Double>,
+        _ b: Vector<Double>,
+        tolerance: NumericalTolerance = .scaleAware
+    ) throws -> LinearSolveReport {
+        guard tolerance.isValid else {
+            throw LinearAlgebraError.invalidTolerance(
+                "absolute and relative tolerances must be finite and non-negative"
+            )
+        }
+        guard let solution = try solveSPD(a, b) else {
+            return LinearSolveReport(solution: nil, termination: .notPositiveDefinite)
+        }
+        let diagnostics = residualDiagnostics(matrix: a, solution: solution, response: b)
+        let threshold = tolerance.threshold(
+            scale: 1, dimension: max(a.rows, a.cols)
+        )
+        let accepted = diagnostics.norm.isFinite && diagnostics.relative.isFinite
+            && diagnostics.relative <= threshold
+        return LinearSolveReport(
+            solution: accepted ? solution : nil,
+            termination: accepted ? .converged : .residualCheckFailed,
+            residualNorm: diagnostics.norm,
+            relativeResidual: diagnostics.relative,
+            decisionThreshold: threshold
+        )
+    }
+
     /// Solve the SPD system `A x = b` via Cholesky factorization.
     ///
     /// Returns `nil` if `A` is not positive definite — LAPACK's

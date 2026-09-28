@@ -17,6 +17,35 @@ import NumericCore
 /// applies here (see `QRSolve.swift`'s header comment) — build
 /// `LUSolveTests.swift` before trusting this.
 extension AccelerateBackend {
+    /// LU solve with explicit termination and backward residual diagnostics.
+    public static func solveLUReport(
+        _ a: Matrix<Double>,
+        _ b: Vector<Double>,
+        tolerance: NumericalTolerance = .scaleAware
+    ) throws -> LinearSolveReport {
+        guard tolerance.isValid else {
+            throw LinearAlgebraError.invalidTolerance(
+                "absolute and relative tolerances must be finite and non-negative"
+            )
+        }
+        guard let solution = try solveLU(a, b) else {
+            return LinearSolveReport(solution: nil, termination: .singular)
+        }
+        let diagnostics = residualDiagnostics(matrix: a, solution: solution, response: b)
+        let threshold = tolerance.threshold(
+            scale: 1, dimension: max(a.rows, a.cols)
+        )
+        let accepted = diagnostics.norm.isFinite && diagnostics.relative.isFinite
+            && diagnostics.relative <= threshold
+        return LinearSolveReport(
+            solution: accepted ? solution : nil,
+            termination: accepted ? .converged : .residualCheckFailed,
+            residualNorm: diagnostics.norm,
+            relativeResidual: diagnostics.relative,
+            decisionThreshold: threshold
+        )
+    }
+
     /// Solve the general square system `A x = b` via LU decomposition
     /// with partial pivoting.
     ///

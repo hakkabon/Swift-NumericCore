@@ -10,6 +10,7 @@ import NumericCore
 /// static methods, not through `Dispatcher`.
 public enum LinearAlgebraError: Error {
     case dimensionMismatch(String)
+    case invalidTolerance(String)
     case lapackError(routine: String, info: Int32)
 }
 
@@ -63,6 +64,20 @@ extension AccelerateBackend {
         return try leastSquares(design: a, response: b, rankTolerance: pivotTolerance)
     }
 
+    /// Structured, scale-aware counterpart of `solve(_:_:)`.
+    public static func solveReport(
+        _ a: Matrix<Double>,
+        _ b: Vector<Double>,
+        tolerance: NumericalTolerance = .scaleAware
+    ) throws -> LinearSolveReport {
+        guard a.rows == a.cols else {
+            throw LinearAlgebraError.dimensionMismatch(
+                "solveReport: matrix must be square, got \(a.shapeDescription)"
+            )
+        }
+        return try leastSquaresReport(design: a, response: b, tolerance: tolerance)
+    }
+
     /// Solve the (possibly overdetermined) least-squares problem
     /// `min ||A x - b||₂` via thin QR decomposition.
     ///
@@ -74,6 +89,38 @@ extension AccelerateBackend {
         response b: Vector<Double>,
         rankTolerance: Double = 1e-12
     ) throws -> Vector<Double>? {
+        try leastSquaresReportImpl(
+            design: a, response: b, tolerance: .absolute(rankTolerance),
+            verifyResidual: false
+        ).solution
+    }
+
+    /// QR least squares with a scale-aware rank decision and explicit
+    /// residual diagnostics. The residual check uses a backward-error-style
+    /// normalization and rejects only non-finite or grossly inconsistent
+    /// LAPACK output; a nonzero least-squares residual is expected.
+    public static func leastSquaresReport(
+        design a: Matrix<Double>,
+        response b: Vector<Double>,
+        tolerance: NumericalTolerance = .scaleAware
+    ) throws -> LinearSolveReport {
+        try leastSquaresReportImpl(
+            design: a, response: b, tolerance: tolerance,
+            verifyResidual: true
+        )
+    }
+
+    private static func leastSquaresReportImpl(
+        design a: Matrix<Double>,
+        response b: Vector<Double>,
+        tolerance: NumericalTolerance,
+        verifyResidual: Bool
+    ) throws -> LinearSolveReport {
+        guard tolerance.isValid else {
+            throw LinearAlgebraError.invalidTolerance(
+                "absolute and relative tolerances must be finite and non-negative"
+            )
+        }
         guard a.rows >= a.cols else {
             throw LinearAlgebraError.dimensionMismatch(
                 "leastSquares: design matrix must have rows >= cols, got \(a.shapeDescription)"
@@ -113,10 +160,16 @@ extension AccelerateBackend {
         // --- Rank check ------------------------------------------------
         // R's diagonal lives at aData[i + i*m] (column-major, ADR 0001).
         // Any near-zero entry means A doesn't have full column rank.
-        for i in 0..<Int(n) {
-            if abs(aData[i + i * Int(m)]) <= rankTolerance {
-                return nil
-            }
+        let diagonal = (0..<Int(n)).map { abs(aData[$0 + $0 * Int(m)]) }
+        let threshold = tolerance.threshold(
+            scale: diagonal.max() ?? 0, dimension: max(Int(m), Int(n))
+        )
+        let estimatedRank = diagonal.filter { $0 > threshold }.count
+        guard estimatedRank == Int(n) else {
+            return LinearSolveReport(
+                solution: nil, termination: .rankDeficient,
+                estimatedRank: estimatedRank, decisionThreshold: threshold
+            )
         }
 
         // --- Step 2: b <- Qᵀb (dormqr) --------------------------------
@@ -159,6 +212,20 @@ extension AccelerateBackend {
             throw LinearAlgebraError.lapackError(routine: "dtrtrs", info: info)
         }
 
-        return Vector(rhs)
+        let solution = Vector(rhs)
+        let diagnostics = residualDiagnostics(matrix: a, solution: solution, response: b)
+        let residualIsValid = diagnostics.norm.isFinite && diagnostics.relative.isFinite
+        if verifyResidual && !residualIsValid {
+            return LinearSolveReport(
+                solution: nil, termination: .residualCheckFailed,
+                residualNorm: diagnostics.norm, relativeResidual: diagnostics.relative,
+                estimatedRank: estimatedRank, decisionThreshold: threshold
+            )
+        }
+        return LinearSolveReport(
+            solution: solution, termination: .converged,
+            residualNorm: diagnostics.norm, relativeResidual: diagnostics.relative,
+            estimatedRank: estimatedRank, decisionThreshold: threshold
+        )
     }
 }

@@ -28,6 +28,7 @@ final class SolveTests: XCTestCase {
         XCTAssertEqual(solution.objectiveValue, 11.0, accuracy: 1e-6)
         XCTAssertEqual(solution.variableValues[0], 3.0, accuracy: 1e-6) // x
         XCTAssertEqual(solution.variableValues[1], 1.0, accuracy: 1e-6) // y
+        XCTAssertTrue(solution.diagnostics.isVerified(tolerance: 1e-8))
     }
 
     func testSolvesTheGrammarDocExampleViaInteriorPoint() throws {
@@ -117,6 +118,7 @@ final class SolveTests: XCTestCase {
         XCTAssertEqual(solution.variableValues[0], 4.0, accuracy: 1e-6) // x
         XCTAssertEqual(solution.variableValues[1], 0.0, accuracy: 1e-6) // y
         XCTAssertEqual(solution.objectiveValue, 20.0, accuracy: 1e-6)
+        XCTAssertTrue(solution.diagnostics.isVerified(tolerance: 1e-8))
     }
 
     func testSimplexIgnoresIntegralityUnlikeBranchAndBoundOnTheSameModel() throws {
@@ -142,6 +144,8 @@ final class SolveTests: XCTestCase {
         XCTAssertEqual(solution.variableValues[0], 3.0, accuracy: 1e-6)
         XCTAssertEqual(solution.variableValues[1], 1.5, accuracy: 1e-6)
         XCTAssertEqual(solution.objectiveValue, 21.0, accuracy: 1e-6)
+        XCTAssertEqual(solution.diagnostics.maximumIntegralityViolation, 0.5, accuracy: 1e-9)
+        XCTAssertFalse(solution.diagnostics.isVerified(tolerance: 1e-8))
     }
 
     func testBranchAndBoundDetectsIntegralityInfeasibility() throws {

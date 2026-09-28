@@ -43,6 +43,26 @@ public struct LPSolution {
     /// here, not the negated internal minimize-form value.
     public let objectiveValue: Double
     public let status: LPSolveStatus
+    /// Independently recomputed from the compiled problem and returned
+    /// variables, rather than copied from the solver's internal state.
+    public let diagnostics: OptimizationSolutionDiagnostics
+}
+
+public struct OptimizationSolutionDiagnostics: Sendable, Hashable {
+    public let finite: Bool
+    public let maximumRowViolation: Double
+    public let maximumVariableBoundViolation: Double
+    public let maximumIntegralityViolation: Double
+    public let recomputedObjectiveValue: Double
+    public let objectiveError: Double
+
+    public func isVerified(tolerance: Double) -> Bool {
+        tolerance.isFinite && tolerance >= 0 && finite
+            && maximumRowViolation <= tolerance
+            && maximumVariableBoundViolation <= tolerance
+            && maximumIntegralityViolation <= tolerance
+            && objectiveError <= tolerance
+    }
 }
 
 extension CompiledProblem {
@@ -84,10 +104,85 @@ extension CompiledProblem {
         case .iterationLimit: status = .iterationLimit
         }
 
+        let correctedObjective = result.objectiveValue * objectiveSign
+        let values = result.variableValues
         return LPSolution(
-            variableValues: result.variableValues,
-            objectiveValue: result.objectiveValue * objectiveSign,
-            status: status
+            variableValues: values,
+            objectiveValue: correctedObjective,
+            status: status,
+            diagnostics: solutionDiagnostics(
+                values: values, reportedObjective: correctedObjective
+            )
         )
+    }
+
+    private func solutionDiagnostics(
+        values: [Double], reportedObjective: Double
+    ) -> OptimizationSolutionDiagnostics {
+        guard values.count == objective.count,
+              variableLowerBounds.count == objective.count,
+              variableUpperBounds.count == objective.count,
+              variableIsInteger.count == objective.count,
+              rowBounds.count == constraints.rows,
+              constraints.cols == objective.count
+        else {
+            return OptimizationSolutionDiagnostics(
+                finite: false,
+                maximumRowViolation: .infinity,
+                maximumVariableBoundViolation: .infinity,
+                maximumIntegralityViolation: .infinity,
+                recomputedObjectiveValue: .nan,
+                objectiveError: .infinity
+            )
+        }
+
+        var rowValues = [Double](repeating: 0, count: constraints.rows)
+        let rowPointers = constraints.csrRowPointers
+        let columns = constraints.csrColumnIndices
+        let coefficients = constraints.csrValues
+        for row in 0..<constraints.rows {
+            for index in rowPointers[row]..<rowPointers[row + 1] {
+                rowValues[row] += coefficients[index] * values[columns[index]]
+            }
+        }
+
+        let rowViolation = zip(rowValues, rowBounds).reduce(0.0) {
+            max($0, Self.boundViolation(value: $1.0, lower: $1.1.lower, upper: $1.1.upper))
+        }
+        let variableViolation = values.indices.reduce(0.0) { partial, index in
+            max(partial, Self.boundViolation(
+                value: values[index], lower: variableLowerBounds[index],
+                upper: variableUpperBounds[index]
+            ))
+        }
+        let integralityViolation = values.indices.reduce(0.0) { partial, index in
+            guard variableIsInteger[index] else { return partial }
+            return max(partial, abs(values[index] - values[index].rounded()))
+        }
+        // The compiled objective is always minimization form. Convert it back
+        // to the source model's sense before comparing with the public result.
+        let recomputedObjective = zip(objective.storage, values)
+            .reduce(0.0) { $0 + $1.0 * $1.1 } * objectiveSign
+        let objectiveError = abs(reportedObjective - recomputedObjective)
+        let finite = values.allSatisfy(\.isFinite) && rowValues.allSatisfy(\.isFinite)
+            && reportedObjective.isFinite && recomputedObjective.isFinite
+            && rowViolation.isFinite && variableViolation.isFinite
+            && integralityViolation.isFinite && objectiveError.isFinite
+
+        return OptimizationSolutionDiagnostics(
+            finite: finite,
+            maximumRowViolation: rowViolation,
+            maximumVariableBoundViolation: variableViolation,
+            maximumIntegralityViolation: integralityViolation,
+            recomputedObjectiveValue: recomputedObjective,
+            objectiveError: objectiveError
+        )
+    }
+
+    private static func boundViolation(
+        value: Double, lower: Double?, upper: Double?
+    ) -> Double {
+        max(lower.map { max($0 - value, 0) } ?? 0,
+            upper.map { max(value - $0, 0) } ?? 0)
     }
 }
