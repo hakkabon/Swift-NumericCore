@@ -50,6 +50,19 @@ objective it optimized. This is numerical infrastructure only; selection of
 the penalty, basis, effective degrees of freedom, and uncertainty remains the
 statistical package's responsibility.
 
+`NumericCoreSparse.SparseIRLSSolver` is the corresponding end-to-end sparse
+outer iteration for canonical binomial-logit and Poisson-log models. It keeps
+the design and penalty in CSR, constructs working responses and weights, and
+requires every inner CGLS solve to converge. It reports deviance and the last
+inner result, while deliberately leaving basis construction, smoothing
+selection, degrees of freedom, and inference to DataLens.
+
+Rust-NumericCore's configurable Phase 2 FFI adds Jacobi preconditioning and
+coefficient warm starts for this repeated-solve workload. Those calls become
+available to the Swift facade only when the next Rust XCFramework and its
+generated Swift bindings are released and synchronized together; the current
+v0.6.0 binary remains the compatible baseline in the meantime.
+
 ## Suggested `LinAlg.swift` body
 
 ```swift

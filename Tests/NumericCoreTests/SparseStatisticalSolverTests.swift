@@ -101,6 +101,46 @@ final class SparseStatisticalSolverTests: XCTestCase {
             tolerance: 1e-8
         ))
     }
+
+    func testSparsePenalizedBinomialIRLSConvergesOnARealisticWorkflow() throws {
+        // Intercept plus one covariate, with a small ridge penalty on slope.
+        let design = try SparseMatrix<Double>(
+            rows: 8, cols: 2,
+            rowPointers: [0, 2, 4, 6, 8, 10, 12, 14, 16],
+            columnIndices: Array(repeating: [0, 1], count: 8).flatMap { $0 },
+            values: [-3, -2, -1, -0.25, 0.25, 1, 2, 3].flatMap { [1, $0] }
+        )
+        let penalty = try SparseMatrix<Double>(
+            rows: 1, cols: 2, rowPointers: [0, 1], columnIndices: [1], values: [1]
+        )
+        let result = try SparseIRLSSolver.fit(
+            design: design,
+            response: [0, 0, 0, 0, 1, 1, 1, 1],
+            penalty: penalty,
+            penaltyWeight: 0.1,
+            family: .binomialLogit,
+            maxIterations: 30,
+            coefficientTolerance: 1e-9,
+            leastSquaresTolerance: 1e-12
+        )
+
+        XCTAssertTrue(result.converged)
+        XCTAssertLessThan(result.iterations, 30)
+        XCTAssertEqual(result.coefficients[0], 0, accuracy: 1e-8)
+        XCTAssertGreaterThan(result.coefficients[1], 0)
+        XCTAssertTrue(result.deviance.isFinite)
+        XCTAssertTrue(result.lastLeastSquaresResult.converged)
+    }
+
+    func testSparseIRLSValidatesFamilyDomain() throws {
+        let identity = try SparseMatrix<Double>(
+            rows: 1, cols: 1, rowPointers: [0, 1], columnIndices: [0], values: [1]
+        )
+        XCTAssertThrowsError(try SparseIRLSSolver.fit(
+            design: identity, response: [-1], penalty: identity,
+            penaltyWeight: 1, family: .poissonLog
+        ))
+    }
 }
 
 private func assertEqual(
