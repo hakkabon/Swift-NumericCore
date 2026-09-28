@@ -106,3 +106,24 @@ via `.simplex` (LP relaxation's fractional optimum `(3, 1.5)`,
 objective `21`), deliberately checking both rather than only the
 "obviously correct" solver choice, so the contrast itself is verified
 rather than assumed.
+
+## Update (Phase 3: complete LP/MILP integration)
+
+`CompiledProblem.solve()` now selects branch-and-bound automatically when the
+model contains integer variables and revised simplex otherwise. Explicit
+`.simplex` and `.interiorPoint` remain available for deliberately solving an LP
+relaxation. Solutions retain source variable names through
+`variableValuesByName`, and `LPSolution.isVerified(tolerance:)` requires both
+an optimal status and independently verified feasibility, integrality, and
+objective reconstruction.
+
+Presolve now rejects duplicate variable names, invalid direct-builder variable
+references, non-finite values, and contradictory variable bounds. Objective
+constants are retained outside the numerical coefficient vector and restored
+in both the public objective and its independent diagnostic reconstruction.
+
+Rust-NumericCore's corresponding Phase 3 boundary adds configurable LP/MILP
+solves and branch-and-bound search reports (nodes, best bound, and gaps). Those
+new calls require the next synchronized XCFramework/generated-bindings release;
+the safe selection and named/verified Swift result improvements build against
+the current v0.7.0 binary.

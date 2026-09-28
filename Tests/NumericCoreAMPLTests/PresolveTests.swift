@@ -117,4 +117,29 @@ final class PresolveTests: XCTestCase {
 
         XCTAssertEqual(problem.variableIsInteger, [true, false])
     }
+
+    func testCompileRejectsDuplicateVariableNames() throws {
+        var model = Model()
+        let first = model.addVariable("x")
+        model.addVariable("x")
+        var objective = LinearExpression()
+        objective.add(coefficient: 1, variableIndex: first)
+        model.setObjective(name: "cost", sense: .minimize, expression: objective)
+
+        XCTAssertThrowsError(try model.compile()) { error in
+            XCTAssertEqual(error as? PresolveError, .duplicateVariableName("x"))
+        }
+    }
+
+    func testCompileRejectsInvalidDirectBuilderReference() throws {
+        var model = Model()
+        model.addVariable("x")
+        var objective = LinearExpression()
+        objective.add(coefficient: 1, variableIndex: 5)
+        model.setObjective(name: "cost", sense: .minimize, expression: objective)
+
+        XCTAssertThrowsError(try model.compile()) { error in
+            XCTAssertEqual(error as? PresolveError, .invalidVariableReference(5))
+        }
+    }
 }

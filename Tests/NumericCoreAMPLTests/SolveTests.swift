@@ -42,12 +42,15 @@ final class SolveTests: XCTestCase {
         XCTAssertEqual(solution.variableValues[1], 1.0, accuracy: 1e-3)
     }
 
-    func testDefaultSolverIsSimplex() throws {
+    func testAutomaticSolverUsesSimplexForContinuousModel() throws {
         let model = try AMPLParser.parse(Self.exampleSource)
         let problem = try model.compile()
         let solution = try problem.solve() // no `using:` argument
         XCTAssertEqual(solution.status, .optimal)
         XCTAssertEqual(solution.objectiveValue, 11.0, accuracy: 1e-6)
+        XCTAssertEqual(try XCTUnwrap(solution.variableValuesByName["x"]), 3.0, accuracy: 1e-6)
+        XCTAssertEqual(try XCTUnwrap(solution.variableValuesByName["y"]), 1.0, accuracy: 1e-6)
+        XCTAssertTrue(solution.isVerified(tolerance: 1e-8))
     }
 
     func testMinimizeObjectiveNeedsNoSignCorrection() throws {
@@ -65,6 +68,19 @@ final class SolveTests: XCTestCase {
         XCTAssertEqual(solution.variableValues[0], 1.0, accuracy: 1e-6)
     }
 
+    func testObjectiveConstantIsPreservedInPublicResultAndDiagnostics() throws {
+        let source = """
+        var x >= 0;
+        maximize value: 3 x + 7;
+        subject to cap: x <= 2;
+        """
+        let solution = try AMPLParser.parse(source).compile().solve()
+        XCTAssertEqual(solution.status, .optimal)
+        XCTAssertEqual(solution.objectiveValue, 13, accuracy: 1e-9)
+        XCTAssertEqual(solution.diagnostics.recomputedObjectiveValue, 13, accuracy: 1e-9)
+        XCTAssertTrue(solution.isVerified(tolerance: 1e-8))
+    }
+
     func testInfeasibleModelIsDetected() throws {
         let source = """
         var x >= 0;
@@ -76,6 +92,7 @@ final class SolveTests: XCTestCase {
         let problem = try model.compile()
         let solution = try problem.solve(using: .simplex)
         XCTAssertEqual(solution.status, .infeasible)
+        XCTAssertFalse(solution.isVerified(tolerance: 1e-8))
     }
 
     func testInteriorPointRejectsEqualityConstraint() throws {
@@ -119,6 +136,23 @@ final class SolveTests: XCTestCase {
         XCTAssertEqual(solution.variableValues[1], 0.0, accuracy: 1e-6) // y
         XCTAssertEqual(solution.objectiveValue, 20.0, accuracy: 1e-6)
         XCTAssertTrue(solution.diagnostics.isVerified(tolerance: 1e-8))
+    }
+
+    func testAutomaticSolverHonorsIntegrality() throws {
+        let source = """
+        var x >= 0 integer;
+        var y >= 0 integer;
+        maximize profit: 5 x + 4 y;
+        subject to c1: 6 x + 4 y <= 24;
+        subject to c2: x + 2 y <= 6;
+        """
+        let solution = try AMPLParser.parse(source).compile().solve()
+
+        XCTAssertEqual(solution.status, .optimal)
+        XCTAssertEqual(try XCTUnwrap(solution.variableValuesByName["x"]), 4.0, accuracy: 1e-6)
+        XCTAssertEqual(try XCTUnwrap(solution.variableValuesByName["y"]), 0.0, accuracy: 1e-6)
+        XCTAssertEqual(solution.objectiveValue, 20.0, accuracy: 1e-6)
+        XCTAssertTrue(solution.isVerified(tolerance: 1e-8))
     }
 
     func testSimplexIgnoresIntegralityUnlikeBranchAndBoundOnTheSameModel() throws {

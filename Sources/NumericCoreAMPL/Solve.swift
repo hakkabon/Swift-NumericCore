@@ -9,6 +9,9 @@ import NumericCoreSparse
 /// existing callers rather than renamed to `SolverKind`), this now
 /// covers MILP too via `.branchAndBound`.
 public enum LPSolverKind {
+    /// Uses branch-and-bound when any variable is integer-restricted;
+    /// otherwise uses revised simplex. This is the safe default.
+    case automatic
     /// `nc-optimize::RevisedSimplexSolver`. Handles equality constraints
     /// and fixed variables; rigorous (not heuristic) infeasibility and
     /// unboundedness detection. Prefer this unless the problem is large
@@ -37,6 +40,8 @@ public enum LPSolveStatus: Equatable {
 
 public struct LPSolution {
     public let variableValues: [Double]
+    /// Values keyed by the source model's variable names.
+    public let variableValuesByName: [String: Double]
     /// Already corrected for the model's original objective sense —
     /// see `CompiledProblem.objectiveSign`'s doc comment. A `maximize`
     /// model's solution reports the actual (positive-sense) maximum
@@ -46,6 +51,12 @@ public struct LPSolution {
     /// Independently recomputed from the compiled problem and returned
     /// variables, rather than copied from the solver's internal state.
     public let diagnostics: OptimizationSolutionDiagnostics
+
+    /// True only for an optimal status whose independently recomputed
+    /// feasibility, integrality, and objective checks all pass.
+    public func isVerified(tolerance: Double) -> Bool {
+        status == .optimal && diagnostics.isVerified(tolerance: tolerance)
+    }
 }
 
 public struct OptimizationSolutionDiagnostics: Sendable, Hashable {
@@ -73,7 +84,7 @@ extension CompiledProblem {
     /// a complete path from AMPL source text to an actual solved LP or
     /// MILP (the latter via `.branchAndBound`, once a model declares an
     /// `integer` variable).
-    public func solve(using solver: LPSolverKind = .simplex) throws -> LPSolution {
+    public func solve(using solver: LPSolverKind = .automatic) throws -> LPSolution {
         let ffiProblem = FFIProblem(
             objective: objective.storage,
             constraintRows: constraints.rows,
@@ -88,6 +99,10 @@ extension CompiledProblem {
 
         let result: FFISolution
         switch solver {
+        case .automatic:
+            result = try variableIsInteger.contains(true)
+                ? FFIKernels.solveMILP(ffiProblem)
+                : FFIKernels.solveLPSimplex(ffiProblem)
         case .simplex:
             result = try FFIKernels.solveLPSimplex(ffiProblem)
         case .interiorPoint:
@@ -104,10 +119,13 @@ extension CompiledProblem {
         case .iterationLimit: status = .iterationLimit
         }
 
-        let correctedObjective = result.objectiveValue * objectiveSign
+        let correctedObjective = result.objectiveValue * objectiveSign + objectiveConstant
         let values = result.variableValues
         return LPSolution(
             variableValues: values,
+            variableValuesByName: Dictionary(
+                uniqueKeysWithValues: zip(variableNames, values)
+            ),
             objectiveValue: correctedObjective,
             status: status,
             diagnostics: solutionDiagnostics(
@@ -162,7 +180,7 @@ extension CompiledProblem {
         // The compiled objective is always minimization form. Convert it back
         // to the source model's sense before comparing with the public result.
         let recomputedObjective = zip(objective.storage, values)
-            .reduce(0.0) { $0 + $1.0 * $1.1 } * objectiveSign
+            .reduce(0.0) { $0 + $1.0 * $1.1 } * objectiveSign + objectiveConstant
         let objectiveError = abs(reportedObjective - recomputedObjective)
         let finite = values.allSatisfy(\.isFinite) && rowValues.allSatisfy(\.isFinite)
             && reportedObjective.isFinite && recomputedObjective.isFinite

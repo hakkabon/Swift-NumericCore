@@ -21,8 +21,7 @@ import NumericCoreSparse
 /// 2. **Presolve / symbolic-to-numeric translation** — `Model.compile()`
 ///    in `Presolve.swift`, turning a `Model` into a `CompiledProblem`.
 /// 3. **Solver interface** — `nc-optimize::Solver` (Rust side), not
-///    duplicated here. `NumericCoreAMPL` calls through to it via
-///    `NCBindings` once that call-through is wired (not yet).
+///    duplicated here. `NumericCoreAMPL` calls through via `NCBindings`.
 /// 4. **Solvers themselves** — live in `nc-optimize` (Rust), not here.
 ///
 /// `Model` is the seam between (1) and (2): the parser only ever calls
@@ -150,6 +149,8 @@ public struct Objective {
 /// (Rust) so the eventual FFI call is closer to a direct translation than
 /// a redesign. Produced by `Model.compile()` (see `Presolve.swift`).
 public struct CompiledProblem {
+    /// Stable source-model order used by `LPSolution.variableValuesByName`.
+    public let variableNames: [String]
     /// Always in minimize form — a `maximize` objective has already had
     /// its coefficients negated (see `objectiveSign`).
     public let objective: Vector<Double>
@@ -166,4 +167,7 @@ public struct CompiledProblem {
     /// to report it in the model's original (possibly `maximize`) sense
     /// — see `docs/design/ampl-grammar.md`'s worked example.
     public let objectiveSign: Double
+    /// Constant term from the source objective, omitted from the numerical
+    /// coefficient vector but restored in public objective reporting.
+    public let objectiveConstant: Double
 }

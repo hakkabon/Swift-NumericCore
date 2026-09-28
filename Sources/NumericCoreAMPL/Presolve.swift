@@ -3,13 +3,17 @@ import NumericCoreSparse
 
 public enum PresolveError: Error, Equatable {
     case noObjective
+    case duplicateVariableName(String)
+    case invalidVariableBound(index: Int)
+    case invalidVariableReference(Int)
+    case nonFiniteModelValue
 }
 
 extension Model {
     /// Compiles this `Model` into a `CompiledProblem` — a dense
     /// objective vector, a `SparseMatrix` constraint matrix, and
     /// row/variable bounds, ready to hand to `nc-optimize::Solver` via
-    /// `NCBindings` (not yet wired — see `Model.swift`'s module docs).
+    /// `NCBindings`.
     ///
     /// Throws `.noObjective` if no `minimize`/`maximize` statement was
     /// ever parsed — every LP needs one, and there's no sensible default
@@ -20,9 +24,28 @@ extension Model {
         }
 
         let variableCount = variableNames.count
+        var seenNames = Set<String>()
+        for name in variableNames where !seenNames.insert(name).inserted {
+            throw PresolveError.duplicateVariableName(name)
+        }
+        for (index, bound) in variableBounds.enumerated() {
+            guard bound.lower?.isFinite ?? true,
+                  bound.upper?.isFinite ?? true,
+                  !((bound.lower.map { lower in bound.upper.map { lower > $0 } ?? false }) ?? false)
+            else {
+                throw PresolveError.invalidVariableBound(index: index)
+            }
+        }
+        guard objective.expression.constant.isFinite else {
+            throw PresolveError.nonFiniteModelValue
+        }
 
         var objectiveCoefficients = [Double](repeating: 0, count: variableCount)
         for (variableIndex, coefficient) in objective.expression.coefficients {
+            guard objectiveCoefficients.indices.contains(variableIndex) else {
+                throw PresolveError.invalidVariableReference(variableIndex)
+            }
+            guard coefficient.isFinite else { throw PresolveError.nonFiniteModelValue }
             objectiveCoefficients[variableIndex] = coefficient
         }
 
@@ -52,6 +75,7 @@ extension Model {
                 combined[variableIndex, default: 0] -= coefficient
             }
             let combinedConstant = constraint.lhs.constant - constraint.rhs.constant
+            guard combinedConstant.isFinite else { throw PresolveError.nonFiniteModelValue }
             let rhsValue = -combinedConstant
 
             // Sorted ascending by variable index — required for valid
@@ -61,6 +85,10 @@ extension Model {
             // (dictionary, so unordered) iteration order of `combined`).
             for variableIndex in combined.keys.sorted() {
                 let coefficient = combined[variableIndex]!
+                guard (0..<variableCount).contains(variableIndex) else {
+                    throw PresolveError.invalidVariableReference(variableIndex)
+                }
+                guard coefficient.isFinite else { throw PresolveError.nonFiniteModelValue }
                 guard coefficient != 0 else { continue }
                 columnIndices.append(variableIndex)
                 values.append(coefficient)
@@ -86,13 +114,15 @@ extension Model {
         )
 
         return CompiledProblem(
+            variableNames: variableNames,
             objective: Vector(objectiveCoefficients),
             constraints: constraintMatrix,
             variableLowerBounds: variableBounds.map { $0.lower },
             variableUpperBounds: variableBounds.map { $0.upper },
             rowBounds: rowBounds,
             variableIsInteger: variableIsInteger,
-            objectiveSign: objectiveSign
+            objectiveSign: objectiveSign,
+            objectiveConstant: objective.expression.constant
         )
     }
 }
