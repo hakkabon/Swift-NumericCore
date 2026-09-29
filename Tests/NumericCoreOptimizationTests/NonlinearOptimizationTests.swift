@@ -117,4 +117,33 @@ final class NonlinearOptimizationTests: XCTestCase {
         XCTAssertEqual(result.point[0], 1, accuracy: 1e-6)
         XCTAssertEqual(result.point[1], 2, accuracy: 1e-6)
     }
+
+    func testSharedObjectiveGraphRunsThroughBoundedSolver() throws {
+        let expression = NonlinearExpression(nodes: [
+            .parameter(0), .constant(3), .subtract(0, 1), .pow(2, 2)
+        ], output: 3)
+        let model = try NonlinearModel.objective(
+            parameterCount: 1, bounds: [.init(upper: 1)], expression: expression)
+        let result = try LBFGSB.minimize(model: model, initial: [0])
+        XCTAssertEqual(result.point[0], 1, accuracy: 1e-10)
+        XCTAssertLessThan(result.gradientNorm, 1e-10)
+    }
+
+    func testSharedResidualGraphRunsThroughLeastSquaresSolver() throws {
+        func shifted(_ constant: Double) -> NonlinearExpression {
+            .init(nodes: [.parameter(0), .constant(constant), .subtract(0, 1)], output: 2)
+        }
+        let model = try NonlinearModel.leastSquares(
+            parameterCount: 1, bounds: [.free], residuals: [shifted(1), shifted(2)])
+        let evaluation = try model.evaluateResiduals(parameters: [2])
+        XCTAssertEqual(evaluation.residuals, [1, 0])
+        XCTAssertEqual(evaluation.jacobian, [[1], [1]])
+        let result = try NonlinearLeastSquares.solve(model: model, initial: [0])
+        XCTAssertEqual(result.point[0], 1.5, accuracy: 1e-8)
+    }
+
+    func testSharedGraphRejectsForwardReference() throws {
+        let expression = NonlinearExpression(nodes: [.add(0, 0)], output: 0)
+        XCTAssertThrowsError(try expression.validate(parameterCount: 1))
+    }
 }

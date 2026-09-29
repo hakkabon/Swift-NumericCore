@@ -99,6 +99,10 @@ Swift-NumericCore/
   gain-ratio Levenberg-Marquardt damping with Householder-QR steps. Nonlinear
   least squares supports parameter bounds, non-negative observation weights,
   and squared, Huber, or Cauchy loss with robust-objective acceptance. It also
+  provides a shared flat nonlinear expression graph with exact first
+  derivatives and direct solver adapters for objective and residual models. It
+  intentionally mirrors Rust's `NonlinearExpression`/`NonlinearModel` contract.
+  The module also
   includes central-difference derivative verification, cancellable iteration
   observers, convergence reasons, evaluation counts, and strict derivative
   validation.
