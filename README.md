@@ -102,6 +102,10 @@ Swift-NumericCore/
   provides a shared flat nonlinear expression graph with exact first
   derivatives and direct solver adapters for objective and residual models. It
   intentionally mirrors Rust's `NonlinearExpression`/`NonlinearModel` contract.
+  Smooth equality, inequality, and range constraints are represented by
+  `ConstrainedNonlinearProblem` and solved with an augmented-Lagrangian outer
+  method backed by projected L-BFGS, including multiplier, feasibility, and
+  projected-stationarity diagnostics.
   The module also
   includes central-difference derivative verification, cancellable iteration
   observers, convergence reasons, evaluation counts, and strict derivative

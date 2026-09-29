@@ -146,4 +146,37 @@ final class NonlinearOptimizationTests: XCTestCase {
         let expression = NonlinearExpression(nodes: [.add(0, 0)], output: 0)
         XCTAssertThrowsError(try expression.validate(parameterCount: 1))
     }
+
+    func testConstrainedSolverHandlesEquality() throws {
+        let objective = NonlinearExpression(nodes: [
+            .parameter(0), .pow(0, 2), .parameter(1), .pow(2, 2), .add(1, 3)
+        ], output: 4)
+        let equality = NonlinearExpression(nodes: [
+            .parameter(0), .parameter(1), .add(0, 1)
+        ], output: 2)
+        let model = try NonlinearModel.objective(
+            parameterCount: 2, bounds: [.free, .free], expression: objective)
+        let problem = try ConstrainedNonlinearProblem(
+            model: model, constraints: [.init(expression: equality, bound: .fixed(1))])
+        let result = try ConstrainedNonlinearSolver.minimize(problem: problem, initial: [0, 0])
+        XCTAssertEqual(result.termination, .converged)
+        XCTAssertEqual(result.point[0], 0.5, accuracy: 1e-5)
+        XCTAssertEqual(result.point[1], 0.5, accuracy: 1e-5)
+        XCTAssertLessThan(result.maximumViolation, 1e-7)
+    }
+
+    func testConstrainedSolverHandlesActiveNonlinearInequality() throws {
+        let objective = NonlinearExpression(nodes: [
+            .parameter(0), .constant(2), .subtract(0, 1), .pow(2, 2)
+        ], output: 3)
+        let constraint = NonlinearExpression(nodes: [.parameter(0), .pow(0, 2)], output: 1)
+        let model = try NonlinearModel.objective(
+            parameterCount: 1, bounds: [.init(lower: 0)], expression: objective)
+        let problem = try ConstrainedNonlinearProblem(
+            model: model, constraints: [.init(expression: constraint, bound: .init(upper: 1))])
+        let result = try ConstrainedNonlinearSolver.minimize(problem: problem, initial: [0.5])
+        XCTAssertEqual(result.point[0], 1, accuracy: 1e-5)
+        XCTAssertLessThan(result.maximumViolation, 1e-7)
+        XCTAssertGreaterThan(result.multipliers[0].upper, 0)
+    }
 }
