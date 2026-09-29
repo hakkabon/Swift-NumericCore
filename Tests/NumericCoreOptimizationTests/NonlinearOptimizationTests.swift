@@ -78,4 +78,43 @@ final class NonlinearOptimizationTests: XCTestCase {
         XCTAssertEqual(result.iterations, 1)
         XCTAssertEqual(snapshots.count, 1)
     }
+
+    func testLBFGSBFindsSolutionOnActiveBounds() throws {
+        let result = try LBFGSB.minimize(
+            initial: [0, 0],
+            bounds: [.init(upper: 1), .init(lower: -1)]
+        ) { x in
+            (pow(x[0] - 3, 2) + pow(x[1] + 2, 2),
+             [2 * (x[0] - 3), 2 * (x[1] + 2)])
+        }
+        XCTAssertEqual(result.point[0], 1, accuracy: 1e-10)
+        XCTAssertEqual(result.point[1], -1, accuracy: 1e-10)
+        XCTAssertLessThan(result.gradientNorm, 1e-10)
+    }
+
+    func testRobustBoundedFitResistsOutlier() throws {
+        let xs = [0.0, 1, 2, 3, 4], ys = [1.0, 3, 5, 7, 100]
+        let result = try NonlinearLeastSquares.solve(
+            initial: [0, 0], bounds: [.init(lower: 0, upper: 1.5), .free],
+            loss: .huber(scale: 1)
+        ) { p in
+            .init(residuals: zip(xs, ys).map { p[0] + p[1] * $0 - $1 },
+                  jacobian: xs.map { [1, $0] })
+        }
+        XCTAssertTrue((0...1.5).contains(result.point[0]))
+        XCTAssertEqual(result.point[0], 1, accuracy: 0.51)
+        XCTAssertEqual(result.point[1], 2, accuracy: 0.6)
+    }
+
+    func testZeroWeightExcludesOutlier() throws {
+        let xs = [0.0, 1, 2, 3], ys = [1.0, 3, 5, 99]
+        let result = try NonlinearLeastSquares.solve(
+            initial: [0, 0], bounds: [.free, .free], weights: [1, 1, 1, 0]
+        ) { p in
+            .init(residuals: zip(xs, ys).map { p[0] + p[1] * $0 - $1 },
+                  jacobian: xs.map { [1, $0] })
+        }
+        XCTAssertEqual(result.point[0], 1, accuracy: 1e-6)
+        XCTAssertEqual(result.point[1], 2, accuracy: 1e-6)
+    }
 }
