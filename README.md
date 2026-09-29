@@ -94,9 +94,10 @@ Swift-NumericCore/
 - `NumericCoreGraph` — adjacency-matrix construction from an edge list.
 - `NumericCoreMPS` — empty scaffold (`capabilities = []`).
 - `NumericCoreOptimization` — closure-based smooth unconstrained L-BFGS with
-  Armijo backtracking, and analytic-Jacobian nonlinear least squares using
-  Levenberg-Marquardt damping. Both expose configuration, convergence reasons,
-  iteration/evaluation counts, and strict derivative-shape validation.
+  strong-Wolfe line search, and analytic-Jacobian nonlinear least squares using
+  gain-ratio Levenberg-Marquardt damping with Householder-QR steps. It includes
+  central-difference derivative verification, cancellable iteration observers,
+  convergence reasons, evaluation counts, and strict derivative validation.
 - `NumericCoreAMPL` — `Model` (variables/params/constraints/objective,
   including the `integer` qualifier), a hand-rolled lexer/parser for
   the grammar in `docs/design/ampl-grammar.md`

@@ -49,6 +49,14 @@ before solver arithmetic consumes them. L-BFGS reports the final gradient;
 nonlinear least squares reports residuals, half-squared-residual cost, and the
 infinity norm of `Jᵀr`.
 
+Phase 7 adds `DerivativeCheck` for scale-aware central-difference validation
+of analytic gradients and Jacobians. Reports retain the worst row/column and
+absolute/relative error instead of returning a bare Boolean. L-BFGS requires
+both sufficient decrease and strong-Wolfe curvature. Levenberg-Marquardt uses
+actual-versus-predicted reduction and Householder QR for its damped step.
+Iteration observers can cancel either solver, producing `.cancelled` rather
+than conflating user intent with line-search, damping, or iteration failure.
+
 ## Compatibility
 
 The richer APIs are additive. Existing `nil`-returning dense solve methods and

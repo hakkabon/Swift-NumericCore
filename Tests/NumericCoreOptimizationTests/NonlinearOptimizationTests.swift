@@ -12,6 +12,8 @@ final class NonlinearOptimizationTests: XCTestCase {
         XCTAssertEqual(result.point[1], 1, accuracy: 1e-5)
         XCTAssertLessThan(result.objective, 1e-12)
         XCTAssertGreaterThan(result.evaluations, result.iterations)
+        XCTAssertLessThan(result.gradientNorm, 1e-5)
+        XCTAssertNotNil(result.acceptedStep)
     }
 
     func testNonlinearLeastSquaresFitsExponentialCurve() throws {
@@ -30,6 +32,8 @@ final class NonlinearOptimizationTests: XCTestCase {
         XCTAssertEqual(result.point[0], 2.5, accuracy: 1e-6)
         XCTAssertEqual(result.point[1], -0.7, accuracy: 1e-6)
         XCTAssertLessThan(result.cost, 1e-18)
+        XCTAssertGreaterThan(result.acceptedSteps, 0)
+        XCTAssertTrue(result.finalDamping.isFinite)
     }
 
     func testSolversRejectMalformedDerivativeOutput() throws {
@@ -37,5 +41,41 @@ final class NonlinearOptimizationTests: XCTestCase {
         XCTAssertThrowsError(try NonlinearLeastSquares.solve(initial: [0]) { _ in
             .init(residuals: [1], jacobian: [[]])
         })
+    }
+
+
+    func testDerivativeChecksMatchSharedRosenbrockAndExponentialCases() throws {
+        let point = [-1.2, 1.0]
+        let gradient = try DerivativeCheck.gradient(
+            at: point, analytic: [-215.6, -88.0]
+        ) { x in
+            100 * pow(x[1] - x[0] * x[0], 2) + pow(1 - x[0], 2)
+        }
+        XCTAssertTrue(gradient.passed)
+        XCTAssertEqual(gradient.evaluations, 4)
+
+        let parameters = [2.0, -0.5]
+        let xs = [0.0, 0.5, 1.0]
+        let jacobian = xs.map { x -> [Double] in
+            let e = exp(parameters[1] * x)
+            return [e, parameters[0] * x * e]
+        }
+        let jacobianReport = try DerivativeCheck.jacobian(
+            at: parameters, analytic: jacobian
+        ) { p in xs.map { p[0] * exp(p[1] * $0) } }
+        XCTAssertTrue(jacobianReport.passed)
+        XCTAssertEqual(jacobianReport.evaluations, 4)
+    }
+
+
+    func testObserverCanCancelWithoutReportingNumericalFailure() throws {
+        var snapshots: [LBFGSIteration] = []
+        let result = try LBFGS.minimize(initial: [4], observer: { iteration in
+            snapshots.append(iteration)
+            return false
+        }) { x in (x[0] * x[0], [2 * x[0]]) }
+        XCTAssertEqual(result.termination, .cancelled)
+        XCTAssertEqual(result.iterations, 1)
+        XCTAssertEqual(snapshots.count, 1)
     }
 }
