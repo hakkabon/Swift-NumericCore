@@ -11,6 +11,43 @@ public enum NonlinearBackend: Sendable, Hashable {
 /// One result contract and one model representation, independently of where
 /// the nonlinear algorithm executes.
 public enum NonlinearModelSolver {
+    public static func minimizeSQP(
+        problem: ConstrainedNonlinearProblem, initial: [Double],
+        backend: NonlinearBackend = .swift, options: SQPOptions = .init()
+    ) throws -> SQPResult {
+        try problem.validate()
+        guard options.maxIterations >= 0, options.maxLineSearchIterations >= 0,
+              options.qpOptions.maxIterations >= 0 else {
+            throw NonlinearOptimizationError.invalidConfiguration(
+                "iteration limits must be non-negative")
+        }
+        switch backend {
+        case .swift:
+            return try SequentialQuadraticProgramming.minimize(
+                problem: problem, initial: initial, options: options)
+        case .rust:
+            do {
+                let value = try FFIKernels.solveSQP(
+                    model: ffi(problem.model),
+                    constraints: problem.constraints.map { .init(
+                        expression: ffi($0.expression), bound: ffi($0.bound)) },
+                    initial: initial, options: ffi(options))
+                return .init(
+                    point: value.point, objective: value.objective,
+                    constraintValues: value.constraintValues,
+                    multipliers: value.multipliers.map { .init(
+                        lower: $0.lower, upper: $0.upper, equality: $0.equality) },
+                    maximumViolation: value.maximumViolation,
+                    stationarityNorm: value.stationarityNorm,
+                    iterations: value.iterations, evaluations: value.evaluations,
+                    acceptedSteps: value.acceptedSteps, rejectedSteps: value.rejectedSteps,
+                    finalMeritPenalty: value.finalMeritPenalty,
+                    lastStepNorm: value.lastStepNorm,
+                    termination: sqpTermination(value.termination))
+            } catch { throw translate(error) }
+        }
+    }
+
     public static func sparseObjective(
         model: NonlinearModel, parameters: [Double], backend: NonlinearBackend = .swift
     ) throws -> SparseObjectiveEvaluation {
@@ -231,6 +268,22 @@ public enum NonlinearModelSolver {
               innerOptions: ffi(options.innerOptions))
     }
 
+    private static func ffi(_ options: SQPOptions) -> FFISQPOptions {
+        .init(
+            maxIterations: options.maxIterations,
+            feasibilityTolerance: options.feasibilityTolerance,
+            stationarityTolerance: options.stationarityTolerance,
+            stepTolerance: options.stepTolerance,
+            meritPenalty: options.meritPenalty, penaltyIncrease: options.penaltyIncrease,
+            armijo: options.armijo, backtracking: options.backtracking,
+            maxLineSearchIterations: options.maxLineSearchIterations,
+            hessianRegularization: options.hessianRegularization,
+            qpMaxIterations: options.qpOptions.maxIterations, qpRho: options.qpOptions.rho,
+            qpAbsoluteTolerance: options.qpOptions.absoluteTolerance,
+            qpRelativeTolerance: options.qpOptions.relativeTolerance,
+            qpConvexityTolerance: options.qpOptions.convexityTolerance)
+    }
+
     private static func lbfgs(_ value: FFILBFGSResult) -> LBFGSResult {
         .init(point: value.point, objective: value.objective, gradient: value.gradient,
               iterations: value.iterations, evaluations: value.evaluations,
@@ -257,6 +310,17 @@ public enum NonlinearModelSolver {
         case .converged: return .converged
         case .iterationLimit: return .iterationLimit
         case .penaltyLimit: return .penaltyLimit
+        case .cancelled: return .cancelled
+        }
+    }
+
+    private static func sqpTermination(_ value: FFISQPTermination) -> SQPTermination {
+        switch value {
+        case .converged: return .converged
+        case .iterationLimit: return .iterationLimit
+        case .stepLimit: return .stepLimit
+        case .lineSearchFailed: return .lineSearchFailed
+        case .qpFailure: return .qpFailure
         case .cancelled: return .cancelled
         }
     }

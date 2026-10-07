@@ -124,6 +124,52 @@ public struct FFIConstrainedResult: Sendable, Hashable {
     public let termination: FFIConstrainedTermination
 }
 
+public struct FFISQPOptions: Sendable, Hashable {
+    public var maxIterations: Int
+    public var feasibilityTolerance: Double, stationarityTolerance: Double, stepTolerance: Double
+    public var meritPenalty: Double, penaltyIncrease: Double
+    public var armijo: Double, backtracking: Double
+    public var maxLineSearchIterations: Int
+    public var hessianRegularization: Double
+    public var qpMaxIterations: Int
+    public var qpRho: Double, qpAbsoluteTolerance: Double
+    public var qpRelativeTolerance: Double, qpConvexityTolerance: Double
+
+    public init(maxIterations: Int, feasibilityTolerance: Double,
+                stationarityTolerance: Double, stepTolerance: Double,
+                meritPenalty: Double, penaltyIncrease: Double,
+                armijo: Double, backtracking: Double, maxLineSearchIterations: Int,
+                hessianRegularization: Double, qpMaxIterations: Int, qpRho: Double,
+                qpAbsoluteTolerance: Double, qpRelativeTolerance: Double,
+                qpConvexityTolerance: Double) {
+        self.maxIterations = maxIterations
+        self.feasibilityTolerance = feasibilityTolerance
+        self.stationarityTolerance = stationarityTolerance
+        self.stepTolerance = stepTolerance
+        self.meritPenalty = meritPenalty; self.penaltyIncrease = penaltyIncrease
+        self.armijo = armijo; self.backtracking = backtracking
+        self.maxLineSearchIterations = maxLineSearchIterations
+        self.hessianRegularization = hessianRegularization
+        self.qpMaxIterations = qpMaxIterations; self.qpRho = qpRho
+        self.qpAbsoluteTolerance = qpAbsoluteTolerance
+        self.qpRelativeTolerance = qpRelativeTolerance
+        self.qpConvexityTolerance = qpConvexityTolerance
+    }
+}
+
+public enum FFISQPTermination: Sendable, Hashable {
+    case converged, iterationLimit, stepLimit, lineSearchFailed, qpFailure, cancelled
+}
+
+public struct FFISQPResult: Sendable, Hashable {
+    public let point: [Double], objective: Double, constraintValues: [Double]
+    public let multipliers: [FFIConstraintMultiplier]
+    public let maximumViolation: Double, stationarityNorm: Double
+    public let iterations: Int, evaluations: Int, acceptedSteps: Int, rejectedSteps: Int
+    public let finalMeritPenalty: Double, lastStepNorm: Double
+    public let termination: FFISQPTermination
+}
+
 public struct FFISparseDerivative: Sendable, Hashable {
     public let dimension: Int
     public let indices: [Int]
@@ -147,6 +193,53 @@ public struct FFISparseResidualEvaluation: Sendable, Hashable {
 }
 
 extension FFIKernels {
+    public static func solveSQP(
+        model: FFINonlinearModel, constraints: [FFINonlinearConstraint], initial: [Double],
+        options: FFISQPOptions
+    ) throws -> FFISQPResult {
+        do {
+            let value = try NCBindings.solveSqp(
+                modelValue: ffi(model),
+                constraints: constraints.map { FfiNonlinearConstraint(
+                    expression: ffi($0.expression),
+                    bound: FfiBound(lower: $0.bound.lower, upper: $0.bound.upper)) },
+                initial: initial,
+                options: FfiSqpOptions(
+                    maxIterations: UInt64(options.maxIterations),
+                    feasibilityTolerance: options.feasibilityTolerance,
+                    stationarityTolerance: options.stationarityTolerance,
+                    stepTolerance: options.stepTolerance,
+                    meritPenalty: options.meritPenalty, penaltyIncrease: options.penaltyIncrease,
+                    armijo: options.armijo, backtracking: options.backtracking,
+                    maxLineSearchIterations: UInt64(options.maxLineSearchIterations),
+                    hessianRegularization: options.hessianRegularization,
+                    qpMaxIterations: UInt64(options.qpMaxIterations), qpRho: options.qpRho,
+                    qpAbsoluteTolerance: options.qpAbsoluteTolerance,
+                    qpRelativeTolerance: options.qpRelativeTolerance,
+                    qpConvexityTolerance: options.qpConvexityTolerance))
+            let status: FFISQPTermination
+            switch value.termination {
+            case .converged: status = .converged
+            case .iterationLimit: status = .iterationLimit
+            case .stepLimit: status = .stepLimit
+            case .lineSearchFailed: status = .lineSearchFailed
+            case .qpFailure: status = .qpFailure
+            case .cancelled: status = .cancelled
+            }
+            return .init(
+                point: value.point, objective: value.objective,
+                constraintValues: value.constraintValues,
+                multipliers: value.multipliers.map { .init(
+                    lower: $0.lower, upper: $0.upper, equality: $0.equality) },
+                maximumViolation: value.maximumViolation,
+                stationarityNorm: value.stationarityNorm,
+                iterations: Int(value.iterations), evaluations: Int(value.evaluations),
+                acceptedSteps: Int(value.acceptedSteps), rejectedSteps: Int(value.rejectedSteps),
+                finalMeritPenalty: value.finalMeritPenalty, lastStepNorm: value.lastStepNorm,
+                termination: status)
+        } catch { throw Self.translate(error) }
+    }
+
     public static func evaluateNonlinearObjectiveSparse(
         model: FFINonlinearModel, parameters: [Double]
     ) throws -> FFISparseObjectiveEvaluation {

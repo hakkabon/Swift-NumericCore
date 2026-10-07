@@ -3385,6 +3385,312 @@ public func FfiConverterTypeFfiSparseStatisticalSolveResult_lower(_ value: FfiSp
     return FfiConverterTypeFfiSparseStatisticalSolveResult.lower(value)
 }
 
+
+public struct FfiSqpOptions {
+    public var maxIterations: UInt64
+    public var feasibilityTolerance: Double
+    public var stationarityTolerance: Double
+    public var stepTolerance: Double
+    public var meritPenalty: Double
+    public var penaltyIncrease: Double
+    public var armijo: Double
+    public var backtracking: Double
+    public var maxLineSearchIterations: UInt64
+    public var hessianRegularization: Double
+    public var qpMaxIterations: UInt64
+    public var qpRho: Double
+    public var qpAbsoluteTolerance: Double
+    public var qpRelativeTolerance: Double
+    public var qpConvexityTolerance: Double
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(maxIterations: UInt64, feasibilityTolerance: Double, stationarityTolerance: Double, stepTolerance: Double, meritPenalty: Double, penaltyIncrease: Double, armijo: Double, backtracking: Double, maxLineSearchIterations: UInt64, hessianRegularization: Double, qpMaxIterations: UInt64, qpRho: Double, qpAbsoluteTolerance: Double, qpRelativeTolerance: Double, qpConvexityTolerance: Double) {
+        self.maxIterations = maxIterations
+        self.feasibilityTolerance = feasibilityTolerance
+        self.stationarityTolerance = stationarityTolerance
+        self.stepTolerance = stepTolerance
+        self.meritPenalty = meritPenalty
+        self.penaltyIncrease = penaltyIncrease
+        self.armijo = armijo
+        self.backtracking = backtracking
+        self.maxLineSearchIterations = maxLineSearchIterations
+        self.hessianRegularization = hessianRegularization
+        self.qpMaxIterations = qpMaxIterations
+        self.qpRho = qpRho
+        self.qpAbsoluteTolerance = qpAbsoluteTolerance
+        self.qpRelativeTolerance = qpRelativeTolerance
+        self.qpConvexityTolerance = qpConvexityTolerance
+    }
+}
+
+
+
+extension FfiSqpOptions: Equatable, Hashable {
+    public static func ==(lhs: FfiSqpOptions, rhs: FfiSqpOptions) -> Bool {
+        if lhs.maxIterations != rhs.maxIterations {
+            return false
+        }
+        if lhs.feasibilityTolerance != rhs.feasibilityTolerance {
+            return false
+        }
+        if lhs.stationarityTolerance != rhs.stationarityTolerance {
+            return false
+        }
+        if lhs.stepTolerance != rhs.stepTolerance {
+            return false
+        }
+        if lhs.meritPenalty != rhs.meritPenalty {
+            return false
+        }
+        if lhs.penaltyIncrease != rhs.penaltyIncrease {
+            return false
+        }
+        if lhs.armijo != rhs.armijo {
+            return false
+        }
+        if lhs.backtracking != rhs.backtracking {
+            return false
+        }
+        if lhs.maxLineSearchIterations != rhs.maxLineSearchIterations {
+            return false
+        }
+        if lhs.hessianRegularization != rhs.hessianRegularization {
+            return false
+        }
+        if lhs.qpMaxIterations != rhs.qpMaxIterations {
+            return false
+        }
+        if lhs.qpRho != rhs.qpRho {
+            return false
+        }
+        if lhs.qpAbsoluteTolerance != rhs.qpAbsoluteTolerance {
+            return false
+        }
+        if lhs.qpRelativeTolerance != rhs.qpRelativeTolerance {
+            return false
+        }
+        if lhs.qpConvexityTolerance != rhs.qpConvexityTolerance {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(maxIterations)
+        hasher.combine(feasibilityTolerance)
+        hasher.combine(stationarityTolerance)
+        hasher.combine(stepTolerance)
+        hasher.combine(meritPenalty)
+        hasher.combine(penaltyIncrease)
+        hasher.combine(armijo)
+        hasher.combine(backtracking)
+        hasher.combine(maxLineSearchIterations)
+        hasher.combine(hessianRegularization)
+        hasher.combine(qpMaxIterations)
+        hasher.combine(qpRho)
+        hasher.combine(qpAbsoluteTolerance)
+        hasher.combine(qpRelativeTolerance)
+        hasher.combine(qpConvexityTolerance)
+    }
+}
+
+
+public struct FfiConverterTypeFfiSqpOptions: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiSqpOptions {
+        return
+            try FfiSqpOptions(
+                maxIterations: FfiConverterUInt64.read(from: &buf),
+                feasibilityTolerance: FfiConverterDouble.read(from: &buf),
+                stationarityTolerance: FfiConverterDouble.read(from: &buf),
+                stepTolerance: FfiConverterDouble.read(from: &buf),
+                meritPenalty: FfiConverterDouble.read(from: &buf),
+                penaltyIncrease: FfiConverterDouble.read(from: &buf),
+                armijo: FfiConverterDouble.read(from: &buf),
+                backtracking: FfiConverterDouble.read(from: &buf),
+                maxLineSearchIterations: FfiConverterUInt64.read(from: &buf),
+                hessianRegularization: FfiConverterDouble.read(from: &buf),
+                qpMaxIterations: FfiConverterUInt64.read(from: &buf),
+                qpRho: FfiConverterDouble.read(from: &buf),
+                qpAbsoluteTolerance: FfiConverterDouble.read(from: &buf),
+                qpRelativeTolerance: FfiConverterDouble.read(from: &buf),
+                qpConvexityTolerance: FfiConverterDouble.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiSqpOptions, into buf: inout [UInt8]) {
+        FfiConverterUInt64.write(value.maxIterations, into: &buf)
+        FfiConverterDouble.write(value.feasibilityTolerance, into: &buf)
+        FfiConverterDouble.write(value.stationarityTolerance, into: &buf)
+        FfiConverterDouble.write(value.stepTolerance, into: &buf)
+        FfiConverterDouble.write(value.meritPenalty, into: &buf)
+        FfiConverterDouble.write(value.penaltyIncrease, into: &buf)
+        FfiConverterDouble.write(value.armijo, into: &buf)
+        FfiConverterDouble.write(value.backtracking, into: &buf)
+        FfiConverterUInt64.write(value.maxLineSearchIterations, into: &buf)
+        FfiConverterDouble.write(value.hessianRegularization, into: &buf)
+        FfiConverterUInt64.write(value.qpMaxIterations, into: &buf)
+        FfiConverterDouble.write(value.qpRho, into: &buf)
+        FfiConverterDouble.write(value.qpAbsoluteTolerance, into: &buf)
+        FfiConverterDouble.write(value.qpRelativeTolerance, into: &buf)
+        FfiConverterDouble.write(value.qpConvexityTolerance, into: &buf)
+    }
+}
+
+
+public func FfiConverterTypeFfiSqpOptions_lift(_ buf: RustBuffer) throws -> FfiSqpOptions {
+    return try FfiConverterTypeFfiSqpOptions.lift(buf)
+}
+
+public func FfiConverterTypeFfiSqpOptions_lower(_ value: FfiSqpOptions) -> RustBuffer {
+    return FfiConverterTypeFfiSqpOptions.lower(value)
+}
+
+
+public struct FfiSqpResult {
+    public var point: [Double]
+    public var objective: Double
+    public var constraintValues: [Double]
+    public var multipliers: [FfiConstraintMultiplier]
+    public var maximumViolation: Double
+    public var stationarityNorm: Double
+    public var iterations: UInt64
+    public var evaluations: UInt64
+    public var acceptedSteps: UInt64
+    public var rejectedSteps: UInt64
+    public var finalMeritPenalty: Double
+    public var lastStepNorm: Double
+    public var termination: FfiSqpTermination
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(point: [Double], objective: Double, constraintValues: [Double], multipliers: [FfiConstraintMultiplier], maximumViolation: Double, stationarityNorm: Double, iterations: UInt64, evaluations: UInt64, acceptedSteps: UInt64, rejectedSteps: UInt64, finalMeritPenalty: Double, lastStepNorm: Double, termination: FfiSqpTermination) {
+        self.point = point
+        self.objective = objective
+        self.constraintValues = constraintValues
+        self.multipliers = multipliers
+        self.maximumViolation = maximumViolation
+        self.stationarityNorm = stationarityNorm
+        self.iterations = iterations
+        self.evaluations = evaluations
+        self.acceptedSteps = acceptedSteps
+        self.rejectedSteps = rejectedSteps
+        self.finalMeritPenalty = finalMeritPenalty
+        self.lastStepNorm = lastStepNorm
+        self.termination = termination
+    }
+}
+
+
+
+extension FfiSqpResult: Equatable, Hashable {
+    public static func ==(lhs: FfiSqpResult, rhs: FfiSqpResult) -> Bool {
+        if lhs.point != rhs.point {
+            return false
+        }
+        if lhs.objective != rhs.objective {
+            return false
+        }
+        if lhs.constraintValues != rhs.constraintValues {
+            return false
+        }
+        if lhs.multipliers != rhs.multipliers {
+            return false
+        }
+        if lhs.maximumViolation != rhs.maximumViolation {
+            return false
+        }
+        if lhs.stationarityNorm != rhs.stationarityNorm {
+            return false
+        }
+        if lhs.iterations != rhs.iterations {
+            return false
+        }
+        if lhs.evaluations != rhs.evaluations {
+            return false
+        }
+        if lhs.acceptedSteps != rhs.acceptedSteps {
+            return false
+        }
+        if lhs.rejectedSteps != rhs.rejectedSteps {
+            return false
+        }
+        if lhs.finalMeritPenalty != rhs.finalMeritPenalty {
+            return false
+        }
+        if lhs.lastStepNorm != rhs.lastStepNorm {
+            return false
+        }
+        if lhs.termination != rhs.termination {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(point)
+        hasher.combine(objective)
+        hasher.combine(constraintValues)
+        hasher.combine(multipliers)
+        hasher.combine(maximumViolation)
+        hasher.combine(stationarityNorm)
+        hasher.combine(iterations)
+        hasher.combine(evaluations)
+        hasher.combine(acceptedSteps)
+        hasher.combine(rejectedSteps)
+        hasher.combine(finalMeritPenalty)
+        hasher.combine(lastStepNorm)
+        hasher.combine(termination)
+    }
+}
+
+
+public struct FfiConverterTypeFfiSqpResult: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiSqpResult {
+        return
+            try FfiSqpResult(
+                point: FfiConverterSequenceDouble.read(from: &buf),
+                objective: FfiConverterDouble.read(from: &buf),
+                constraintValues: FfiConverterSequenceDouble.read(from: &buf),
+                multipliers: FfiConverterSequenceTypeFfiConstraintMultiplier.read(from: &buf),
+                maximumViolation: FfiConverterDouble.read(from: &buf),
+                stationarityNorm: FfiConverterDouble.read(from: &buf),
+                iterations: FfiConverterUInt64.read(from: &buf),
+                evaluations: FfiConverterUInt64.read(from: &buf),
+                acceptedSteps: FfiConverterUInt64.read(from: &buf),
+                rejectedSteps: FfiConverterUInt64.read(from: &buf),
+                finalMeritPenalty: FfiConverterDouble.read(from: &buf),
+                lastStepNorm: FfiConverterDouble.read(from: &buf),
+                termination: FfiConverterTypeFfiSqpTermination.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiSqpResult, into buf: inout [UInt8]) {
+        FfiConverterSequenceDouble.write(value.point, into: &buf)
+        FfiConverterDouble.write(value.objective, into: &buf)
+        FfiConverterSequenceDouble.write(value.constraintValues, into: &buf)
+        FfiConverterSequenceTypeFfiConstraintMultiplier.write(value.multipliers, into: &buf)
+        FfiConverterDouble.write(value.maximumViolation, into: &buf)
+        FfiConverterDouble.write(value.stationarityNorm, into: &buf)
+        FfiConverterUInt64.write(value.iterations, into: &buf)
+        FfiConverterUInt64.write(value.evaluations, into: &buf)
+        FfiConverterUInt64.write(value.acceptedSteps, into: &buf)
+        FfiConverterUInt64.write(value.rejectedSteps, into: &buf)
+        FfiConverterDouble.write(value.finalMeritPenalty, into: &buf)
+        FfiConverterDouble.write(value.lastStepNorm, into: &buf)
+        FfiConverterTypeFfiSqpTermination.write(value.termination, into: &buf)
+    }
+}
+
+
+public func FfiConverterTypeFfiSqpResult_lift(_ buf: RustBuffer) throws -> FfiSqpResult {
+    return try FfiConverterTypeFfiSqpResult.lift(buf)
+}
+
+public func FfiConverterTypeFfiSqpResult_lower(_ value: FfiSqpResult) -> RustBuffer {
+    return FfiConverterTypeFfiSqpResult.lower(value)
+}
+
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
 
@@ -4060,6 +4366,89 @@ extension FfiSparseStatisticalPreconditioner: Equatable, Hashable {}
 
 
 
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+
+public enum FfiSqpTermination {
+
+    case converged
+    case iterationLimit
+    case stepLimit
+    case lineSearchFailed
+    case qpFailure
+    case cancelled
+}
+
+
+public struct FfiConverterTypeFfiSqpTermination: FfiConverterRustBuffer {
+    typealias SwiftType = FfiSqpTermination
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiSqpTermination {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .converged
+
+        case 2: return .iterationLimit
+
+        case 3: return .stepLimit
+
+        case 4: return .lineSearchFailed
+
+        case 5: return .qpFailure
+
+        case 6: return .cancelled
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: FfiSqpTermination, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .converged:
+            writeInt(&buf, Int32(1))
+
+
+        case .iterationLimit:
+            writeInt(&buf, Int32(2))
+
+
+        case .stepLimit:
+            writeInt(&buf, Int32(3))
+
+
+        case .lineSearchFailed:
+            writeInt(&buf, Int32(4))
+
+
+        case .qpFailure:
+            writeInt(&buf, Int32(5))
+
+
+        case .cancelled:
+            writeInt(&buf, Int32(6))
+
+        }
+    }
+}
+
+
+public func FfiConverterTypeFfiSqpTermination_lift(_ buf: RustBuffer) throws -> FfiSqpTermination {
+    return try FfiConverterTypeFfiSqpTermination.lift(buf)
+}
+
+public func FfiConverterTypeFfiSqpTermination_lower(_ value: FfiSqpTermination) -> RustBuffer {
+    return FfiConverterTypeFfiSqpTermination.lower(value)
+}
+
+
+
+extension FfiSqpTermination: Equatable, Hashable {}
+
+
+
 fileprivate struct FfiConverterOptionDouble: FfiConverterRustBuffer {
     typealias SwiftType = Double?
 
@@ -4660,6 +5049,16 @@ public func solveSparseWeightedLeastSquaresWithOptions(design: FfiCsrMatrixF64, 
     )
 })
 }
+public func solveSqp(modelValue: FfiNonlinearModel, constraints: [FfiNonlinearConstraint], initial: [Double], options: FfiSqpOptions)throws  -> FfiSqpResult {
+    return try  FfiConverterTypeFfiSqpResult.lift(try rustCallWithError(FfiConverterTypeFfiError.lift) {
+    uniffi_nc_ffi_fn_func_solve_sqp(
+        FfiConverterTypeFfiNonlinearModel.lower(modelValue),
+        FfiConverterSequenceTypeFfiNonlinearConstraint.lower(constraints),
+        FfiConverterSequenceDouble.lower(initial),
+        FfiConverterTypeFfiSqpOptions.lower(options),$0
+    )
+})
+}
 /**
  * The `f32` counterpart of `spmv_f64`.
  */
@@ -4787,6 +5186,9 @@ private var initializationResult: InitializationResult {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nc_ffi_checksum_func_solve_sparse_weighted_least_squares_with_options() != 20382) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nc_ffi_checksum_func_solve_sqp() != 28992) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nc_ffi_checksum_func_spmv_f32() != 8289) {
