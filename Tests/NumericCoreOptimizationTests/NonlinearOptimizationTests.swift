@@ -179,4 +179,36 @@ final class NonlinearOptimizationTests: XCTestCase {
         XCTAssertLessThan(result.maximumViolation, 1e-7)
         XCTAssertGreaterThan(result.multipliers[0].upper, 0)
     }
+
+    func testConvexQPHandlesActiveVariableBound() throws {
+        let problem = QuadraticProblem(
+            quadratic: [[2]], linear: [-4],
+            constraints: try .empty(columns: 1), rowBounds: [],
+            variableBounds: [.init(lower: 0, upper: 1)])
+        let result = try ConvexQuadraticSolver.solve(problem)
+        XCTAssertEqual(result.termination, .converged)
+        XCTAssertEqual(result.point[0], 1, accuracy: 1e-5)
+        XCTAssertLessThan(result.maximumVariableViolation, 1e-5)
+    }
+
+    func testConvexQPHandlesEqualityConstraint() throws {
+        let matrix = try QuadraticConstraintMatrix(
+            rows: 1, columns: 2, rowPointers: [0, 2],
+            columnIndices: [0, 1], values: [1, 1])
+        let problem = QuadraticProblem(
+            quadratic: [[2, 0], [0, 2]], linear: [0, 0], constraints: matrix,
+            rowBounds: [.fixed(1)], variableBounds: [.free, .free])
+        let result = try ConvexQuadraticSolver.solve(problem)
+        XCTAssertEqual(result.point[0], 0.5, accuracy: 1e-5)
+        XCTAssertEqual(result.point[1], 0.5, accuracy: 1e-5)
+        XCTAssertLessThan(result.maximumRowViolation, 1e-5)
+        XCTAssertLessThan(result.stationarityNorm, 1e-5)
+    }
+
+    func testConvexQPRejectsIndefiniteHessian() throws {
+        let problem = QuadraticProblem(
+            quadratic: [[-1]], linear: [0], constraints: try .empty(columns: 1),
+            rowBounds: [], variableBounds: [.free])
+        XCTAssertThrowsError(try ConvexQuadraticSolver.solve(problem))
+    }
 }

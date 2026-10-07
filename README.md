@@ -106,6 +106,9 @@ Swift-NumericCore/
   `ConstrainedNonlinearProblem` and solved with an augmented-Lagrangian outer
   method backed by projected L-BFGS, including multiplier, feasibility, and
   projected-stationarity diagnostics.
+  `QuadraticProblem` and `ConvexQuadraticSolver` add continuous convex QP with
+  sparse linear constraints, variable bounds, warm starts, dual estimates, and
+  primal/dual/KKT diagnostics as the subproblem foundation for future SQP.
   The module also
   includes central-difference derivative verification, cancellable iteration
   observers, convergence reasons, evaluation counts, and strict derivative
