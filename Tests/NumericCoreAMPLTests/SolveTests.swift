@@ -205,6 +205,27 @@ final class SolveTests: XCTestCase {
         subject to c2: x + 2 y <= 6;
         """
         let solution = try AMPLParser.parse(source).compile().solve(
+            configuration: .branchAndBound(.init(maxNodes: 3, integerTolerance: 1e-6))
+        )
+
+        XCTAssertEqual(solution.status, .iterationLimit)
+        let report = try XCTUnwrap(solution.searchReport)
+        XCTAssertEqual(report.nodesExplored, 3)
+        XCTAssertNotNil(report.bestBound)
+        XCTAssertNotNil(report.absoluteGap)
+        XCTAssertNotNil(report.relativeGap)
+        XCTAssertTrue(solution.diagnostics.isVerified(tolerance: 1e-8))
+    }
+
+    func testNodeLimitBeforeIncumbentHasNoGapCertificate() throws {
+        let source = """
+        var x >= 0 integer;
+        var y >= 0 integer;
+        maximize profit: 5 x + 4 y;
+        subject to c1: 6 x + 4 y <= 24;
+        subject to c2: x + 2 y <= 6;
+        """
+        let solution = try AMPLParser.parse(source).compile().solve(
             configuration: .branchAndBound(.init(maxNodes: 2, integerTolerance: 1e-6))
         )
 
@@ -212,9 +233,9 @@ final class SolveTests: XCTestCase {
         let report = try XCTUnwrap(solution.searchReport)
         XCTAssertEqual(report.nodesExplored, 2)
         XCTAssertNotNil(report.bestBound)
-        XCTAssertNotNil(report.absoluteGap)
-        XCTAssertNotNil(report.relativeGap)
-        XCTAssertTrue(solution.diagnostics.isVerified(tolerance: 1e-8))
+        XCTAssertNil(report.absoluteGap)
+        XCTAssertNil(report.relativeGap)
+        XCTAssertFalse(solution.diagnostics.finite)
     }
 
     func testConfiguredSimplexPreservesExistingSolutionPath() throws {
