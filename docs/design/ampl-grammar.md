@@ -13,13 +13,11 @@ intended as the starting grammar to hand to the existing
 `Grammar`/`Lexer`/`Parser` Swift packages (see ADR 0005's sibling
 reasoning: reuse what already exists rather than hand-rolling a new
 parser). This is **not** full AMPL — it's the smallest subset that can
-express a real LP or MILP, matching the LP-first (then MILP)
-sequencing in `docs/decisions/0004-optimize-sequencing.md`.
+express LP, MILP, and unindexed smooth nonlinear models.
 
-Deliberately excluded from this first cut: `set` declarations and
-indexed expressions (`sum {i in I} ...`), piecewise-linear terms, and
-anything nonlinear. Add these as separate, later grammar extensions once
-the flat/unindexed subset below is parsing and presolving correctly —
+Still excluded: `set` declarations and indexed expressions
+(`sum {i in I} ...`), piecewise-linear terms, and user-defined functions.
+Add these as separate later grammar extensions —
 indexed expressions in particular change the shape of the AST
 significantly (an expression becomes a function of an index tuple, not
 a fixed value) and are worth getting right in isolation rather than
@@ -45,11 +43,22 @@ bound_clause = ">=" , number
 
 constraint_decl
              = "subject" , "to" , identifier , ":" ,
-               linear_expr , relop , linear_expr , ";" ;
+               algebraic_expr , relop , algebraic_expr , ";" ;
 
 objective_decl
              = ( "minimize" | "maximize" ) , identifier , ":" ,
-               linear_expr , ";" ;
+               algebraic_expr , ";" ;
+
+algebraic_expr = sum_expr ;
+sum_expr     = product_expr , { ( "+" | "-" ) , product_expr } ;
+product_expr = unary_expr , { ( "*" | "/" ) , unary_expr
+                            | unary_expr } ;
+unary_expr   = [ "+" | "-" ] , power_expr ;
+power_expr   = primary , [ "^" , signed_number ] ;
+primary      = number | identifier | "(" , algebraic_expr , ")"
+             | function , "(" , algebraic_expr , ")" ;
+function     = "exp" | "log" | "sqrt" | "sin" | "cos" ;
+signed_number = [ "+" | "-" ] , number ;
 
 linear_expr  = term , { ( "+" | "-" ) , term } ;
 term         = [ number ] , identifier
@@ -62,6 +71,22 @@ number       = [ "-" ] , digit , { digit } , [ "." , { digit } ] ;
 letter       = "a".."z" | "A".."Z" ;
 digit        = "0".."9" ;
 ```
+
+The `linear_expr` productions document the affine subset retained for
+compatibility. The parser now consumes `algebraic_expr`; expressions that admit
+an affine projection still compile through the original LP/MILP path.
+
+## Nonlinear example
+
+```ampl
+var x >= 0;
+minimize distance: (x - 2)^2;
+subject to unit: x^2 <= 1;
+```
+
+`Model.compileNonlinear()` lowers this to the shared nonlinear graph.
+`CompiledNonlinearProblem.solve()` selects SQP for constrained models and
+bounded L-BFGS for unconstrained models; Swift and Rust backends are available.
 
 ## Example model in this subset
 
@@ -160,5 +185,9 @@ distinguish the two, but the semantics require it).
 7. **Not yet done**: migrating the lexer/parser to the
    `hakkabon/Grammar`/`Lexer`/`Parser` packages, if that's still
    wanted, once their exact public APIs are in hand to write against.
-8. **Not yet started**: `set` declarations, indexed expressions,
-   piecewise-linear terms — deliberately deferred, per this doc's intro.
+8. ~~Nonlinear scalar expressions and constrained solve integration~~ — done:
+   arithmetic precedence, parentheses, constant powers, elementary functions,
+   graph lowering, bounded L-BFGS, SQP, augmented Lagrangian, and Swift/Rust
+   execution are covered end to end.
+9. **Not yet started**: `set` declarations, indexed expressions,
+   piecewise-linear terms, user-defined functions, and MINLP.

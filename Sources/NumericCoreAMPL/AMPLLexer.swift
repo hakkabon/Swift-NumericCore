@@ -3,7 +3,8 @@
 /// Hand-rolled rather than built on `hakkabon/Lexer` — see `Model.swift`'s
 /// module docs for why. Token classes match the EBNF's terminals
 /// directly: keyword, identifier, number, and the small fixed set of
-/// symbols the grammar uses (`>=`, `<=`, `=`, `:=`, `+`, `-`, `:`, `;`, `,`).
+/// symbols the grammar uses (`>=`, `<=`, `=`, `:=`, arithmetic operators,
+/// parentheses, `:`, `;`, and `,`).
 enum TokenKind: Equatable {
     case keyword(String)
     case identifier(String)
@@ -101,7 +102,7 @@ enum AMPLLexer {
                 continue
             }
 
-            if "=+-:;,".contains(c) {
+            if "=+-*/^():;,".contains(c) {
                 tokens.append(Token(kind: .symbol(String(c)), position: start))
                 i += 1
                 continue

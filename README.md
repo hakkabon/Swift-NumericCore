@@ -124,12 +124,15 @@ Swift-NumericCore/
 - `NumericCoreAMPL` — `Model` (variables/params/constraints/objective,
   including the `integer` qualifier), a hand-rolled lexer/parser for
   the grammar in `docs/design/ampl-grammar.md`
-  (`AMPLLexer.swift`/`AMPLParser.swift`), presolve
+  (`AMPLLexer.swift`/`AMPLParser.swift`), including precedence-aware nonlinear
+  arithmetic, constant powers, and elementary functions; presolve
   (`Model.compile() -> CompiledProblem`, `Presolve.swift`), and solving
   (`CompiledProblem.solve(using:)`, `Solve.swift`) via `nc-ffi`'s
   `solve_lp_simplex`/`solve_lp_interior_point`/
   `solve_milp_branch_and_bound` — a complete path from AMPL source text
-  to a solved LP *or* MILP. Not yet built on the `Grammar`/`Lexer`/
+  to a solved LP *or* MILP. Nonlinear models compile to the shared graph and
+  solve through bounded L-BFGS, SQP, or augmented Lagrangian on either backend.
+  Not yet built on the `Grammar`/`Lexer`/
   `Parser` packages originally sketched for this — see `Model.swift`'s
   module docs for why.
 

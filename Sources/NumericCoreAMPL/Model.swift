@@ -1,3 +1,4 @@
+import Foundation
 import NumericCore
 import NumericCoreSparse
 
@@ -19,15 +20,17 @@ import NumericCoreSparse
 ///    hand — the target either way is `Model`'s builder methods below,
 ///    so the migration is isolated to these two files.
 /// 2. **Presolve / symbolic-to-numeric translation** — `Model.compile()`
-///    in `Presolve.swift`, turning a `Model` into a `CompiledProblem`.
-/// 3. **Solver interface** — `nc-optimize::Solver` (Rust side), not
-///    duplicated here. `NumericCoreAMPL` calls through via `NCBindings`.
-/// 4. **Solvers themselves** — live in `nc-optimize` (Rust), not here.
+///    produces an LP/MILP `CompiledProblem`; `compileNonlinear()` lowers an
+///    algebraic expression tree to the shared `NonlinearModel` graph.
+/// 3. **Solver interface** — linear models call `nc-optimize` through
+///    `NCBindings`; nonlinear models select the Swift or Rust implementation
+///    through `NumericCoreOptimization`.
+/// 4. **Solvers themselves** — remain outside this modeling target.
 ///
 /// `Model` is the seam between (1) and (2): the parser only ever calls
 /// `Model`'s builder methods (`addVariable`/`addParameter`/
-/// `addConstraint`/`setObjective`), never touches `CompiledProblem`
-/// directly, and `compile()` never touches lexer/parser types.
+/// builder methods, never touches a compiled problem directly, and neither
+/// compiler touches lexer/parser types.
 public struct Model {
     public private(set) var variableNames: [String] = []
     public private(set) var variableBounds: [(lower: Double?, upper: Double?)] = []
@@ -86,13 +89,117 @@ public struct Model {
         return constraints.count - 1
     }
 
+    @discardableResult
+    public mutating func addNonlinearConstraint(
+        name: String, lhs: AlgebraicExpression,
+        relation: RelationalOperator, rhs: AlgebraicExpression
+    ) -> Int {
+        constraints.append(Constraint(
+            name: name, lhs: lhs.affine ?? .init(), relation: relation,
+            rhs: rhs.affine ?? .init(), algebraicLHS: lhs, algebraicRHS: rhs))
+        return constraints.count - 1
+    }
+
     /// Sets the model's objective. A `Model` has at most one objective —
     /// calling this again replaces the previous one, matching how a
     /// single AMPL model declares exactly one `minimize`/`maximize`
     /// statement in this grammar subset (see `docs/design/ampl-grammar.md`;
-    /// multiple named objectives are out of scope for the flat LP subset).
+    /// multiple named objectives are out of scope for this subset).
     public mutating func setObjective(name: String, sense: ObjectiveSense, expression: LinearExpression) {
         objective = Objective(name: name, sense: sense, expression: expression)
+    }
+
+    public mutating func setNonlinearObjective(
+        name: String, sense: ObjectiveSense, expression: AlgebraicExpression
+    ) {
+        objective = Objective(
+            name: name, sense: sense, expression: expression.affine ?? .init(),
+            algebraicExpression: expression)
+    }
+}
+
+/// Unindexed scalar expression used by the nonlinear AMPL subset. Parameters
+/// are folded to constants during parsing; variables retain source-model order.
+public indirect enum AlgebraicExpression: Sendable, Hashable {
+    case constant(Double)
+    case variable(Int)
+    case add(Self, Self), subtract(Self, Self), multiply(Self, Self), divide(Self, Self)
+    case negate(Self), power(Self, Double)
+    case exp(Self), log(Self), sqrt(Self), sin(Self), cos(Self)
+
+    /// Returns an affine representation when possible, preserving the existing
+    /// LP/MILP compilation path for input accepted by the original grammar.
+    public var affine: LinearExpression? {
+        switch self {
+        case .constant(let value):
+            var result = LinearExpression(); result.add(constant: value); return result
+        case .variable(let index):
+            var result = LinearExpression(); result.add(coefficient: 1, variableIndex: index); return result
+        case .add(let lhs, let rhs): return combine(lhs, rhs, rhsScale: 1)
+        case .subtract(let lhs, let rhs): return combine(lhs, rhs, rhsScale: -1)
+        case .negate(let value): return value.affine.map { scaled($0, by: -1) }
+        case .multiply(let lhs, let rhs):
+            if let scalar = lhs.constantValue { return rhs.affine.map { scaled($0, by: scalar) } }
+            if let scalar = rhs.constantValue { return lhs.affine.map { scaled($0, by: scalar) } }
+            return nil
+        case .divide(let lhs, let rhs):
+            guard let scalar = rhs.constantValue, scalar != 0 else { return nil }
+            return lhs.affine.map { scaled($0, by: 1 / scalar) }
+        case .power(let value, let exponent):
+            if exponent == 1 { return value.affine }
+            if exponent == 0 {
+                var result = LinearExpression(); result.add(constant: 1); return result
+            }
+            if let constant = constantValue {
+                var result = LinearExpression(); result.add(constant: constant); return result
+            }
+            return nil
+        case .exp, .log, .sqrt, .sin, .cos:
+            guard let constant = constantValue else { return nil }
+            var result = LinearExpression(); result.add(constant: constant); return result
+        }
+    }
+
+    private var constantValue: Double? {
+        switch self {
+        case .constant(let value): return value
+        case .variable: return nil
+        case .add(let lhs, let rhs): return zipConstants(lhs, rhs, +)
+        case .subtract(let lhs, let rhs): return zipConstants(lhs, rhs, -)
+        case .multiply(let lhs, let rhs): return zipConstants(lhs, rhs, *)
+        case .divide(let lhs, let rhs): return zipConstants(lhs, rhs, /)
+        case .negate(let value): return value.constantValue.map(-)
+        case .power(let value, let exponent):
+            return value.constantValue.map { Foundation.pow($0, exponent) }
+        case .exp(let value): return value.constantValue.map(Foundation.exp)
+        case .log(let value): return value.constantValue.map(Foundation.log)
+        case .sqrt(let value): return value.constantValue.map(Foundation.sqrt)
+        case .sin(let value): return value.constantValue.map(Foundation.sin)
+        case .cos(let value): return value.constantValue.map(Foundation.cos)
+        }
+    }
+
+    private func zipConstants(_ lhs: Self, _ rhs: Self,
+                              _ operation: (Double, Double) -> Double) -> Double? {
+        guard let left = lhs.constantValue, let right = rhs.constantValue else { return nil }
+        return operation(left, right)
+    }
+
+    private func combine(_ lhs: Self, _ rhs: Self, rhsScale: Double) -> LinearExpression? {
+        guard var result = lhs.affine, let other = rhs.affine else { return nil }
+        result.add(constant: rhsScale * other.constant)
+        for (index, coefficient) in other.coefficients {
+            result.add(coefficient: rhsScale * coefficient, variableIndex: index)
+        }
+        return result
+    }
+
+    private func scaled(_ expression: LinearExpression, by scalar: Double) -> LinearExpression {
+        var result = LinearExpression(); result.add(constant: scalar * expression.constant)
+        for (index, coefficient) in expression.coefficients {
+            result.add(coefficient: scalar * coefficient, variableIndex: index)
+        }
+        return result
     }
 }
 
@@ -131,6 +238,15 @@ public struct Constraint {
     public let lhs: LinearExpression
     public let relation: RelationalOperator
     public let rhs: LinearExpression
+    public let algebraicLHS: AlgebraicExpression?
+    public let algebraicRHS: AlgebraicExpression?
+
+    public init(name: String, lhs: LinearExpression, relation: RelationalOperator,
+                rhs: LinearExpression, algebraicLHS: AlgebraicExpression? = nil,
+                algebraicRHS: AlgebraicExpression? = nil) {
+        self.name = name; self.lhs = lhs; self.relation = relation; self.rhs = rhs
+        self.algebraicLHS = algebraicLHS; self.algebraicRHS = algebraicRHS
+    }
 }
 
 public enum ObjectiveSense: Equatable {
@@ -142,6 +258,13 @@ public struct Objective {
     public let name: String
     public let sense: ObjectiveSense
     public let expression: LinearExpression
+    public let algebraicExpression: AlgebraicExpression?
+
+    public init(name: String, sense: ObjectiveSense, expression: LinearExpression,
+                algebraicExpression: AlgebraicExpression? = nil) {
+        self.name = name; self.sense = sense; self.expression = expression
+        self.algebraicExpression = algebraicExpression
+    }
 }
 
 /// A `Model` after presolve — ready to hand to `nc-optimize::Solver` via

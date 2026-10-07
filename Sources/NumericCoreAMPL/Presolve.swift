@@ -7,6 +7,7 @@ public enum PresolveError: Error, Equatable {
     case invalidVariableBound(index: Int)
     case invalidVariableReference(Int)
     case nonFiniteModelValue
+    case nonlinearExpressionRequiresNonlinearCompiler
 }
 
 extension Model {
@@ -21,6 +22,14 @@ extension Model {
     public func compile() throws -> CompiledProblem {
         guard let objective else {
             throw PresolveError.noObjective
+        }
+        guard objective.algebraicExpression?.affine != nil
+                || objective.algebraicExpression == nil,
+              constraints.allSatisfy({ constraint in
+                  (constraint.algebraicLHS?.affine != nil || constraint.algebraicLHS == nil)
+                      && (constraint.algebraicRHS?.affine != nil || constraint.algebraicRHS == nil)
+              }) else {
+            throw PresolveError.nonlinearExpressionRequiresNonlinearCompiler
         }
 
         let variableCount = variableNames.count

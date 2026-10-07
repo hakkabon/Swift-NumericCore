@@ -10,14 +10,10 @@ public enum AMPLParseError: Error, Equatable {
 /// `docs/design/ampl-grammar.md`. See `Model.swift`'s module docs for
 /// why this is hand-rolled rather than built on `hakkabon/Parser`.
 ///
-/// One deliberate, documented extension beyond the literal EBNF: a
-/// `linear_expr` may start with a leading `+`/`-` (e.g. `-3 x + 2 y`),
-/// which the published grammar doesn't cover (`linear_expr = term, {
-/// ("+"|"-"), term }` has no leading-sign case for the *first* term).
-/// Rejecting a leading negative coefficient would make this parser
-/// unable to express a genuinely ordinary LP, so this parses the
-/// optional leading sign before the first term rather than requiring
-/// the awkward `0 - 3 x + 2 y` workaround.
+/// Algebraic expressions use ordinary arithmetic precedence, unary signs,
+/// parentheses, constant powers, and the elementary functions documented by
+/// the grammar. AMPL's coefficient notation (`3 x`) is treated as implicit
+/// multiplication, preserving compatibility with the original affine subset.
 public enum AMPLParser {
     public static func parse(_ source: String) throws -> Model {
         let tokens: [Token]
@@ -206,11 +202,11 @@ private struct ParserState {
         try expectKeyword("to")
         let name = try expectIdentifier()
         try expectSymbol(":")
-        let lhs = try parseLinearExpr()
+        let lhs = try parseAlgebraicExpression()
         let relation = try parseRelop()
-        let rhs = try parseLinearExpr()
+        let rhs = try parseAlgebraicExpression()
         try expectSymbol(";")
-        model.addConstraint(name: name, lhs: lhs, relation: relation, rhs: rhs)
+        model.addNonlinearConstraint(name: name, lhs: lhs, relation: relation, rhs: rhs)
     }
 
     // MARK: - objective_decl
@@ -226,9 +222,9 @@ private struct ParserState {
         }
         let name = try expectIdentifier()
         try expectSymbol(":")
-        let expression = try parseLinearExpr()
+        let expression = try parseAlgebraicExpression()
         try expectSymbol(";")
-        model.setObjective(name: name, sense: sense, expression: expression)
+        model.setNonlinearObjective(name: name, sense: sense, expression: expression)
     }
 
     // MARK: - relop
@@ -242,66 +238,89 @@ private struct ParserState {
         )
     }
 
-    // MARK: - linear_expr = term, { ("+"|"-"), term }
-    // (plus the leading-sign extension documented on AMPLParser)
+    // MARK: - algebraic expressions
 
-    mutating func parseLinearExpr() throws -> LinearExpression {
-        var expr = LinearExpression()
+    mutating func parseAlgebraicExpression() throws -> AlgebraicExpression {
+        try parseSum()
+    }
 
-        var leadingSign = 1.0
-        if matchSymbol("+") {
-            leadingSign = 1
-        } else if matchSymbol("-") {
-            leadingSign = -1
-        }
-        try parseTerm(into: &expr, sign: leadingSign)
-
+    mutating func parseSum() throws -> AlgebraicExpression {
+        var value = try parseProduct()
         while true {
-            if matchSymbol("+") {
-                try parseTerm(into: &expr, sign: 1)
-            } else if matchSymbol("-") {
-                try parseTerm(into: &expr, sign: -1)
-            } else {
-                break
+            if matchSymbol("+") { value = .add(value, try parseProduct()) }
+            else if matchSymbol("-") { value = .subtract(value, try parseProduct()) }
+            else { return value }
+        }
+    }
+
+    mutating func parseProduct() throws -> AlgebraicExpression {
+        var value = try parseUnary()
+        while true {
+            if matchSymbol("*") { value = .multiply(value, try parseUnary()) }
+            else if matchSymbol("/") { value = .divide(value, try parseUnary()) }
+            else if beginsPrimary(current.kind) {
+                // AMPL permits coefficient notation such as `3 x`.
+                value = .multiply(value, try parseUnary())
+            } else { return value }
+        }
+    }
+
+    mutating func parseUnary() throws -> AlgebraicExpression {
+        if matchSymbol("+") { return try parseUnary() }
+        if matchSymbol("-") { return .negate(try parseUnary()) }
+        return try parsePower()
+    }
+
+    mutating func parsePower() throws -> AlgebraicExpression {
+        var value = try parsePrimary()
+        if matchSymbol("^") {
+            let exponent = try parseUnary()
+            guard case .constant(let scalar) = exponent else {
+                throw AMPLParseError.unexpectedToken(
+                    expected: "constant exponent", found: describe(current.kind),
+                    position: current.position)
             }
+            value = .power(value, scalar)
         }
-        return expr
+        return value
     }
 
-    // MARK: - term = [ number ], identifier | number
-
-    mutating func parseTerm(into expr: inout LinearExpression, sign: Double) throws {
-        if case .number(let n) = current.kind {
+    mutating func parsePrimary() throws -> AlgebraicExpression {
+        if case .number(let value) = current.kind {
+            _ = advance(); return .constant(value)
+        }
+        if matchSymbol("(") {
+            let value = try parseAlgebraicExpression(); try expectSymbol(")"); return value
+        }
+        if case .identifier(let name) = current.kind {
             _ = advance()
-            let coefficient = sign * n
-            if case .identifier(let name) = current.kind {
-                _ = advance()
-                try resolve(name, coefficient: coefficient, into: &expr)
-            } else {
-                expr.add(constant: coefficient)
+            if ["exp", "log", "sqrt", "sin", "cos"].contains(name), matchSymbol("(") {
+                let argument = try parseAlgebraicExpression(); try expectSymbol(")")
+                switch name {
+                case "exp": return .exp(argument)
+                case "log": return .log(argument)
+                case "sqrt": return .sqrt(argument)
+                case "sin": return .sin(argument)
+                default: return .cos(argument)
+                }
             }
-        } else if case .identifier(let name) = current.kind {
-            _ = advance()
-            try resolve(name, coefficient: sign, into: &expr)
-        } else {
-            throw AMPLParseError.unexpectedToken(
-                expected: "number or identifier", found: describe(current.kind), position: current.position
-            )
+            return try resolveAlgebraic(name)
         }
+        throw AMPLParseError.unexpectedToken(
+            expected: "number, identifier, or parenthesized expression",
+            found: describe(current.kind), position: current.position)
     }
 
-    /// Resolves an identifier against the model's declared variables
-    /// and parameters — see `Model.swift`'s module docs on why this
-    /// dual resolution exists even though the published EBNF's `term`
-    /// production doesn't distinguish the two: a param reference folds
-    /// into `constant`, a variable reference becomes a coefficient.
-    func resolve(_ name: String, coefficient: Double, into expr: inout LinearExpression) throws {
-        if let variableIndex = model.variableIndex(named: name) {
-            expr.add(coefficient: coefficient, variableIndex: variableIndex)
-        } else if let paramValue = model.parameterValues[name] {
-            expr.add(constant: coefficient * paramValue)
-        } else {
-            throw AMPLParseError.unknownIdentifier(name, position: tokens[index - 1].position)
-        }
+    func beginsPrimary(_ kind: TokenKind) -> Bool {
+        if case .number = kind { return true }
+        if case .identifier = kind { return true }
+        return kind == .symbol("(")
     }
+
+    func resolveAlgebraic(_ name: String) throws -> AlgebraicExpression {
+        if let index = model.variableIndex(named: name) { return .variable(index) }
+        if let value = model.parameterValues[name] { return .constant(value) }
+        throw AMPLParseError.unknownIdentifier(name, position: tokens[index - 1].position)
+    }
+
 }
