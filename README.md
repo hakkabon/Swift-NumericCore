@@ -50,7 +50,7 @@ Swift-NumericCore/
 │   ├── NumericCoreMPS/        # Metal Performance Shaders backend (scaffold)
 │   ├── NumericCoreSparse/     # SparseMatrix<T> (CSR), SpMV
 │   ├── NumericCoreGraph/      # bridge to NetworkGraph/Layout — adjacency matrices
-│   ├── NumericCoreOptimization/ # L-BFGS and nonlinear least squares
+│   ├── NumericCoreOptimization/ # Swift/Rust nonlinear optimization, LP/MILP/QP
 │   └── NumericCoreAMPL/       # AMPL-style modeling language — lexer/parser/presolve/solve, full loop closed
 ├── Tests/
 └── docs/
@@ -106,6 +106,9 @@ Swift-NumericCore/
   `ConstrainedNonlinearProblem` and solved with an augmented-Lagrangian outer
   method backed by projected L-BFGS, including multiplier, feasibility, and
   projected-stationarity diagnostics.
+  `NonlinearModelSolver` provides one model/options/result contract for Swift
+  execution or the Rust FFI backend, including robust least squares and
+  constrained models.
   `QuadraticProblem` and `ConvexQuadraticSolver` add continuous convex QP with
   sparse linear constraints, variable bounds, warm starts, dual estimates, and
   primal/dual/KKT diagnostics as the subproblem foundation for future SQP.

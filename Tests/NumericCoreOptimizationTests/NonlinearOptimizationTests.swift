@@ -129,6 +129,58 @@ final class NonlinearOptimizationTests: XCTestCase {
         XCTAssertLessThan(result.gradientNorm, 1e-10)
     }
 
+    func testUnifiedNonlinearSolverUsesSharedSwiftContract() throws {
+        let expression = NonlinearExpression(nodes: [
+            .parameter(0), .constant(3), .subtract(0, 1), .pow(2, 2)
+        ], output: 3)
+        let model = try NonlinearModel.objective(
+            parameterCount: 1, bounds: [.init(upper: 1)], expression: expression)
+        let result = try NonlinearModelSolver.minimize(
+            model: model, initial: [0], backend: .swift)
+        XCTAssertEqual(result.point[0], 1, accuracy: 1e-10)
+    }
+
+    func testUnifiedNonlinearSolverCrossesRustFFI() throws {
+        let expression = NonlinearExpression(nodes: [
+            .parameter(0), .constant(3), .subtract(0, 1), .pow(2, 2)
+        ], output: 3)
+        let model = try NonlinearModel.objective(
+            parameterCount: 1, bounds: [.init(upper: 1)], expression: expression)
+        let result = try NonlinearModelSolver.minimize(
+            model: model, initial: [0], backend: .rust)
+        XCTAssertEqual(result.point[0], 1, accuracy: 1e-10)
+        XCTAssertEqual(result.termination, .convergedGradient)
+    }
+
+    func testUnifiedRobustLeastSquaresCrossesRustFFI() throws {
+        func shifted(_ constant: Double) -> NonlinearExpression {
+            .init(nodes: [.parameter(0), .constant(constant), .subtract(0, 1)], output: 2)
+        }
+        let model = try NonlinearModel.leastSquares(
+            parameterCount: 1, bounds: [.free], residuals: [shifted(1), shifted(2)])
+        let result = try NonlinearModelSolver.leastSquares(
+            model: model, initial: [0], loss: .huber(scale: 1), backend: .rust)
+        XCTAssertEqual(result.point[0], 1.5, accuracy: 1e-8)
+    }
+
+    func testUnifiedConstrainedSolverCrossesRustFFI() throws {
+        let objective = NonlinearExpression(nodes: [
+            .parameter(0), .pow(0, 2), .parameter(1), .pow(2, 2), .add(1, 3)
+        ], output: 4)
+        let equality = NonlinearExpression(nodes: [
+            .parameter(0), .parameter(1), .add(0, 1)
+        ], output: 2)
+        let model = try NonlinearModel.objective(
+            parameterCount: 2, bounds: [.free, .free], expression: objective)
+        let problem = try ConstrainedNonlinearProblem(
+            model: model, constraints: [.init(expression: equality, bound: .fixed(1))])
+        let result = try NonlinearModelSolver.minimize(
+            problem: problem, initial: [0, 0], backend: .rust)
+        XCTAssertEqual(result.termination, .converged)
+        XCTAssertEqual(result.point[0], 0.5, accuracy: 1e-5)
+        XCTAssertEqual(result.point[1], 0.5, accuracy: 1e-5)
+    }
+
     func testSharedResidualGraphRunsThroughLeastSquaresSolver() throws {
         func shifted(_ constant: Double) -> NonlinearExpression {
             .init(nodes: [.parameter(0), .constant(constant), .subtract(0, 1)], output: 2)

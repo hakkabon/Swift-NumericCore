@@ -326,7 +326,7 @@ public enum FFIKernels {
     /// `FFIError`. Isolated in one place so `NumericCore`/
     /// `NumericCoreSparse` never need to know about the generated error
     /// type's exact shape.
-    private static func translate(_ error: Error) -> FFIError {
+    static func translate(_ error: Error) -> FFIError {
         guard let ffiError = error as? FfiError else {
             return .unknown(String(describing: error))
         }
@@ -343,7 +343,7 @@ public enum FFIKernels {
 
 /// Mirrors `nc-ffi::FfiBound` — `nil` means unbounded in that
 /// direction, same convention as `nc_optimize::Bound`.
-public struct FFIBound {
+public struct FFIBound: Sendable, Hashable {
     public let lower: Double?
     public let upper: Double?
 
