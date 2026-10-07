@@ -2,6 +2,63 @@ import XCTest
 @testable import NumericCoreOptimization
 
 final class NonlinearOptimizationTests: XCTestCase {
+    func testSparseAndMatrixFreeDerivativesAgree() throws {
+        func shifted(_ parameter: Int, _ constant: Double) -> NonlinearExpression {
+            .init(nodes: [.parameter(parameter), .constant(constant), .subtract(0, 1)], output: 2)
+        }
+        let model = try NonlinearModel.leastSquares(
+            parameterCount: 4, bounds: [.free, .free, .free, .free],
+            residuals: [shifted(0, 1), shifted(3, 2)])
+        let point = [3.0, 7, 8, 5], direction = [2.0, 4, 6, 8]
+        let sparse = try model.evaluateSparseResiduals(parameters: point)
+        XCTAssertEqual(sparse.residuals, [2, 3])
+        XCTAssertEqual(sparse.jacobian.rowPointers, [0, 1, 2])
+        XCTAssertEqual(sparse.jacobian.columnIndices, [0, 3])
+        XCTAssertEqual(sparse.jacobian.values, [1, 1])
+        XCTAssertEqual(try sparse.jacobian.multiplying(direction),
+                       try model.jacobianVectorProduct(parameters: point, direction: direction))
+        XCTAssertEqual(try sparse.jacobian.transposeMultiplying([5, 7]),
+                       try model.jacobianTransposeVectorProduct(parameters: point, weights: [5, 7]))
+    }
+
+    func testSparseDerivativesCrossRustFFI() throws {
+        func shifted(_ parameter: Int, _ constant: Double) -> NonlinearExpression {
+            .init(nodes: [.parameter(parameter), .constant(constant), .subtract(0, 1)], output: 2)
+        }
+        let model = try NonlinearModel.leastSquares(
+            parameterCount: 4, bounds: [.free, .free, .free, .free],
+            residuals: [shifted(0, 1), shifted(3, 2)])
+        let point = [3.0, 7, 8, 5], direction = [2.0, 4, 6, 8]
+        let local = try NonlinearModelSolver.sparseResiduals(
+            model: model, parameters: point, backend: .swift)
+        let remote = try NonlinearModelSolver.sparseResiduals(
+            model: model, parameters: point, backend: .rust)
+        XCTAssertEqual(remote, local)
+        XCTAssertEqual(
+            try NonlinearModelSolver.jacobianVectorProduct(
+                model: model, parameters: point, direction: direction, backend: .rust),
+            try local.jacobian.multiplying(direction))
+        XCTAssertEqual(
+            try NonlinearModelSolver.jacobianTransposeVectorProduct(
+                model: model, parameters: point, weights: [5, 7], backend: .rust),
+            try local.jacobian.transposeMultiplying([5, 7]))
+    }
+
+    func testSparseObjectiveCrossesRustFFI() throws {
+        let expression = NonlinearExpression(
+            nodes: [.parameter(2), .constant(4), .multiply(0, 1)], output: 2)
+        let model = try NonlinearModel.objective(
+            parameterCount: 4, bounds: [.free, .free, .free, .free], expression: expression)
+        let point = [1.0, 2, 3, 4]
+        let local = try NonlinearModelSolver.sparseObjective(
+            model: model, parameters: point, backend: .swift)
+        let remote = try NonlinearModelSolver.sparseObjective(
+            model: model, parameters: point, backend: .rust)
+        XCTAssertEqual(remote, local)
+        XCTAssertEqual(remote.value, 12)
+        XCTAssertEqual(remote.derivative.indices, [2])
+        XCTAssertEqual(remote.derivative.values, [4])
+    }
     func testLBFGSMinimizesRosenbrock() throws {
         let result = try LBFGS.minimize(initial: [-1.2, 1]) { x in
             let a = x[1] - x[0] * x[0]

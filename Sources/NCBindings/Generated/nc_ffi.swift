@@ -2944,6 +2944,266 @@ public func FfiConverterTypeFfiSolution_lower(_ value: FfiSolution) -> RustBuffe
 }
 
 
+public struct FfiSparseDerivative {
+    public var dimension: UInt64
+    public var indices: [UInt64]
+    public var values: [Double]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(dimension: UInt64, indices: [UInt64], values: [Double]) {
+        self.dimension = dimension
+        self.indices = indices
+        self.values = values
+    }
+}
+
+
+
+extension FfiSparseDerivative: Equatable, Hashable {
+    public static func ==(lhs: FfiSparseDerivative, rhs: FfiSparseDerivative) -> Bool {
+        if lhs.dimension != rhs.dimension {
+            return false
+        }
+        if lhs.indices != rhs.indices {
+            return false
+        }
+        if lhs.values != rhs.values {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(dimension)
+        hasher.combine(indices)
+        hasher.combine(values)
+    }
+}
+
+
+public struct FfiConverterTypeFfiSparseDerivative: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiSparseDerivative {
+        return
+            try FfiSparseDerivative(
+                dimension: FfiConverterUInt64.read(from: &buf),
+                indices: FfiConverterSequenceUInt64.read(from: &buf),
+                values: FfiConverterSequenceDouble.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiSparseDerivative, into buf: inout [UInt8]) {
+        FfiConverterUInt64.write(value.dimension, into: &buf)
+        FfiConverterSequenceUInt64.write(value.indices, into: &buf)
+        FfiConverterSequenceDouble.write(value.values, into: &buf)
+    }
+}
+
+
+public func FfiConverterTypeFfiSparseDerivative_lift(_ buf: RustBuffer) throws -> FfiSparseDerivative {
+    return try FfiConverterTypeFfiSparseDerivative.lift(buf)
+}
+
+public func FfiConverterTypeFfiSparseDerivative_lower(_ value: FfiSparseDerivative) -> RustBuffer {
+    return FfiConverterTypeFfiSparseDerivative.lower(value)
+}
+
+
+public struct FfiSparseJacobian {
+    public var rows: UInt64
+    public var columns: UInt64
+    public var rowPointers: [UInt64]
+    public var columnIndices: [UInt64]
+    public var values: [Double]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(rows: UInt64, columns: UInt64, rowPointers: [UInt64], columnIndices: [UInt64], values: [Double]) {
+        self.rows = rows
+        self.columns = columns
+        self.rowPointers = rowPointers
+        self.columnIndices = columnIndices
+        self.values = values
+    }
+}
+
+
+
+extension FfiSparseJacobian: Equatable, Hashable {
+    public static func ==(lhs: FfiSparseJacobian, rhs: FfiSparseJacobian) -> Bool {
+        if lhs.rows != rhs.rows {
+            return false
+        }
+        if lhs.columns != rhs.columns {
+            return false
+        }
+        if lhs.rowPointers != rhs.rowPointers {
+            return false
+        }
+        if lhs.columnIndices != rhs.columnIndices {
+            return false
+        }
+        if lhs.values != rhs.values {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(rows)
+        hasher.combine(columns)
+        hasher.combine(rowPointers)
+        hasher.combine(columnIndices)
+        hasher.combine(values)
+    }
+}
+
+
+public struct FfiConverterTypeFfiSparseJacobian: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiSparseJacobian {
+        return
+            try FfiSparseJacobian(
+                rows: FfiConverterUInt64.read(from: &buf),
+                columns: FfiConverterUInt64.read(from: &buf),
+                rowPointers: FfiConverterSequenceUInt64.read(from: &buf),
+                columnIndices: FfiConverterSequenceUInt64.read(from: &buf),
+                values: FfiConverterSequenceDouble.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiSparseJacobian, into buf: inout [UInt8]) {
+        FfiConverterUInt64.write(value.rows, into: &buf)
+        FfiConverterUInt64.write(value.columns, into: &buf)
+        FfiConverterSequenceUInt64.write(value.rowPointers, into: &buf)
+        FfiConverterSequenceUInt64.write(value.columnIndices, into: &buf)
+        FfiConverterSequenceDouble.write(value.values, into: &buf)
+    }
+}
+
+
+public func FfiConverterTypeFfiSparseJacobian_lift(_ buf: RustBuffer) throws -> FfiSparseJacobian {
+    return try FfiConverterTypeFfiSparseJacobian.lift(buf)
+}
+
+public func FfiConverterTypeFfiSparseJacobian_lower(_ value: FfiSparseJacobian) -> RustBuffer {
+    return FfiConverterTypeFfiSparseJacobian.lower(value)
+}
+
+
+public struct FfiSparseObjectiveEvaluation {
+    public var value: Double
+    public var derivative: FfiSparseDerivative
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(value: Double, derivative: FfiSparseDerivative) {
+        self.value = value
+        self.derivative = derivative
+    }
+}
+
+
+
+extension FfiSparseObjectiveEvaluation: Equatable, Hashable {
+    public static func ==(lhs: FfiSparseObjectiveEvaluation, rhs: FfiSparseObjectiveEvaluation) -> Bool {
+        if lhs.value != rhs.value {
+            return false
+        }
+        if lhs.derivative != rhs.derivative {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(value)
+        hasher.combine(derivative)
+    }
+}
+
+
+public struct FfiConverterTypeFfiSparseObjectiveEvaluation: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiSparseObjectiveEvaluation {
+        return
+            try FfiSparseObjectiveEvaluation(
+                value: FfiConverterDouble.read(from: &buf),
+                derivative: FfiConverterTypeFfiSparseDerivative.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiSparseObjectiveEvaluation, into buf: inout [UInt8]) {
+        FfiConverterDouble.write(value.value, into: &buf)
+        FfiConverterTypeFfiSparseDerivative.write(value.derivative, into: &buf)
+    }
+}
+
+
+public func FfiConverterTypeFfiSparseObjectiveEvaluation_lift(_ buf: RustBuffer) throws -> FfiSparseObjectiveEvaluation {
+    return try FfiConverterTypeFfiSparseObjectiveEvaluation.lift(buf)
+}
+
+public func FfiConverterTypeFfiSparseObjectiveEvaluation_lower(_ value: FfiSparseObjectiveEvaluation) -> RustBuffer {
+    return FfiConverterTypeFfiSparseObjectiveEvaluation.lower(value)
+}
+
+
+public struct FfiSparseResidualEvaluation {
+    public var residuals: [Double]
+    public var jacobian: FfiSparseJacobian
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(residuals: [Double], jacobian: FfiSparseJacobian) {
+        self.residuals = residuals
+        self.jacobian = jacobian
+    }
+}
+
+
+
+extension FfiSparseResidualEvaluation: Equatable, Hashable {
+    public static func ==(lhs: FfiSparseResidualEvaluation, rhs: FfiSparseResidualEvaluation) -> Bool {
+        if lhs.residuals != rhs.residuals {
+            return false
+        }
+        if lhs.jacobian != rhs.jacobian {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(residuals)
+        hasher.combine(jacobian)
+    }
+}
+
+
+public struct FfiConverterTypeFfiSparseResidualEvaluation: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiSparseResidualEvaluation {
+        return
+            try FfiSparseResidualEvaluation(
+                residuals: FfiConverterSequenceDouble.read(from: &buf),
+                jacobian: FfiConverterTypeFfiSparseJacobian.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiSparseResidualEvaluation, into buf: inout [UInt8]) {
+        FfiConverterSequenceDouble.write(value.residuals, into: &buf)
+        FfiConverterTypeFfiSparseJacobian.write(value.jacobian, into: &buf)
+    }
+}
+
+
+public func FfiConverterTypeFfiSparseResidualEvaluation_lift(_ buf: RustBuffer) throws -> FfiSparseResidualEvaluation {
+    return try FfiConverterTypeFfiSparseResidualEvaluation.lift(buf)
+}
+
+public func FfiConverterTypeFfiSparseResidualEvaluation_lower(_ value: FfiSparseResidualEvaluation) -> RustBuffer {
+    return FfiConverterTypeFfiSparseResidualEvaluation.lower(value)
+}
+
+
 /**
  * Solver state and convergence settings. `initial_solution` is the previous
  * coefficient vector in an IRLS loop or regularization path.
@@ -3885,6 +4145,28 @@ fileprivate struct FfiConverterSequenceUInt32: FfiConverterRustBuffer {
     }
 }
 
+fileprivate struct FfiConverterSequenceUInt64: FfiConverterRustBuffer {
+    typealias SwiftType = [UInt64]
+
+    public static func write(_ value: [UInt64], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterUInt64.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [UInt64] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [UInt64]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterUInt64.read(from: &buf))
+        }
+        return seq
+    }
+}
+
 fileprivate struct FfiConverterSequenceFloat: FfiConverterRustBuffer {
     typealias SwiftType = [Float]
 
@@ -4116,6 +4398,22 @@ public func dotF64(x: [Double], y: [Double])throws  -> Double {
     )
 })
 }
+public func evaluateNonlinearObjectiveSparse(modelValue: FfiNonlinearModel, parameters: [Double])throws  -> FfiSparseObjectiveEvaluation {
+    return try  FfiConverterTypeFfiSparseObjectiveEvaluation.lift(try rustCallWithError(FfiConverterTypeFfiError.lift) {
+    uniffi_nc_ffi_fn_func_evaluate_nonlinear_objective_sparse(
+        FfiConverterTypeFfiNonlinearModel.lower(modelValue),
+        FfiConverterSequenceDouble.lower(parameters),$0
+    )
+})
+}
+public func evaluateNonlinearResidualsSparse(modelValue: FfiNonlinearModel, parameters: [Double])throws  -> FfiSparseResidualEvaluation {
+    return try  FfiConverterTypeFfiSparseResidualEvaluation.lift(try rustCallWithError(FfiConverterTypeFfiError.lift) {
+    uniffi_nc_ffi_fn_func_evaluate_nonlinear_residuals_sparse(
+        FfiConverterTypeFfiNonlinearModel.lower(modelValue),
+        FfiConverterSequenceDouble.lower(parameters),$0
+    )
+})
+}
 /**
  * The `f32` counterpart of `matmul_f64`.
  */
@@ -4132,6 +4430,24 @@ public func matmulF64(a: FfiMatrixF64, b: FfiMatrixF64)throws  -> FfiMatrixF64 {
     uniffi_nc_ffi_fn_func_matmul_f64(
         FfiConverterTypeFfiMatrixF64.lower(a),
         FfiConverterTypeFfiMatrixF64.lower(b),$0
+    )
+})
+}
+public func nonlinearJacobianTransposeVectorProduct(modelValue: FfiNonlinearModel, parameters: [Double], weights: [Double])throws  -> [Double] {
+    return try  FfiConverterSequenceDouble.lift(try rustCallWithError(FfiConverterTypeFfiError.lift) {
+    uniffi_nc_ffi_fn_func_nonlinear_jacobian_transpose_vector_product(
+        FfiConverterTypeFfiNonlinearModel.lower(modelValue),
+        FfiConverterSequenceDouble.lower(parameters),
+        FfiConverterSequenceDouble.lower(weights),$0
+    )
+})
+}
+public func nonlinearJacobianVectorProduct(modelValue: FfiNonlinearModel, parameters: [Double], direction: [Double])throws  -> [Double] {
+    return try  FfiConverterSequenceDouble.lift(try rustCallWithError(FfiConverterTypeFfiError.lift) {
+    uniffi_nc_ffi_fn_func_nonlinear_jacobian_vector_product(
+        FfiConverterTypeFfiNonlinearModel.lower(modelValue),
+        FfiConverterSequenceDouble.lower(parameters),
+        FfiConverterSequenceDouble.lower(direction),$0
     )
 })
 }
@@ -4401,10 +4717,22 @@ private var initializationResult: InitializationResult {
     if (uniffi_nc_ffi_checksum_func_dot_f64() != 22855) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_nc_ffi_checksum_func_evaluate_nonlinear_objective_sparse() != 51398) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nc_ffi_checksum_func_evaluate_nonlinear_residuals_sparse() != 29069) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_nc_ffi_checksum_func_matmul_f32() != 54411) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nc_ffi_checksum_func_matmul_f64() != 53784) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nc_ffi_checksum_func_nonlinear_jacobian_transpose_vector_product() != 1703) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nc_ffi_checksum_func_nonlinear_jacobian_vector_product() != 54837) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nc_ffi_checksum_func_norm2_f32() != 50338) {

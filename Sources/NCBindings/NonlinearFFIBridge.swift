@@ -124,7 +124,72 @@ public struct FFIConstrainedResult: Sendable, Hashable {
     public let termination: FFIConstrainedTermination
 }
 
+public struct FFISparseDerivative: Sendable, Hashable {
+    public let dimension: Int
+    public let indices: [Int]
+    public let values: [Double]
+}
+
+public struct FFISparseJacobian: Sendable, Hashable {
+    public let rows: Int, columns: Int
+    public let rowPointers: [Int], columnIndices: [Int]
+    public let values: [Double]
+}
+
+public struct FFISparseObjectiveEvaluation: Sendable, Hashable {
+    public let value: Double
+    public let derivative: FFISparseDerivative
+}
+
+public struct FFISparseResidualEvaluation: Sendable, Hashable {
+    public let residuals: [Double]
+    public let jacobian: FFISparseJacobian
+}
+
 extension FFIKernels {
+    public static func evaluateNonlinearObjectiveSparse(
+        model: FFINonlinearModel, parameters: [Double]
+    ) throws -> FFISparseObjectiveEvaluation {
+        do {
+            let result = try NCBindings.evaluateNonlinearObjectiveSparse(
+                modelValue: ffi(model), parameters: parameters)
+            return .init(value: result.value, derivative: .init(
+                dimension: Int(result.derivative.dimension),
+                indices: result.derivative.indices.map(Int.init),
+                values: result.derivative.values))
+        } catch { throw Self.translate(error) }
+    }
+
+    public static func evaluateNonlinearResidualsSparse(
+        model: FFINonlinearModel, parameters: [Double]
+    ) throws -> FFISparseResidualEvaluation {
+        do {
+            let result = try NCBindings.evaluateNonlinearResidualsSparse(
+                modelValue: ffi(model), parameters: parameters)
+            return .init(residuals: result.residuals, jacobian: .init(
+                rows: Int(result.jacobian.rows), columns: Int(result.jacobian.columns),
+                rowPointers: result.jacobian.rowPointers.map(Int.init),
+                columnIndices: result.jacobian.columnIndices.map(Int.init),
+                values: result.jacobian.values))
+        } catch { throw Self.translate(error) }
+    }
+
+    public static func nonlinearJacobianVectorProduct(
+        model: FFINonlinearModel, parameters: [Double], direction: [Double]
+    ) throws -> [Double] {
+        do { return try NCBindings.nonlinearJacobianVectorProduct(
+            modelValue: ffi(model), parameters: parameters, direction: direction) }
+        catch { throw Self.translate(error) }
+    }
+
+    public static func nonlinearJacobianTransposeVectorProduct(
+        model: FFINonlinearModel, parameters: [Double], weights: [Double]
+    ) throws -> [Double] {
+        do { return try NCBindings.nonlinearJacobianTransposeVectorProduct(
+            modelValue: ffi(model), parameters: parameters, weights: weights) }
+        catch { throw Self.translate(error) }
+    }
+
     public static func solveNonlinearObjective(
         model: FFINonlinearModel, initial: [Double], options: FFILBFGSOptions
     ) throws -> FFILBFGSResult {

@@ -108,7 +108,10 @@ Swift-NumericCore/
   projected-stationarity diagnostics.
   `NonlinearModelSolver` provides one model/options/result contract for Swift
   execution or the Rust FFI backend, including robust least squares and
-  constrained models.
+  constrained models. Shared graph models also expose reverse-mode sparse
+  gradients, CSR residual Jacobians, and matrix-free `Jv`/`Jᵀv` products on
+  both backends, providing scalable derivative primitives without callbacks
+  crossing the FFI boundary.
   `QuadraticProblem` and `ConvexQuadraticSolver` add continuous convex QP with
   sparse linear constraints, variable bounds, warm starts, dual estimates, and
   primal/dual/KKT diagnostics as the subproblem foundation for future SQP.

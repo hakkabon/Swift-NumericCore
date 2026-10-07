@@ -11,6 +11,66 @@ public enum NonlinearBackend: Sendable, Hashable {
 /// One result contract and one model representation, independently of where
 /// the nonlinear algorithm executes.
 public enum NonlinearModelSolver {
+    public static func sparseObjective(
+        model: NonlinearModel, parameters: [Double], backend: NonlinearBackend = .swift
+    ) throws -> SparseObjectiveEvaluation {
+        switch backend {
+        case .swift: return try model.evaluateSparseObjective(parameters: parameters)
+        case .rust:
+            do {
+                let value = try FFIKernels.evaluateNonlinearObjectiveSparse(
+                    model: ffi(model), parameters: parameters)
+                return .init(value: value.value, derivative: .init(
+                    dimension: value.derivative.dimension, indices: value.derivative.indices,
+                    values: value.derivative.values))
+            } catch { throw translate(error) }
+        }
+    }
+
+    public static func sparseResiduals(
+        model: NonlinearModel, parameters: [Double], backend: NonlinearBackend = .swift
+    ) throws -> SparseResidualEvaluation {
+        switch backend {
+        case .swift: return try model.evaluateSparseResiduals(parameters: parameters)
+        case .rust:
+            do {
+                let value = try FFIKernels.evaluateNonlinearResidualsSparse(
+                    model: ffi(model), parameters: parameters)
+                return .init(residuals: value.residuals, jacobian: .init(
+                    rows: value.jacobian.rows, columns: value.jacobian.columns,
+                    rowPointers: value.jacobian.rowPointers,
+                    columnIndices: value.jacobian.columnIndices,
+                    values: value.jacobian.values))
+            } catch { throw translate(error) }
+        }
+    }
+
+    public static func jacobianVectorProduct(
+        model: NonlinearModel, parameters: [Double], direction: [Double],
+        backend: NonlinearBackend = .swift
+    ) throws -> [Double] {
+        switch backend {
+        case .swift: return try model.jacobianVectorProduct(parameters: parameters, direction: direction)
+        case .rust:
+            do { return try FFIKernels.nonlinearJacobianVectorProduct(
+                model: ffi(model), parameters: parameters, direction: direction) }
+            catch { throw translate(error) }
+        }
+    }
+
+    public static func jacobianTransposeVectorProduct(
+        model: NonlinearModel, parameters: [Double], weights: [Double],
+        backend: NonlinearBackend = .swift
+    ) throws -> [Double] {
+        switch backend {
+        case .swift: return try model.jacobianTransposeVectorProduct(parameters: parameters, weights: weights)
+        case .rust:
+            do { return try FFIKernels.nonlinearJacobianTransposeVectorProduct(
+                model: ffi(model), parameters: parameters, weights: weights) }
+            catch { throw translate(error) }
+        }
+    }
+
     public static func minimize(
         model: NonlinearModel, initial: [Double], backend: NonlinearBackend = .swift,
         options: LBFGSOptions = .init()
