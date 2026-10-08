@@ -133,7 +133,9 @@ Swift-NumericCore/
   (`CompiledProblem.solve(using:)`, `Solve.swift`) via `nc-ffi`'s
   `solve_lp_simplex`/`solve_lp_interior_point`/
   `solve_milp_branch_and_bound` — a complete path from AMPL source text
-  to a solved LP *or* MILP. Nonlinear models compile to the shared graph and
+  to a solved LP *or* MILP. MILP search includes scaling, incumbent warm starts,
+  singleton-row bound propagation, learned pseudo-cost branching, configurable
+  node/gap policies, and a complete search certificate. Nonlinear models compile to the shared graph and
   solve through bounded L-BFGS, SQP, or augmented Lagrangian on either backend.
   Not yet built on the `Grammar`/`Lexer`/
   `Parser` packages originally sketched for this — see `Model.swift`'s

@@ -75,13 +75,33 @@ public struct BranchAndBoundSolveOptions: Sendable, Hashable {
     public var integerTolerance: Double
     public var scaling: Bool
     public var initialIncumbent: [Double]?
+    public var absoluteGapTolerance: Double
+    public var relativeGapTolerance: Double
+    public var nodeSelection: MILPNodeSelection
+    public var branchingStrategy: MILPBranchingStrategy
+    public var boundPropagation: Bool
     public init(maxNodes: UInt64 = 10_000, integerTolerance: Double = 1e-6,
-                scaling: Bool = true, initialIncumbent: [Double]? = nil) {
+                scaling: Bool = true, initialIncumbent: [Double]? = nil,
+                absoluteGapTolerance: Double = 0, relativeGapTolerance: Double = 0,
+                nodeSelection: MILPNodeSelection = .bestBound,
+                branchingStrategy: MILPBranchingStrategy = .pseudoCost,
+                boundPropagation: Bool = true) {
         self.maxNodes = maxNodes
         self.integerTolerance = integerTolerance
         self.scaling = scaling
         self.initialIncumbent = initialIncumbent
+        self.absoluteGapTolerance = absoluteGapTolerance
+        self.relativeGapTolerance = relativeGapTolerance
+        self.nodeSelection = nodeSelection
+        self.branchingStrategy = branchingStrategy
+        self.boundPropagation = boundPropagation
     }
+}
+
+public enum MILPNodeSelection: Sendable, Hashable { case depthFirst, bestBound }
+public enum MILPBranchingStrategy: Sendable, Hashable { case mostFractional, pseudoCost }
+public enum MILPTermination: Sendable, Hashable {
+    case exhausted, gapSatisfied, nodeLimit, relaxationLimit, unbounded, continuousRelaxation
 }
 
 public enum LPSolveStatus: Equatable {
@@ -121,6 +141,13 @@ public struct MILPSearchReport: Sendable, Hashable {
     public let bestBound: Double?
     public let absoluteGap: Double?
     public let relativeGap: Double?
+    public let nodesPrunedInfeasible: UInt64
+    public let nodesPrunedByBound: UInt64
+    public let maximumDepth: UInt64
+    public let relaxationsSolved: UInt64
+    public let boundsTightened: UInt64
+    public let incumbentsFound: UInt64
+    public let termination: MILPTermination
 }
 
 public struct OptimizationSolutionDiagnostics: Sendable, Hashable {
@@ -195,7 +222,12 @@ extension CompiledProblem {
         case .branchAndBound(let options):
             let report = try FFIKernels.solveMILP(ffiProblem, options: .init(
                 maxNodes: options.maxNodes, integerTolerance: options.integerTolerance,
-                scaling: options.scaling, initialIncumbent: options.initialIncumbent
+                scaling: options.scaling, initialIncumbent: options.initialIncumbent,
+                absoluteGapTolerance: options.absoluteGapTolerance,
+                relativeGapTolerance: options.relativeGapTolerance,
+                nodeSelection: options.nodeSelection == .depthFirst ? .depthFirst : .bestBound,
+                branchingStrategy: options.branchingStrategy == .mostFractional ? .mostFractional : .pseudoCost,
+                boundPropagation: options.boundPropagation
             ))
             milpReport = report
             result = report.solution
@@ -228,10 +260,28 @@ extension CompiledProblem {
                         $0 * objectiveSign + objectiveConstant
                     },
                     absoluteGap: report.absoluteGap,
-                    relativeGap: report.relativeGap
+                    relativeGap: report.relativeGap,
+                    nodesPrunedInfeasible: report.nodesPrunedInfeasible,
+                    nodesPrunedByBound: report.nodesPrunedByBound,
+                    maximumDepth: report.maximumDepth,
+                    relaxationsSolved: report.relaxationsSolved,
+                    boundsTightened: report.boundsTightened,
+                    incumbentsFound: report.incumbentsFound,
+                    termination: mapTermination(report.termination)
                 )
             }
         )
+    }
+
+    private func mapTermination(_ value: FFIBranchAndBoundTermination) -> MILPTermination {
+        switch value {
+        case .exhausted: return .exhausted
+        case .gapSatisfied: return .gapSatisfied
+        case .nodeLimit: return .nodeLimit
+        case .relaxationLimit: return .relaxationLimit
+        case .unbounded: return .unbounded
+        case .continuousRelaxation: return .continuousRelaxation
+        }
     }
 
     private func solutionDiagnostics(

@@ -214,6 +214,8 @@ final class SolveTests: XCTestCase {
         XCTAssertNotNil(report.bestBound)
         XCTAssertNotNil(report.absoluteGap)
         XCTAssertNotNil(report.relativeGap)
+        XCTAssertGreaterThan(report.relaxationsSolved, 0)
+        XCTAssertEqual(report.termination, .nodeLimit)
         XCTAssertTrue(solution.diagnostics.isVerified(tolerance: 1e-8))
     }
 
@@ -255,6 +257,22 @@ final class SolveTests: XCTestCase {
         XCTAssertEqual(solution.variableValues, [4, 0])
         XCTAssertEqual(solution.objectiveValue, 20, accuracy: 1e-12)
         XCTAssertTrue(solution.diagnostics.isVerified(tolerance: 1e-8))
+    }
+
+    func testMILPBoundPropagationProvesSingletonIntegralityInfeasibleWithoutRelaxation() throws {
+        let source = """
+        var x >= 0 integer;
+        minimize cost: x;
+        subject to impossible: 2 x = 1;
+        """
+        let solution = try AMPLParser.parse(source).compile().solve(
+            configuration: .branchAndBound(.init(boundPropagation: true))
+        )
+        XCTAssertEqual(solution.status, .infeasible)
+        let report = try XCTUnwrap(solution.searchReport)
+        XCTAssertEqual(report.nodesPrunedInfeasible, 1)
+        XCTAssertEqual(report.relaxationsSolved, 0)
+        XCTAssertEqual(report.termination, .exhausted)
     }
 
     func testConfiguredSimplexPreservesExistingSolutionPath() throws {

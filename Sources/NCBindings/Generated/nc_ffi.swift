@@ -893,14 +893,24 @@ public struct FfiBranchAndBoundOptions {
     public var integerTolerance: Double
     public var scaling: Bool
     public var initialIncumbent: [Double]
+    public var absoluteGapTolerance: Double
+    public var relativeGapTolerance: Double
+    public var nodeSelection: FfiNodeSelection
+    public var branchingStrategy: FfiBranchingStrategy
+    public var boundPropagation: Bool
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
-    public init(maxNodes: UInt64, integerTolerance: Double, scaling: Bool, initialIncumbent: [Double]) {
+    public init(maxNodes: UInt64, integerTolerance: Double, scaling: Bool, initialIncumbent: [Double], absoluteGapTolerance: Double, relativeGapTolerance: Double, nodeSelection: FfiNodeSelection, branchingStrategy: FfiBranchingStrategy, boundPropagation: Bool) {
         self.maxNodes = maxNodes
         self.integerTolerance = integerTolerance
         self.scaling = scaling
         self.initialIncumbent = initialIncumbent
+        self.absoluteGapTolerance = absoluteGapTolerance
+        self.relativeGapTolerance = relativeGapTolerance
+        self.nodeSelection = nodeSelection
+        self.branchingStrategy = branchingStrategy
+        self.boundPropagation = boundPropagation
     }
 }
 
@@ -916,6 +926,11 @@ extension FfiBranchAndBoundOptions: Equatable, Hashable {
         }
         if lhs.scaling != rhs.scaling { return false }
         if lhs.initialIncumbent != rhs.initialIncumbent { return false }
+        if lhs.absoluteGapTolerance != rhs.absoluteGapTolerance { return false }
+        if lhs.relativeGapTolerance != rhs.relativeGapTolerance { return false }
+        if lhs.nodeSelection != rhs.nodeSelection { return false }
+        if lhs.branchingStrategy != rhs.branchingStrategy { return false }
+        if lhs.boundPropagation != rhs.boundPropagation { return false }
         return true
     }
 
@@ -924,6 +939,11 @@ extension FfiBranchAndBoundOptions: Equatable, Hashable {
         hasher.combine(integerTolerance)
         hasher.combine(scaling)
         hasher.combine(initialIncumbent)
+        hasher.combine(absoluteGapTolerance)
+        hasher.combine(relativeGapTolerance)
+        hasher.combine(nodeSelection)
+        hasher.combine(branchingStrategy)
+        hasher.combine(boundPropagation)
     }
 }
 
@@ -935,7 +955,12 @@ public struct FfiConverterTypeFfiBranchAndBoundOptions: FfiConverterRustBuffer {
                 maxNodes: FfiConverterUInt64.read(from: &buf),
                 integerTolerance: FfiConverterDouble.read(from: &buf),
                 scaling: FfiConverterBool.read(from: &buf),
-                initialIncumbent: FfiConverterSequenceDouble.read(from: &buf)
+                initialIncumbent: FfiConverterSequenceDouble.read(from: &buf),
+                absoluteGapTolerance: FfiConverterDouble.read(from: &buf),
+                relativeGapTolerance: FfiConverterDouble.read(from: &buf),
+                nodeSelection: FfiConverterTypeFfiNodeSelection.read(from: &buf),
+                branchingStrategy: FfiConverterTypeFfiBranchingStrategy.read(from: &buf),
+                boundPropagation: FfiConverterBool.read(from: &buf)
         )
     }
 
@@ -944,6 +969,11 @@ public struct FfiConverterTypeFfiBranchAndBoundOptions: FfiConverterRustBuffer {
         FfiConverterDouble.write(value.integerTolerance, into: &buf)
         FfiConverterBool.write(value.scaling, into: &buf)
         FfiConverterSequenceDouble.write(value.initialIncumbent, into: &buf)
+        FfiConverterDouble.write(value.absoluteGapTolerance, into: &buf)
+        FfiConverterDouble.write(value.relativeGapTolerance, into: &buf)
+        FfiConverterTypeFfiNodeSelection.write(value.nodeSelection, into: &buf)
+        FfiConverterTypeFfiBranchingStrategy.write(value.branchingStrategy, into: &buf)
+        FfiConverterBool.write(value.boundPropagation, into: &buf)
     }
 }
 
@@ -2115,15 +2145,29 @@ public struct FfiMilpSolveResult {
     public var bestBound: Double?
     public var absoluteGap: Double?
     public var relativeGap: Double?
+    public var nodesPrunedInfeasible: UInt64
+    public var nodesPrunedByBound: UInt64
+    public var maximumDepth: UInt64
+    public var relaxationsSolved: UInt64
+    public var boundsTightened: UInt64
+    public var incumbentsFound: UInt64
+    public var termination: FfiBranchAndBoundTermination
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
-    public init(solution: FfiSolution, nodesExplored: UInt64, bestBound: Double?, absoluteGap: Double?, relativeGap: Double?) {
+    public init(solution: FfiSolution, nodesExplored: UInt64, bestBound: Double?, absoluteGap: Double?, relativeGap: Double?, nodesPrunedInfeasible: UInt64, nodesPrunedByBound: UInt64, maximumDepth: UInt64, relaxationsSolved: UInt64, boundsTightened: UInt64, incumbentsFound: UInt64, termination: FfiBranchAndBoundTermination) {
         self.solution = solution
         self.nodesExplored = nodesExplored
         self.bestBound = bestBound
         self.absoluteGap = absoluteGap
         self.relativeGap = relativeGap
+        self.nodesPrunedInfeasible = nodesPrunedInfeasible
+        self.nodesPrunedByBound = nodesPrunedByBound
+        self.maximumDepth = maximumDepth
+        self.relaxationsSolved = relaxationsSolved
+        self.boundsTightened = boundsTightened
+        self.incumbentsFound = incumbentsFound
+        self.termination = termination
     }
 }
 
@@ -2146,6 +2190,13 @@ extension FfiMilpSolveResult: Equatable, Hashable {
         if lhs.relativeGap != rhs.relativeGap {
             return false
         }
+        if lhs.nodesPrunedInfeasible != rhs.nodesPrunedInfeasible { return false }
+        if lhs.nodesPrunedByBound != rhs.nodesPrunedByBound { return false }
+        if lhs.maximumDepth != rhs.maximumDepth { return false }
+        if lhs.relaxationsSolved != rhs.relaxationsSolved { return false }
+        if lhs.boundsTightened != rhs.boundsTightened { return false }
+        if lhs.incumbentsFound != rhs.incumbentsFound { return false }
+        if lhs.termination != rhs.termination { return false }
         return true
     }
 
@@ -2155,6 +2206,13 @@ extension FfiMilpSolveResult: Equatable, Hashable {
         hasher.combine(bestBound)
         hasher.combine(absoluteGap)
         hasher.combine(relativeGap)
+        hasher.combine(nodesPrunedInfeasible)
+        hasher.combine(nodesPrunedByBound)
+        hasher.combine(maximumDepth)
+        hasher.combine(relaxationsSolved)
+        hasher.combine(boundsTightened)
+        hasher.combine(incumbentsFound)
+        hasher.combine(termination)
     }
 }
 
@@ -2167,7 +2225,14 @@ public struct FfiConverterTypeFfiMilpSolveResult: FfiConverterRustBuffer {
                 nodesExplored: FfiConverterUInt64.read(from: &buf),
                 bestBound: FfiConverterOptionDouble.read(from: &buf),
                 absoluteGap: FfiConverterOptionDouble.read(from: &buf),
-                relativeGap: FfiConverterOptionDouble.read(from: &buf)
+                relativeGap: FfiConverterOptionDouble.read(from: &buf),
+                nodesPrunedInfeasible: FfiConverterUInt64.read(from: &buf),
+                nodesPrunedByBound: FfiConverterUInt64.read(from: &buf),
+                maximumDepth: FfiConverterUInt64.read(from: &buf),
+                relaxationsSolved: FfiConverterUInt64.read(from: &buf),
+                boundsTightened: FfiConverterUInt64.read(from: &buf),
+                incumbentsFound: FfiConverterUInt64.read(from: &buf),
+                termination: FfiConverterTypeFfiBranchAndBoundTermination.read(from: &buf)
         )
     }
 
@@ -2177,6 +2242,13 @@ public struct FfiConverterTypeFfiMilpSolveResult: FfiConverterRustBuffer {
         FfiConverterOptionDouble.write(value.bestBound, into: &buf)
         FfiConverterOptionDouble.write(value.absoluteGap, into: &buf)
         FfiConverterOptionDouble.write(value.relativeGap, into: &buf)
+        FfiConverterUInt64.write(value.nodesPrunedInfeasible, into: &buf)
+        FfiConverterUInt64.write(value.nodesPrunedByBound, into: &buf)
+        FfiConverterUInt64.write(value.maximumDepth, into: &buf)
+        FfiConverterUInt64.write(value.relaxationsSolved, into: &buf)
+        FfiConverterUInt64.write(value.boundsTightened, into: &buf)
+        FfiConverterUInt64.write(value.incumbentsFound, into: &buf)
+        FfiConverterTypeFfiBranchAndBoundTermination.write(value.termination, into: &buf)
     }
 }
 
@@ -3790,6 +3862,58 @@ public func FfiConverterTypeFfiSqpResult_lower(_ value: FfiSqpResult) -> RustBuf
 
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+
+public enum FfiBranchAndBoundTermination {
+    case exhausted, gapSatisfied, nodeLimit, relaxationLimit, unbounded, continuousRelaxation
+}
+public struct FfiConverterTypeFfiBranchAndBoundTermination: FfiConverterRustBuffer {
+    typealias SwiftType = FfiBranchAndBoundTermination
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiBranchAndBoundTermination {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        case 1: return .exhausted; case 2: return .gapSatisfied
+        case 3: return .nodeLimit; case 4: return .relaxationLimit
+        case 5: return .unbounded; case 6: return .continuousRelaxation
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+    public static func write(_ value: FfiBranchAndBoundTermination, into buf: inout [UInt8]) {
+        switch value {
+        case .exhausted: writeInt(&buf, Int32(1)); case .gapSatisfied: writeInt(&buf, Int32(2))
+        case .nodeLimit: writeInt(&buf, Int32(3)); case .relaxationLimit: writeInt(&buf, Int32(4))
+        case .unbounded: writeInt(&buf, Int32(5)); case .continuousRelaxation: writeInt(&buf, Int32(6))
+        }
+    }
+}
+public func FfiConverterTypeFfiBranchAndBoundTermination_lift(_ buf: RustBuffer) throws -> FfiBranchAndBoundTermination { try FfiConverterTypeFfiBranchAndBoundTermination.lift(buf) }
+public func FfiConverterTypeFfiBranchAndBoundTermination_lower(_ value: FfiBranchAndBoundTermination) -> RustBuffer { FfiConverterTypeFfiBranchAndBoundTermination.lower(value) }
+extension FfiBranchAndBoundTermination: Equatable, Hashable {}
+
+public enum FfiBranchingStrategy { case mostFractional, pseudoCost }
+public struct FfiConverterTypeFfiBranchingStrategy: FfiConverterRustBuffer {
+    typealias SwiftType = FfiBranchingStrategy
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiBranchingStrategy {
+        let variant: Int32 = try readInt(&buf)
+        switch variant { case 1: return .mostFractional; case 2: return .pseudoCost; default: throw UniffiInternalError.unexpectedEnumCase }
+    }
+    public static func write(_ value: FfiBranchingStrategy, into buf: inout [UInt8]) { writeInt(&buf, value == .mostFractional ? Int32(1) : Int32(2)) }
+}
+public func FfiConverterTypeFfiBranchingStrategy_lift(_ buf: RustBuffer) throws -> FfiBranchingStrategy { try FfiConverterTypeFfiBranchingStrategy.lift(buf) }
+public func FfiConverterTypeFfiBranchingStrategy_lower(_ value: FfiBranchingStrategy) -> RustBuffer { FfiConverterTypeFfiBranchingStrategy.lower(value) }
+extension FfiBranchingStrategy: Equatable, Hashable {}
+
+public enum FfiNodeSelection { case depthFirst, bestBound }
+public struct FfiConverterTypeFfiNodeSelection: FfiConverterRustBuffer {
+    typealias SwiftType = FfiNodeSelection
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiNodeSelection {
+        let variant: Int32 = try readInt(&buf)
+        switch variant { case 1: return .depthFirst; case 2: return .bestBound; default: throw UniffiInternalError.unexpectedEnumCase }
+    }
+    public static func write(_ value: FfiNodeSelection, into buf: inout [UInt8]) { writeInt(&buf, value == .depthFirst ? Int32(1) : Int32(2)) }
+}
+public func FfiConverterTypeFfiNodeSelection_lift(_ buf: RustBuffer) throws -> FfiNodeSelection { try FfiConverterTypeFfiNodeSelection.lift(buf) }
+public func FfiConverterTypeFfiNodeSelection_lower(_ value: FfiNodeSelection) -> RustBuffer { FfiConverterTypeFfiNodeSelection.lower(value) }
+extension FfiNodeSelection: Equatable, Hashable {}
 
 public enum FfiConstrainedTermination {
 

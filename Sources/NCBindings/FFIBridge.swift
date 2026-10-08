@@ -566,13 +566,33 @@ public struct FFIBranchAndBoundOptions: Sendable, Hashable {
     public var integerTolerance: Double
     public var scaling: Bool
     public var initialIncumbent: [Double]?
+    public var absoluteGapTolerance: Double
+    public var relativeGapTolerance: Double
+    public var nodeSelection: FFINodeSelection
+    public var branchingStrategy: FFIBranchingStrategy
+    public var boundPropagation: Bool
     public init(maxNodes: UInt64 = 10_000, integerTolerance: Double = 1e-6,
-                scaling: Bool = true, initialIncumbent: [Double]? = nil) {
+                scaling: Bool = true, initialIncumbent: [Double]? = nil,
+                absoluteGapTolerance: Double = 0, relativeGapTolerance: Double = 0,
+                nodeSelection: FFINodeSelection = .bestBound,
+                branchingStrategy: FFIBranchingStrategy = .pseudoCost,
+                boundPropagation: Bool = true) {
         self.maxNodes = maxNodes
         self.integerTolerance = integerTolerance
         self.scaling = scaling
         self.initialIncumbent = initialIncumbent
+        self.absoluteGapTolerance = absoluteGapTolerance
+        self.relativeGapTolerance = relativeGapTolerance
+        self.nodeSelection = nodeSelection
+        self.branchingStrategy = branchingStrategy
+        self.boundPropagation = boundPropagation
     }
+}
+
+public enum FFINodeSelection: Sendable, Hashable { case depthFirst, bestBound }
+public enum FFIBranchingStrategy: Sendable, Hashable { case mostFractional, pseudoCost }
+public enum FFIBranchAndBoundTermination: Sendable, Hashable {
+    case exhausted, gapSatisfied, nodeLimit, relaxationLimit, unbounded, continuousRelaxation
 }
 
 public struct FFIMILPSolveReport: Sendable, Hashable {
@@ -581,6 +601,13 @@ public struct FFIMILPSolveReport: Sendable, Hashable {
     public let bestBound: Double?
     public let absoluteGap: Double?
     public let relativeGap: Double?
+    public let nodesPrunedInfeasible: UInt64
+    public let nodesPrunedByBound: UInt64
+    public let maximumDepth: UInt64
+    public let relaxationsSolved: UInt64
+    public let boundsTightened: UInt64
+    public let incumbentsFound: UInt64
+    public let termination: FFIBranchAndBoundTermination
 }
 
 extension FFIKernels {
@@ -665,7 +692,12 @@ extension FFIKernels {
                     maxNodes: options.maxNodes,
                     integerTolerance: options.integerTolerance,
                     scaling: options.scaling,
-                    initialIncumbent: options.initialIncumbent ?? []
+                    initialIncumbent: options.initialIncumbent ?? [],
+                    absoluteGapTolerance: options.absoluteGapTolerance,
+                    relativeGapTolerance: options.relativeGapTolerance,
+                    nodeSelection: options.nodeSelection == .depthFirst ? .depthFirst : .bestBound,
+                    branchingStrategy: options.branchingStrategy == .mostFractional ? .mostFractional : .pseudoCost,
+                    boundPropagation: options.boundPropagation
                 )
             )
             return FFIMILPSolveReport(
@@ -673,9 +705,29 @@ extension FFIKernels {
                 nodesExplored: result.nodesExplored,
                 bestBound: result.bestBound,
                 absoluteGap: result.absoluteGap,
-                relativeGap: result.relativeGap
+                relativeGap: result.relativeGap,
+                nodesPrunedInfeasible: result.nodesPrunedInfeasible,
+                nodesPrunedByBound: result.nodesPrunedByBound,
+                maximumDepth: result.maximumDepth,
+                relaxationsSolved: result.relaxationsSolved,
+                boundsTightened: result.boundsTightened,
+                incumbentsFound: result.incumbentsFound,
+                termination: makeTermination(result.termination)
             )
         } catch { throw Self.translate(error) }
+    }
+
+    private static func makeTermination(
+        _ value: FfiBranchAndBoundTermination
+    ) -> FFIBranchAndBoundTermination {
+        switch value {
+        case .exhausted: return .exhausted
+        case .gapSatisfied: return .gapSatisfied
+        case .nodeLimit: return .nodeLimit
+        case .relaxationLimit: return .relaxationLimit
+        case .unbounded: return .unbounded
+        case .continuousRelaxation: return .continuousRelaxation
+        }
     }
 
     private static func makeFfiProblem(_ problem: FFIProblem) -> FfiProblem {
