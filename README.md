@@ -90,7 +90,10 @@ Swift-NumericCore/
   the stable numerical substrate for future GAM bases and IRLS updates.
 - `NumericCoreSparse` — `SparseMatrix<T>` (CSR); `multiplying` (SpMV)
   calls through to `nc-sparse` via `NCBindings` for both `Double` and
-  `Float`.
+  `Float`. `SparseLinearSolver` adds pivoted sparse LU, checked sparse
+  Cholesky, and configurable CG/BiCGSTAB/restarted-GMRES solves with Jacobi,
+  ILU(0), or incomplete-Cholesky preconditioning and explicit residual
+  diagnostics.
 - `NumericCoreGraph` — adjacency-matrix construction from an edge list.
 - `NumericCoreMPS` — empty scaffold (`capabilities = []`).
 - `NumericCoreOptimization` — closure-based smooth unconstrained L-BFGS with

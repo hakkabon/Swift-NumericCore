@@ -125,6 +125,66 @@ public struct FFISparseStatisticalSolveResult: Sendable, Hashable {
     }
 }
 
+public enum FFILinearPreconditioner: Sendable, Hashable {
+    case none, jacobi, ilu0, incompleteCholesky
+
+    fileprivate var generated: FfiLinearPreconditioner {
+        switch self {
+        case .none: return .none
+        case .jacobi: return .jacobi
+        case .ilu0: return .ilu0
+        case .incompleteCholesky: return .incompleteCholesky
+        }
+    }
+}
+
+public struct FFILinearSolveOptions: Sendable, Hashable {
+    public let maxIterations: Int
+    public let tolerance: Double
+    public let initialSolution: [Double]?
+    public let preconditioner: FFILinearPreconditioner
+
+    public init(maxIterations: Int, tolerance: Double, initialSolution: [Double]? = nil,
+                preconditioner: FFILinearPreconditioner = .jacobi) {
+        self.maxIterations = maxIterations; self.tolerance = tolerance
+        self.initialSolution = initialSolution; self.preconditioner = preconditioner
+    }
+}
+
+public enum FFIIterativeTermination: Sendable, Hashable {
+    case converged, iterationLimit, breakdown
+}
+
+public struct FFILinearSolveResult: Sendable, Hashable {
+    public let solution: [Double]
+    public let iterations: Int
+    public let residualNorm: Double
+    public let relativeResidual: Double
+    public let termination: FFIIterativeTermination
+
+    fileprivate init(_ result: FfiLinearSolveResult) {
+        solution = result.solution; iterations = Int(result.iterations)
+        residualNorm = result.residualNorm; relativeResidual = result.relativeResidual
+        switch result.termination {
+        case .converged: termination = .converged
+        case .iterationLimit: termination = .iterationLimit
+        case .breakdown: termination = .breakdown
+        }
+    }
+}
+
+public struct FFISparseDirectResult: Sendable, Hashable {
+    public let solution: [Double]
+    public let residualNorm: Double
+    public let relativeResidual: Double
+    public let factorNonzeros: Int
+
+    fileprivate init(_ result: FfiSparseDirectResult) {
+        solution = result.solution; residualNorm = result.residualNorm
+        relativeResidual = result.relativeResidual; factorNonzeros = Int(result.factorNonzeros)
+    }
+}
+
 /// Thin wrappers over the generated free functions. Each one:
 /// 1. converts Swift `Int`/`FFIMatrix` inputs to the generated types'
 ///    expected shape (`UInt32`, `FfiMatrixF64`, ...),
@@ -296,6 +356,61 @@ public enum FFIKernels {
         } catch {
             throw Self.translate(error)
         }
+    }
+
+    public static func solveSparseConjugateGradient(
+        matrix: FFICSRMatrix, rhs: [Double], options: FFILinearSolveOptions
+    ) throws -> FFILinearSolveResult {
+        do {
+            return FFILinearSolveResult(try NCBindings.solveSparseConjugateGradient(
+                matrix: makeFfiCSRMatrix(matrix), rhs: rhs, options: try makeLinearOptions(options)))
+        } catch { throw Self.translate(error) }
+    }
+
+    public static func solveSparseBiCGSTAB(
+        matrix: FFICSRMatrix, rhs: [Double], options: FFILinearSolveOptions
+    ) throws -> FFILinearSolveResult {
+        do {
+            return FFILinearSolveResult(try NCBindings.solveSparseBicgstab(
+                matrix: makeFfiCSRMatrix(matrix), rhs: rhs, options: try makeLinearOptions(options)))
+        } catch { throw Self.translate(error) }
+    }
+
+    public static func solveSparseGMRES(
+        matrix: FFICSRMatrix, rhs: [Double], options: FFILinearSolveOptions, restart: Int
+    ) throws -> FFILinearSolveResult {
+        do {
+            return FFILinearSolveResult(try NCBindings.solveSparseGmres(
+                matrix: makeFfiCSRMatrix(matrix), rhs: rhs,
+                options: try makeLinearOptions(options),
+                restart: try ffiUInt64(restart, name: "restart")))
+        } catch { throw Self.translate(error) }
+    }
+
+    public static func solveSparseLU(
+        matrix: FFICSRMatrix, rhs: [Double], dropTolerance: Double = 0
+    ) throws -> FFISparseDirectResult {
+        do {
+            return FFISparseDirectResult(try NCBindings.solveSparseLu(
+                matrix: makeFfiCSRMatrix(matrix), rhs: rhs, dropTolerance: dropTolerance))
+        } catch { throw Self.translate(error) }
+    }
+
+    public static func solveSparseCholesky(
+        matrix: FFICSRMatrix, rhs: [Double], dropTolerance: Double = 0
+    ) throws -> FFISparseDirectResult {
+        do {
+            return FFISparseDirectResult(try NCBindings.solveSparseCholesky(
+                matrix: makeFfiCSRMatrix(matrix), rhs: rhs, dropTolerance: dropTolerance))
+        } catch { throw Self.translate(error) }
+    }
+
+    private static func makeLinearOptions(_ options: FFILinearSolveOptions) throws
+        -> FfiLinearSolveOptions {
+        FfiLinearSolveOptions(
+            maxIterations: try ffiUInt64(options.maxIterations, name: "maxIterations"),
+            tolerance: options.tolerance, initialSolution: options.initialSolution,
+            preconditioner: options.preconditioner.generated)
     }
 
     private static func makeFfiCSRMatrix(_ matrix: FFICSRMatrix) throws -> FfiCsrMatrixF64 {

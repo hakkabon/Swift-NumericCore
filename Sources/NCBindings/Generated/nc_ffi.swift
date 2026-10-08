@@ -3009,6 +3009,79 @@ public func FfiConverterTypeFfiSparseDerivative_lower(_ value: FfiSparseDerivati
 }
 
 
+public struct FfiSparseDirectResult {
+    public var solution: [Double]
+    public var residualNorm: Double
+    public var relativeResidual: Double
+    public var factorNonzeros: UInt64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(solution: [Double], residualNorm: Double, relativeResidual: Double, factorNonzeros: UInt64) {
+        self.solution = solution
+        self.residualNorm = residualNorm
+        self.relativeResidual = relativeResidual
+        self.factorNonzeros = factorNonzeros
+    }
+}
+
+
+
+extension FfiSparseDirectResult: Equatable, Hashable {
+    public static func ==(lhs: FfiSparseDirectResult, rhs: FfiSparseDirectResult) -> Bool {
+        if lhs.solution != rhs.solution {
+            return false
+        }
+        if lhs.residualNorm != rhs.residualNorm {
+            return false
+        }
+        if lhs.relativeResidual != rhs.relativeResidual {
+            return false
+        }
+        if lhs.factorNonzeros != rhs.factorNonzeros {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(solution)
+        hasher.combine(residualNorm)
+        hasher.combine(relativeResidual)
+        hasher.combine(factorNonzeros)
+    }
+}
+
+
+public struct FfiConverterTypeFfiSparseDirectResult: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiSparseDirectResult {
+        return
+            try FfiSparseDirectResult(
+                solution: FfiConverterSequenceDouble.read(from: &buf),
+                residualNorm: FfiConverterDouble.read(from: &buf),
+                relativeResidual: FfiConverterDouble.read(from: &buf),
+                factorNonzeros: FfiConverterUInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiSparseDirectResult, into buf: inout [UInt8]) {
+        FfiConverterSequenceDouble.write(value.solution, into: &buf)
+        FfiConverterDouble.write(value.residualNorm, into: &buf)
+        FfiConverterDouble.write(value.relativeResidual, into: &buf)
+        FfiConverterUInt64.write(value.factorNonzeros, into: &buf)
+    }
+}
+
+
+public func FfiConverterTypeFfiSparseDirectResult_lift(_ buf: RustBuffer) throws -> FfiSparseDirectResult {
+    return try FfiConverterTypeFfiSparseDirectResult.lift(buf)
+}
+
+public func FfiConverterTypeFfiSparseDirectResult_lower(_ value: FfiSparseDirectResult) -> RustBuffer {
+    return FfiConverterTypeFfiSparseDirectResult.lower(value)
+}
+
+
 public struct FfiSparseJacobian {
     public var rows: UInt64
     public var columns: UInt64
@@ -3904,6 +3977,8 @@ public enum FfiLinearPreconditioner {
 
     case none
     case jacobi
+    case ilu0
+    case incompleteCholesky
 }
 
 
@@ -3917,6 +3992,10 @@ public struct FfiConverterTypeFfiLinearPreconditioner: FfiConverterRustBuffer {
         case 1: return .none
 
         case 2: return .jacobi
+
+        case 3: return .ilu0
+
+        case 4: return .incompleteCholesky
 
         default: throw UniffiInternalError.unexpectedEnumCase
         }
@@ -3932,6 +4011,14 @@ public struct FfiConverterTypeFfiLinearPreconditioner: FfiConverterRustBuffer {
 
         case .jacobi:
             writeInt(&buf, Int32(2))
+
+
+        case .ilu0:
+            writeInt(&buf, Int32(3))
+
+
+        case .incompleteCholesky:
+            writeInt(&buf, Int32(4))
 
         }
     }
@@ -4967,6 +5054,19 @@ public func solveSparseBicgstab(matrix: FfiCsrMatrixF64, rhs: [Double], options:
     )
 })
 }
+/**
+ * Factor and solve a symmetric positive-definite CSR system with sparse
+ * Cholesky. Symmetry and positive pivots are checked explicitly.
+ */
+public func solveSparseCholesky(matrix: FfiCsrMatrixF64, rhs: [Double], dropTolerance: Double)throws  -> FfiSparseDirectResult {
+    return try  FfiConverterTypeFfiSparseDirectResult.lift(try rustCallWithError(FfiConverterTypeFfiError.lift) {
+    uniffi_nc_ffi_fn_func_solve_sparse_cholesky(
+        FfiConverterTypeFfiCsrMatrixF64.lower(matrix),
+        FfiConverterSequenceDouble.lower(rhs),
+        FfiConverterDouble.lower(dropTolerance),$0
+    )
+})
+}
 public func solveSparseConjugateGradient(matrix: FfiCsrMatrixF64, rhs: [Double], options: FfiLinearSolveOptions)throws  -> FfiLinearSolveResult {
     return try  FfiConverterTypeFfiLinearSolveResult.lift(try rustCallWithError(FfiConverterTypeFfiError.lift) {
     uniffi_nc_ffi_fn_func_solve_sparse_conjugate_gradient(
@@ -4983,6 +5083,18 @@ public func solveSparseGmres(matrix: FfiCsrMatrixF64, rhs: [Double], options: Ff
         FfiConverterSequenceDouble.lower(rhs),
         FfiConverterTypeFfiLinearSolveOptions.lower(options),
         FfiConverterUInt64.lower(restart),$0
+    )
+})
+}
+/**
+ * Factor and solve a general square CSR system with sparse pivoted LU.
+ */
+public func solveSparseLu(matrix: FfiCsrMatrixF64, rhs: [Double], dropTolerance: Double)throws  -> FfiSparseDirectResult {
+    return try  FfiConverterTypeFfiSparseDirectResult.lift(try rustCallWithError(FfiConverterTypeFfiError.lift) {
+    uniffi_nc_ffi_fn_func_solve_sparse_lu(
+        FfiConverterTypeFfiCsrMatrixF64.lower(matrix),
+        FfiConverterSequenceDouble.lower(rhs),
+        FfiConverterDouble.lower(dropTolerance),$0
     )
 })
 }
@@ -5170,10 +5282,16 @@ private var initializationResult: InitializationResult {
     if (uniffi_nc_ffi_checksum_func_solve_sparse_bicgstab() != 12346) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_nc_ffi_checksum_func_solve_sparse_cholesky() != 61058) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_nc_ffi_checksum_func_solve_sparse_conjugate_gradient() != 31827) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nc_ffi_checksum_func_solve_sparse_gmres() != 37833) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nc_ffi_checksum_func_solve_sparse_lu() != 14820) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nc_ffi_checksum_func_solve_sparse_penalized_weighted_least_squares() != 25980) {
