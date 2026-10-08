@@ -67,13 +67,21 @@ final class NonlinearAMPLTests: XCTestCase {
         XCTAssertEqual(result.objectiveValue, 1, accuracy: 1e-5)
     }
 
-    func testNonlinearCompilerRejectsIntegerVariables() throws {
+    func testMixedIntegerNonlinearAMPLSolvesAcrossBackends() throws {
         let source = """
-        var x >= 0 integer;
-        minimize objective: x^2;
+        var x >= 0, <= 4 integer;
+        minimize objective: (x - 2.4)^2;
         """
-        XCTAssertThrowsError(try AMPLParser.parse(source).compileNonlinear()) {
-            XCTAssertEqual($0 as? NonlinearPresolveError, .integerVariablesUnsupported)
+        let problem = try AMPLParser.parse(source).compileNonlinear()
+        XCTAssertEqual(problem.isInteger, [true])
+        for backend in [NonlinearBackend.swift, .rust] {
+            let result = try problem.solve(
+                initial: [1], configuration: .automatic(backend: backend))
+            XCTAssertEqual(result.status, .searchExhausted)
+            XCTAssertEqual(result.variableValuesByName["x"]!, 2, accuracy: 1e-8)
+            XCTAssertEqual(result.objectiveValue, 0.16, accuracy: 1e-8)
+            XCTAssertGreaterThanOrEqual(result.nodesExplored, 3)
+            XCTAssertFalse(result.globalOptimalityCertified)
         }
     }
 

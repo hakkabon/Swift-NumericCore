@@ -19,6 +19,7 @@ native Swift or Rust backend. Objective sense is normalized internally and
 restored in `NonlinearAMPLSolution`, whose diagnostics include named variables
 and constraints, multipliers, maximum violation, and stationarity.
 
-Mixed-integer nonlinear programming is deliberately rejected rather than
-relaxed silently. Indexed expressions, sets, sums, user-defined functions,
-nonsmooth operators, and initial-value syntax remain outside this phase.
+Phase 20 extends this path with local mixed-integer nonlinear search and
+preserves integrality through graph compilation. Indexed expressions, sets,
+sums, user-defined functions, nonsmooth operators, and initial-value syntax
+remain outside the supported subset.

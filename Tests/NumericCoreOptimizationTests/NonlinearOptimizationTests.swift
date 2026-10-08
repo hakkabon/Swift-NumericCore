@@ -2,6 +2,52 @@ import XCTest
 @testable import NumericCoreOptimization
 
 final class NonlinearOptimizationTests: XCTestCase {
+    func testMixedIntegerNonlinearSolvesSpecializedBoundedObjective() throws {
+        let objective = NonlinearExpression(nodes: [
+            .parameter(0), .constant(2.4), .subtract(0, 1), .pow(2, 2)
+        ], output: 3)
+        let model = try NonlinearModel.objective(
+            parameterCount: 1, bounds: [.init(lower: 0, upper: 4)], expression: objective)
+        let problem = try MixedIntegerNonlinearProblem(
+            model: model, constraints: [], isInteger: [true])
+        let swift = try NonlinearModelSolver.minimizeMixedInteger(
+            problem: problem, initial: [1], backend: .swift)
+        let rust = try NonlinearModelSolver.minimizeMixedInteger(
+            problem: problem, initial: [1], backend: .rust)
+        for result in [swift, rust] {
+            XCTAssertEqual(result.termination, .searchExhausted)
+            XCTAssertEqual(result.point, [2])
+            XCTAssertEqual(result.objective, 0.16, accuracy: 1e-8)
+            XCTAssertGreaterThanOrEqual(result.nodesExplored, 3)
+            XCTAssertFalse(result.globalOptimalityCertified)
+        }
+    }
+
+    func testMixedIntegerNonlinearSupportsConstrainedRelaxationStrategies() throws {
+        let objective = NonlinearExpression(nodes: [
+            .parameter(0), .constant(2.4), .subtract(0, 1), .pow(2, 2)
+        ], output: 3)
+        let constraint = NonlinearExpression(nodes: [
+            .parameter(0), .pow(0, 2)
+        ], output: 1)
+        let model = try NonlinearModel.objective(
+            parameterCount: 1, bounds: [.init(lower: 0, upper: 4)], expression: objective)
+        let problem = try MixedIntegerNonlinearProblem(
+            model: model,
+            constraints: [.init(expression: constraint, bound: .init(lower: 1))],
+            isInteger: [true])
+        for backend in [NonlinearBackend.swift, .rust] {
+            for strategy in [NonlinearRelaxationStrategy.sqp, .augmentedLagrangian] {
+                let result = try NonlinearModelSolver.minimizeMixedInteger(
+                    problem: problem, initial: [1.5], backend: backend,
+                    options: .init(relaxationStrategy: strategy))
+                XCTAssertEqual(result.termination, .searchExhausted)
+                XCTAssertEqual(result.point, [2])
+                XCTAssertLessThanOrEqual(result.maximumViolation, 1e-7)
+            }
+        }
+    }
+
     func testNonlinearInteriorPointConformsAcrossBackends() throws {
         let objective = NonlinearExpression(nodes: [
             .parameter(0), .constant(2), .subtract(0, 1), .pow(2, 2)

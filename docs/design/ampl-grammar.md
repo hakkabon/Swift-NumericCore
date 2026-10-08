@@ -189,5 +189,7 @@ distinguish the two, but the semantics require it).
    arithmetic precedence, parentheses, constant powers, elementary functions,
    graph lowering, bounded L-BFGS, SQP, augmented Lagrangian, and Swift/Rust
    execution are covered end to end.
-9. **Not yet started**: `set` declarations, indexed expressions,
-   piecewise-linear terms, user-defined functions, and MINLP.
+9. MINLP now compiles to the shared nonlinear graph and uses local
+   branch-and-bound with specialized NLP relaxations. Certified global MINLP,
+   `set` declarations, indexed expressions, piecewise-linear terms, and
+   user-defined functions are not yet implemented.

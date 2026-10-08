@@ -166,6 +166,41 @@ public struct FFINonlinearInteriorPointResult: Sendable, Hashable {
     public let termination: FFINonlinearInteriorPointTermination
 }
 
+public enum FFINonlinearRelaxationStrategy: Sendable, Hashable {
+    case sqp, augmentedLagrangian
+}
+
+public struct FFIMixedIntegerNonlinearOptions: Sendable, Hashable {
+    public var maxNodes: Int
+    public var integerTolerance: Double, feasibilityTolerance: Double
+    public var absoluteGapTolerance: Double, relativeGapTolerance: Double
+    public var relaxationStrategy: FFINonlinearRelaxationStrategy
+    public init(maxNodes: Int, integerTolerance: Double, feasibilityTolerance: Double,
+                absoluteGapTolerance: Double, relativeGapTolerance: Double,
+                relaxationStrategy: FFINonlinearRelaxationStrategy) {
+        self.maxNodes = maxNodes; self.integerTolerance = integerTolerance
+        self.feasibilityTolerance = feasibilityTolerance
+        self.absoluteGapTolerance = absoluteGapTolerance
+        self.relativeGapTolerance = relativeGapTolerance
+        self.relaxationStrategy = relaxationStrategy
+    }
+}
+
+public enum FFIMixedIntegerNonlinearTermination: Sendable, Hashable {
+    case searchExhausted, localGapLimit, nodeLimit, infeasible, relaxationFailure, cancelled
+}
+
+public struct FFIMixedIntegerNonlinearResult: Sendable, Hashable {
+    public let point: [Double], objective: Double, constraintValues: [Double]
+    public let multipliers: [FFIConstraintMultiplier]
+    public let maximumViolation: Double, stationarityNorm: Double
+    public let nodesExplored: Int, relaxationsSolved: Int, nodesPrunedInfeasible: Int
+    public let maximumDepth: Int, incumbentsFound: Int
+    public let bestRelaxationObjective: Double?, absoluteGap: Double?, relativeGap: Double?
+    public let globalOptimalityCertified: Bool
+    public let termination: FFIMixedIntegerNonlinearTermination
+}
+
 public struct FFISQPOptions: Sendable, Hashable {
     public var maxIterations: Int
     public var feasibilityTolerance: Double, stationarityTolerance: Double, stepTolerance: Double
@@ -235,6 +270,53 @@ public struct FFISparseResidualEvaluation: Sendable, Hashable {
 }
 
 extension FFIKernels {
+    public static func solveMixedIntegerNonlinear(
+        model: FFINonlinearModel, constraints: [FFINonlinearConstraint],
+        isInteger: [Bool], initial: [Double], options: FFIMixedIntegerNonlinearOptions
+    ) throws -> FFIMixedIntegerNonlinearResult {
+        do {
+            let strategy: FfiNonlinearRelaxationStrategy = options.relaxationStrategy == .sqp
+                ? .sqp : .augmentedLagrangian
+            let value = try NCBindings.solveMixedIntegerNonlinear(
+                modelValue: ffi(model),
+                constraints: constraints.map { FfiNonlinearConstraint(
+                    expression: ffi($0.expression),
+                    bound: FfiBound(lower: $0.bound.lower, upper: $0.bound.upper)) },
+                isInteger: isInteger, initial: initial,
+                options: FfiMixedIntegerNonlinearOptions(
+                    maxNodes: UInt64(options.maxNodes),
+                    integerTolerance: options.integerTolerance,
+                    feasibilityTolerance: options.feasibilityTolerance,
+                    absoluteGapTolerance: options.absoluteGapTolerance,
+                    relativeGapTolerance: options.relativeGapTolerance,
+                    relaxationStrategy: strategy))
+            let termination: FFIMixedIntegerNonlinearTermination
+            switch value.termination {
+            case .searchExhausted: termination = .searchExhausted
+            case .localGapLimit: termination = .localGapLimit
+            case .nodeLimit: termination = .nodeLimit
+            case .infeasible: termination = .infeasible
+            case .relaxationFailure: termination = .relaxationFailure
+            case .cancelled: termination = .cancelled
+            }
+            return .init(point: value.point, objective: value.objective,
+                         constraintValues: value.constraintValues,
+                         multipliers: value.multipliers.map { .init(
+                            lower: $0.lower, upper: $0.upper, equality: $0.equality) },
+                         maximumViolation: value.maximumViolation,
+                         stationarityNorm: value.stationarityNorm,
+                         nodesExplored: Int(value.nodesExplored),
+                         relaxationsSolved: Int(value.relaxationsSolved),
+                         nodesPrunedInfeasible: Int(value.nodesPrunedInfeasible),
+                         maximumDepth: Int(value.maximumDepth),
+                         incumbentsFound: Int(value.incumbentsFound),
+                         bestRelaxationObjective: value.bestRelaxationObjective,
+                         absoluteGap: value.absoluteGap, relativeGap: value.relativeGap,
+                         globalOptimalityCertified: value.globalOptimalityCertified,
+                         termination: termination)
+        } catch { throw Self.translate(error) }
+    }
+
     public static func solveNonlinearInteriorPoint(
         model: FFINonlinearModel, constraints: [FFINonlinearConstraint], initial: [Double],
         options: FFINonlinearInteriorPointOptions

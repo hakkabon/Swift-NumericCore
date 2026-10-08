@@ -2,6 +2,7 @@ import NumericCoreOptimization
 
 public enum NonlinearPresolveError: Error, Equatable {
     case noObjective
+    @available(*, deprecated, message: "integer nonlinear models are supported")
     case integerVariablesUnsupported
     case constraintsRequired
 }
@@ -16,14 +17,12 @@ public struct CompiledNonlinearProblem: Sendable, Hashable {
     public let constraints: [NonlinearConstraint]
     public let objectiveSign: Double
     public let defaultInitialPoint: [Double]
+    public let isInteger: [Bool]
 }
 
 public extension Model {
     func compileNonlinear() throws -> CompiledNonlinearProblem {
         guard let objective else { throw NonlinearPresolveError.noObjective }
-        guard !variableIsInteger.contains(true) else {
-            throw NonlinearPresolveError.integerVariablesUnsupported
-        }
         var seenNames = Set<String>()
         for name in variableNames where !seenNames.insert(name).inserted {
             throw PresolveError.duplicateVariableName(name)
@@ -61,7 +60,8 @@ public extension Model {
             constraintNames: constraints.map(\.name),
             model: model, constraints: nonlinearConstraints,
             objectiveSign: objective.sense == .minimize ? 1 : -1,
-            defaultInitialPoint: bounds.map(Self.defaultInitialPoint))
+            defaultInitialPoint: bounds.map(Self.defaultInitialPoint),
+            isInteger: variableIsInteger)
     }
 
     private static func defaultInitialPoint(_ bound: ParameterBound) -> Double {

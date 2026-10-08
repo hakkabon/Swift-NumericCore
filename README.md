@@ -50,7 +50,7 @@ Swift-NumericCore/
 │   ├── NumericCoreMPS/        # Metal Performance Shaders backend (scaffold)
 │   ├── NumericCoreSparse/     # SparseMatrix<T> (CSR), SpMV
 │   ├── NumericCoreGraph/      # bridge to NetworkGraph/Layout — adjacency matrices
-│   ├── NumericCoreOptimization/ # Swift/Rust nonlinear optimization, LP/MILP/QP
+│   ├── NumericCoreOptimization/ # Swift/Rust nonlinear optimization, LP/MILP/MINLP/QP
 │   └── NumericCoreAMPL/       # AMPL-style modeling language — lexer/parser/presolve/solve, full loop closed
 ├── Tests/
 └── docs/
@@ -127,6 +127,10 @@ Swift-NumericCore/
   includes central-difference derivative verification, cancellable iteration
   observers, convergence reasons, evaluation counts, and strict derivative
   validation.
+  `MixedIntegerNonlinearSolver` adds local MINLP branch-and-bound with bounded
+  L-BFGS, SQP, or augmented-Lagrangian node relaxations on Swift and Rust. Its
+  diagnostics explicitly distinguish local search exhaustion from certified
+  global optimality.
 - `NumericCoreAMPL` — `Model` (variables/params/constraints/objective,
   including the `integer` qualifier), a hand-rolled lexer/parser for
   the grammar in `docs/design/ampl-grammar.md`
@@ -139,7 +143,8 @@ Swift-NumericCore/
   to a solved LP *or* MILP. MILP search includes scaling, incumbent warm starts,
   singleton-row bound propagation, learned pseudo-cost branching, configurable
   node/gap policies, and a complete search certificate. Nonlinear models compile to the shared graph and
-  solve through bounded L-BFGS, SQP, or augmented Lagrangian on either backend.
+  solve through bounded L-BFGS, SQP, augmented Lagrangian, or mixed-integer
+  nonlinear search on either backend.
   Not yet built on the `Grammar`/`Lexer`/
   `Parser` packages originally sketched for this — see `Model.swift`'s
   module docs for why.

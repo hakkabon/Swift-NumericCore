@@ -11,6 +11,59 @@ public enum NonlinearBackend: Sendable, Hashable {
 /// One result contract and one model representation, independently of where
 /// the nonlinear algorithm executes.
 public enum NonlinearModelSolver {
+    public static func minimizeMixedInteger(
+        problem: MixedIntegerNonlinearProblem, initial: [Double],
+        backend: NonlinearBackend = .swift,
+        options: MixedIntegerNonlinearOptions = .init()
+    ) throws -> MixedIntegerNonlinearResult {
+        switch backend {
+        case .swift:
+            return try MixedIntegerNonlinearSolver.minimize(
+                problem: problem, initial: initial, options: options)
+        case .rust:
+            do {
+                let strategy: FFINonlinearRelaxationStrategy =
+                    options.relaxationStrategy == .sqp ? .sqp : .augmentedLagrangian
+                let value = try FFIKernels.solveMixedIntegerNonlinear(
+                    model: ffi(problem.model),
+                    constraints: problem.constraints.map { .init(
+                        expression: ffi($0.expression), bound: ffi($0.bound)) },
+                    isInteger: problem.isInteger, initial: initial,
+                    options: .init(maxNodes: options.maxNodes,
+                                   integerTolerance: options.integerTolerance,
+                                   feasibilityTolerance: options.feasibilityTolerance,
+                                   absoluteGapTolerance: options.absoluteGapTolerance,
+                                   relativeGapTolerance: options.relativeGapTolerance,
+                                   relaxationStrategy: strategy))
+                let termination: MixedIntegerNonlinearTermination
+                switch value.termination {
+                case .searchExhausted: termination = .searchExhausted
+                case .localGapLimit: termination = .localGapLimit
+                case .nodeLimit: termination = .nodeLimit
+                case .infeasible: termination = .infeasible
+                case .relaxationFailure: termination = .relaxationFailure
+                case .cancelled: termination = .cancelled
+                }
+                return .init(point: value.point, objective: value.objective,
+                             constraintValues: value.constraintValues,
+                             multipliers: value.multipliers.map { .init(
+                                lower: $0.lower, upper: $0.upper, equality: $0.equality) },
+                             maximumViolation: value.maximumViolation,
+                             stationarityNorm: value.stationarityNorm,
+                             nodesExplored: value.nodesExplored,
+                             relaxationsSolved: value.relaxationsSolved,
+                             nodesPrunedInfeasible: value.nodesPrunedInfeasible,
+                             maximumDepth: value.maximumDepth,
+                             incumbentsFound: value.incumbentsFound,
+                             bestRelaxationObjective: value.bestRelaxationObjective,
+                             absoluteGap: value.absoluteGap,
+                             relativeGap: value.relativeGap,
+                             globalOptimalityCertified: value.globalOptimalityCertified,
+                             termination: termination)
+            } catch { throw translate(error) }
+        }
+    }
+
     public static func minimizeInteriorPoint(
         problem: ConstrainedNonlinearProblem, initial: [Double],
         backend: NonlinearBackend = .swift,
