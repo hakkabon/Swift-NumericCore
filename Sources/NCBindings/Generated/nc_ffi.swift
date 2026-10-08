@@ -863,14 +863,6 @@ public struct FfiBranchAndBoundOptions {
     public var branchingStrategy: FfiBranchingStrategy
     public var boundPropagation: Bool
 
-<<<<<<< HEAD
-    // Default memberwise initializers are never public by default, so we
-    // declare one manually.
-    public init(maxNodes: UInt64, integerTolerance: Double, scaling: Bool,
-        /**
-         * Empty means no incumbent. Otherwise one value per variable.
-         */initialIncumbent: [Double], absoluteGapTolerance: Double, relativeGapTolerance: Double, nodeSelection: FfiNodeSelection, branchingStrategy: FfiBranchingStrategy, boundPropagation: Bool) {
-=======
     /// Default memberwise initializers are never public by default, so we
     /// declare one manually.
     public init(maxNodes: UInt64, integerTolerance: Double, scaling: Bool,
@@ -878,7 +870,6 @@ public struct FfiBranchAndBoundOptions {
                     * Empty means no incumbent. Otherwise one value per variable.
                     */ initialIncumbent: [Double], absoluteGapTolerance: Double, relativeGapTolerance: Double, nodeSelection: FfiNodeSelection, branchingStrategy: FfiBranchingStrategy, boundPropagation: Bool)
     {
->>>>>>> e825a9ef6d86e9259ea8668f71df72e5fd6e549d
         self.maxNodes = maxNodes
         self.integerTolerance = integerTolerance
         self.scaling = scaling
@@ -2586,304 +2577,6 @@ public func FfiConverterTypeFfiNonlinearInteriorPointResult_lower(_ value: FfiNo
     return FfiConverterTypeFfiNonlinearInteriorPointResult.lower(value)
 }
 
-public struct FfiNonlinearInteriorPointOptions {
-    public var maxOuterIterations: UInt64
-    public var maxInnerIterations: UInt64
-    public var feasibilityTolerance: Double
-    public var stationarityTolerance: Double
-    public var complementarityTolerance: Double
-    public var initialBarrier: Double
-    public var barrierReduction: Double
-    public var minimumBarrier: Double
-    public var equalityPenalty: Double
-    public var armijo: Double
-    public var backtracking: Double
-    public var fractionToBoundary: Double
-    public var maxLineSearchIterations: UInt64
-
-    // Default memberwise initializers are never public by default, so we
-    // declare one manually.
-    public init(maxOuterIterations: UInt64, maxInnerIterations: UInt64, feasibilityTolerance: Double, stationarityTolerance: Double, complementarityTolerance: Double, initialBarrier: Double, barrierReduction: Double, minimumBarrier: Double, equalityPenalty: Double, armijo: Double, backtracking: Double, fractionToBoundary: Double, maxLineSearchIterations: UInt64) {
-        self.maxOuterIterations = maxOuterIterations
-        self.maxInnerIterations = maxInnerIterations
-        self.feasibilityTolerance = feasibilityTolerance
-        self.stationarityTolerance = stationarityTolerance
-        self.complementarityTolerance = complementarityTolerance
-        self.initialBarrier = initialBarrier
-        self.barrierReduction = barrierReduction
-        self.minimumBarrier = minimumBarrier
-        self.equalityPenalty = equalityPenalty
-        self.armijo = armijo
-        self.backtracking = backtracking
-        self.fractionToBoundary = fractionToBoundary
-        self.maxLineSearchIterations = maxLineSearchIterations
-    }
-}
-
-
-
-extension FfiNonlinearInteriorPointOptions: Equatable, Hashable {
-    public static func ==(lhs: FfiNonlinearInteriorPointOptions, rhs: FfiNonlinearInteriorPointOptions) -> Bool {
-        if lhs.maxOuterIterations != rhs.maxOuterIterations {
-            return false
-        }
-        if lhs.maxInnerIterations != rhs.maxInnerIterations {
-            return false
-        }
-        if lhs.feasibilityTolerance != rhs.feasibilityTolerance {
-            return false
-        }
-        if lhs.stationarityTolerance != rhs.stationarityTolerance {
-            return false
-        }
-        if lhs.complementarityTolerance != rhs.complementarityTolerance {
-            return false
-        }
-        if lhs.initialBarrier != rhs.initialBarrier {
-            return false
-        }
-        if lhs.barrierReduction != rhs.barrierReduction {
-            return false
-        }
-        if lhs.minimumBarrier != rhs.minimumBarrier {
-            return false
-        }
-        if lhs.equalityPenalty != rhs.equalityPenalty {
-            return false
-        }
-        if lhs.armijo != rhs.armijo {
-            return false
-        }
-        if lhs.backtracking != rhs.backtracking {
-            return false
-        }
-        if lhs.fractionToBoundary != rhs.fractionToBoundary {
-            return false
-        }
-        if lhs.maxLineSearchIterations != rhs.maxLineSearchIterations {
-            return false
-        }
-        return true
-    }
-
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(maxOuterIterations)
-        hasher.combine(maxInnerIterations)
-        hasher.combine(feasibilityTolerance)
-        hasher.combine(stationarityTolerance)
-        hasher.combine(complementarityTolerance)
-        hasher.combine(initialBarrier)
-        hasher.combine(barrierReduction)
-        hasher.combine(minimumBarrier)
-        hasher.combine(equalityPenalty)
-        hasher.combine(armijo)
-        hasher.combine(backtracking)
-        hasher.combine(fractionToBoundary)
-        hasher.combine(maxLineSearchIterations)
-    }
-}
-
-
-public struct FfiConverterTypeFfiNonlinearInteriorPointOptions: FfiConverterRustBuffer {
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiNonlinearInteriorPointOptions {
-        return
-            try FfiNonlinearInteriorPointOptions(
-                maxOuterIterations: FfiConverterUInt64.read(from: &buf),
-                maxInnerIterations: FfiConverterUInt64.read(from: &buf),
-                feasibilityTolerance: FfiConverterDouble.read(from: &buf),
-                stationarityTolerance: FfiConverterDouble.read(from: &buf),
-                complementarityTolerance: FfiConverterDouble.read(from: &buf),
-                initialBarrier: FfiConverterDouble.read(from: &buf),
-                barrierReduction: FfiConverterDouble.read(from: &buf),
-                minimumBarrier: FfiConverterDouble.read(from: &buf),
-                equalityPenalty: FfiConverterDouble.read(from: &buf),
-                armijo: FfiConverterDouble.read(from: &buf),
-                backtracking: FfiConverterDouble.read(from: &buf),
-                fractionToBoundary: FfiConverterDouble.read(from: &buf),
-                maxLineSearchIterations: FfiConverterUInt64.read(from: &buf)
-        )
-    }
-
-    public static func write(_ value: FfiNonlinearInteriorPointOptions, into buf: inout [UInt8]) {
-        FfiConverterUInt64.write(value.maxOuterIterations, into: &buf)
-        FfiConverterUInt64.write(value.maxInnerIterations, into: &buf)
-        FfiConverterDouble.write(value.feasibilityTolerance, into: &buf)
-        FfiConverterDouble.write(value.stationarityTolerance, into: &buf)
-        FfiConverterDouble.write(value.complementarityTolerance, into: &buf)
-        FfiConverterDouble.write(value.initialBarrier, into: &buf)
-        FfiConverterDouble.write(value.barrierReduction, into: &buf)
-        FfiConverterDouble.write(value.minimumBarrier, into: &buf)
-        FfiConverterDouble.write(value.equalityPenalty, into: &buf)
-        FfiConverterDouble.write(value.armijo, into: &buf)
-        FfiConverterDouble.write(value.backtracking, into: &buf)
-        FfiConverterDouble.write(value.fractionToBoundary, into: &buf)
-        FfiConverterUInt64.write(value.maxLineSearchIterations, into: &buf)
-    }
-}
-
-
-public func FfiConverterTypeFfiNonlinearInteriorPointOptions_lift(_ buf: RustBuffer) throws -> FfiNonlinearInteriorPointOptions {
-    return try FfiConverterTypeFfiNonlinearInteriorPointOptions.lift(buf)
-}
-
-public func FfiConverterTypeFfiNonlinearInteriorPointOptions_lower(_ value: FfiNonlinearInteriorPointOptions) -> RustBuffer {
-    return FfiConverterTypeFfiNonlinearInteriorPointOptions.lower(value)
-}
-
-
-public struct FfiNonlinearInteriorPointResult {
-    public var point: [Double]
-    public var objective: Double
-    public var constraintValues: [Double]
-    public var multipliers: [FfiConstraintMultiplier]
-    public var maximumViolation: Double
-    public var stationarityNorm: Double
-    public var complementarity: Double
-    public var outerIterations: UInt64
-    public var innerIterations: UInt64
-    public var evaluations: UInt64
-    public var finalBarrier: Double
-    public var acceptedSteps: UInt64
-    public var rejectedSteps: UInt64
-    public var termination: FfiNonlinearInteriorPointTermination
-
-    // Default memberwise initializers are never public by default, so we
-    // declare one manually.
-    public init(point: [Double], objective: Double, constraintValues: [Double], multipliers: [FfiConstraintMultiplier], maximumViolation: Double, stationarityNorm: Double, complementarity: Double, outerIterations: UInt64, innerIterations: UInt64, evaluations: UInt64, finalBarrier: Double, acceptedSteps: UInt64, rejectedSteps: UInt64, termination: FfiNonlinearInteriorPointTermination) {
-        self.point = point
-        self.objective = objective
-        self.constraintValues = constraintValues
-        self.multipliers = multipliers
-        self.maximumViolation = maximumViolation
-        self.stationarityNorm = stationarityNorm
-        self.complementarity = complementarity
-        self.outerIterations = outerIterations
-        self.innerIterations = innerIterations
-        self.evaluations = evaluations
-        self.finalBarrier = finalBarrier
-        self.acceptedSteps = acceptedSteps
-        self.rejectedSteps = rejectedSteps
-        self.termination = termination
-    }
-}
-
-
-
-extension FfiNonlinearInteriorPointResult: Equatable, Hashable {
-    public static func ==(lhs: FfiNonlinearInteriorPointResult, rhs: FfiNonlinearInteriorPointResult) -> Bool {
-        if lhs.point != rhs.point {
-            return false
-        }
-        if lhs.objective != rhs.objective {
-            return false
-        }
-        if lhs.constraintValues != rhs.constraintValues {
-            return false
-        }
-        if lhs.multipliers != rhs.multipliers {
-            return false
-        }
-        if lhs.maximumViolation != rhs.maximumViolation {
-            return false
-        }
-        if lhs.stationarityNorm != rhs.stationarityNorm {
-            return false
-        }
-        if lhs.complementarity != rhs.complementarity {
-            return false
-        }
-        if lhs.outerIterations != rhs.outerIterations {
-            return false
-        }
-        if lhs.innerIterations != rhs.innerIterations {
-            return false
-        }
-        if lhs.evaluations != rhs.evaluations {
-            return false
-        }
-        if lhs.finalBarrier != rhs.finalBarrier {
-            return false
-        }
-        if lhs.acceptedSteps != rhs.acceptedSteps {
-            return false
-        }
-        if lhs.rejectedSteps != rhs.rejectedSteps {
-            return false
-        }
-        if lhs.termination != rhs.termination {
-            return false
-        }
-        return true
-    }
-
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(point)
-        hasher.combine(objective)
-        hasher.combine(constraintValues)
-        hasher.combine(multipliers)
-        hasher.combine(maximumViolation)
-        hasher.combine(stationarityNorm)
-        hasher.combine(complementarity)
-        hasher.combine(outerIterations)
-        hasher.combine(innerIterations)
-        hasher.combine(evaluations)
-        hasher.combine(finalBarrier)
-        hasher.combine(acceptedSteps)
-        hasher.combine(rejectedSteps)
-        hasher.combine(termination)
-    }
-}
-
-
-public struct FfiConverterTypeFfiNonlinearInteriorPointResult: FfiConverterRustBuffer {
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiNonlinearInteriorPointResult {
-        return
-            try FfiNonlinearInteriorPointResult(
-                point: FfiConverterSequenceDouble.read(from: &buf),
-                objective: FfiConverterDouble.read(from: &buf),
-                constraintValues: FfiConverterSequenceDouble.read(from: &buf),
-                multipliers: FfiConverterSequenceTypeFfiConstraintMultiplier.read(from: &buf),
-                maximumViolation: FfiConverterDouble.read(from: &buf),
-                stationarityNorm: FfiConverterDouble.read(from: &buf),
-                complementarity: FfiConverterDouble.read(from: &buf),
-                outerIterations: FfiConverterUInt64.read(from: &buf),
-                innerIterations: FfiConverterUInt64.read(from: &buf),
-                evaluations: FfiConverterUInt64.read(from: &buf),
-                finalBarrier: FfiConverterDouble.read(from: &buf),
-                acceptedSteps: FfiConverterUInt64.read(from: &buf),
-                rejectedSteps: FfiConverterUInt64.read(from: &buf),
-                termination: FfiConverterTypeFfiNonlinearInteriorPointTermination.read(from: &buf)
-        )
-    }
-
-    public static func write(_ value: FfiNonlinearInteriorPointResult, into buf: inout [UInt8]) {
-        FfiConverterSequenceDouble.write(value.point, into: &buf)
-        FfiConverterDouble.write(value.objective, into: &buf)
-        FfiConverterSequenceDouble.write(value.constraintValues, into: &buf)
-        FfiConverterSequenceTypeFfiConstraintMultiplier.write(value.multipliers, into: &buf)
-        FfiConverterDouble.write(value.maximumViolation, into: &buf)
-        FfiConverterDouble.write(value.stationarityNorm, into: &buf)
-        FfiConverterDouble.write(value.complementarity, into: &buf)
-        FfiConverterUInt64.write(value.outerIterations, into: &buf)
-        FfiConverterUInt64.write(value.innerIterations, into: &buf)
-        FfiConverterUInt64.write(value.evaluations, into: &buf)
-        FfiConverterDouble.write(value.finalBarrier, into: &buf)
-        FfiConverterUInt64.write(value.acceptedSteps, into: &buf)
-        FfiConverterUInt64.write(value.rejectedSteps, into: &buf)
-        FfiConverterTypeFfiNonlinearInteriorPointTermination.write(value.termination, into: &buf)
-    }
-}
-
-
-public func FfiConverterTypeFfiNonlinearInteriorPointResult_lift(_ buf: RustBuffer) throws -> FfiNonlinearInteriorPointResult {
-    return try FfiConverterTypeFfiNonlinearInteriorPointResult.lift(buf)
-}
-
-public func FfiConverterTypeFfiNonlinearInteriorPointResult_lower(_ value: FfiNonlinearInteriorPointResult) -> RustBuffer {
-    return FfiConverterTypeFfiNonlinearInteriorPointResult.lower(value)
-}
-
-
 public struct FfiNonlinearLeastSquaresOptions {
     public var maxIterations: UInt64
     public var gradientTolerance: Double
@@ -4291,10 +3984,6 @@ public func FfiConverterTypeFfiSqpResult_lower(_ value: FfiSqpResult) -> RustBuf
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
 
 public enum FfiBranchAndBoundTermination {
-<<<<<<< HEAD
-
-=======
->>>>>>> e825a9ef6d86e9259ea8668f71df72e5fd6e549d
     case exhausted
     case gapSatisfied
     case nodeLimit
@@ -4303,20 +3992,12 @@ public enum FfiBranchAndBoundTermination {
     case continuousRelaxation
 }
 
-<<<<<<< HEAD
-
-=======
->>>>>>> e825a9ef6d86e9259ea8668f71df72e5fd6e549d
 public struct FfiConverterTypeFfiBranchAndBoundTermination: FfiConverterRustBuffer {
     typealias SwiftType = FfiBranchAndBoundTermination
 
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiBranchAndBoundTermination {
         let variant: Int32 = try readInt(&buf)
         switch variant {
-<<<<<<< HEAD
-
-=======
->>>>>>> e825a9ef6d86e9259ea8668f71df72e5fd6e549d
         case 1: return .exhausted
 
         case 2: return .gapSatisfied
@@ -4335,33 +4016,6 @@ public struct FfiConverterTypeFfiBranchAndBoundTermination: FfiConverterRustBuff
 
     public static func write(_ value: FfiBranchAndBoundTermination, into buf: inout [UInt8]) {
         switch value {
-<<<<<<< HEAD
-
-
-        case .exhausted:
-            writeInt(&buf, Int32(1))
-
-
-        case .gapSatisfied:
-            writeInt(&buf, Int32(2))
-
-
-        case .nodeLimit:
-            writeInt(&buf, Int32(3))
-
-
-        case .relaxationLimit:
-            writeInt(&buf, Int32(4))
-
-
-        case .unbounded:
-            writeInt(&buf, Int32(5))
-
-
-        case .continuousRelaxation:
-            writeInt(&buf, Int32(6))
-
-=======
         case .exhausted:
             writeInt(&buf, Int32(1))
 
@@ -4379,15 +4033,10 @@ public struct FfiConverterTypeFfiBranchAndBoundTermination: FfiConverterRustBuff
 
         case .continuousRelaxation:
             writeInt(&buf, Int32(6))
->>>>>>> e825a9ef6d86e9259ea8668f71df72e5fd6e549d
         }
     }
 }
 
-<<<<<<< HEAD
-
-=======
->>>>>>> e825a9ef6d86e9259ea8668f71df72e5fd6e549d
 public func FfiConverterTypeFfiBranchAndBoundTermination_lift(_ buf: RustBuffer) throws -> FfiBranchAndBoundTermination {
     return try FfiConverterTypeFfiBranchAndBoundTermination.lift(buf)
 }
@@ -4396,43 +4045,22 @@ public func FfiConverterTypeFfiBranchAndBoundTermination_lower(_ value: FfiBranc
     return FfiConverterTypeFfiBranchAndBoundTermination.lower(value)
 }
 
-<<<<<<< HEAD
-
-
 extension FfiBranchAndBoundTermination: Equatable, Hashable {}
 
-
-
-=======
-extension FfiBranchAndBoundTermination: Equatable, Hashable {}
-
->>>>>>> e825a9ef6d86e9259ea8668f71df72e5fd6e549d
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
 
 public enum FfiBranchingStrategy {
-<<<<<<< HEAD
-
-=======
->>>>>>> e825a9ef6d86e9259ea8668f71df72e5fd6e549d
     case mostFractional
     case pseudoCost
 }
 
-<<<<<<< HEAD
-
-=======
->>>>>>> e825a9ef6d86e9259ea8668f71df72e5fd6e549d
 public struct FfiConverterTypeFfiBranchingStrategy: FfiConverterRustBuffer {
     typealias SwiftType = FfiBranchingStrategy
 
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiBranchingStrategy {
         let variant: Int32 = try readInt(&buf)
         switch variant {
-<<<<<<< HEAD
-
-=======
->>>>>>> e825a9ef6d86e9259ea8668f71df72e5fd6e549d
         case 1: return .mostFractional
 
         case 2: return .pseudoCost
@@ -4443,31 +4071,15 @@ public struct FfiConverterTypeFfiBranchingStrategy: FfiConverterRustBuffer {
 
     public static func write(_ value: FfiBranchingStrategy, into buf: inout [UInt8]) {
         switch value {
-<<<<<<< HEAD
-
-
-        case .mostFractional:
-            writeInt(&buf, Int32(1))
-
-
-        case .pseudoCost:
-            writeInt(&buf, Int32(2))
-
-=======
         case .mostFractional:
             writeInt(&buf, Int32(1))
 
         case .pseudoCost:
             writeInt(&buf, Int32(2))
->>>>>>> e825a9ef6d86e9259ea8668f71df72e5fd6e549d
         }
     }
 }
 
-<<<<<<< HEAD
-
-=======
->>>>>>> e825a9ef6d86e9259ea8668f71df72e5fd6e549d
 public func FfiConverterTypeFfiBranchingStrategy_lift(_ buf: RustBuffer) throws -> FfiBranchingStrategy {
     return try FfiConverterTypeFfiBranchingStrategy.lift(buf)
 }
@@ -4476,17 +4088,8 @@ public func FfiConverterTypeFfiBranchingStrategy_lower(_ value: FfiBranchingStra
     return FfiConverterTypeFfiBranchingStrategy.lower(value)
 }
 
-<<<<<<< HEAD
-
-
 extension FfiBranchingStrategy: Equatable, Hashable {}
 
-
-
-=======
-extension FfiBranchingStrategy: Equatable, Hashable {}
-
->>>>>>> e825a9ef6d86e9259ea8668f71df72e5fd6e549d
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
 
@@ -4812,144 +4415,6 @@ public func FfiConverterTypeFfiNonlinearInteriorPointTermination_lower(_ value: 
 }
 
 extension FfiNonlinearInteriorPointTermination: Equatable, Hashable {}
-
-// Note that we don't yet support `indirect` for enums.
-// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
-
-public enum FfiNodeSelection {
-
-    case depthFirst
-    case bestBound
-}
-
-
-public struct FfiConverterTypeFfiNodeSelection: FfiConverterRustBuffer {
-    typealias SwiftType = FfiNodeSelection
-
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiNodeSelection {
-        let variant: Int32 = try readInt(&buf)
-        switch variant {
-
-        case 1: return .depthFirst
-
-        case 2: return .bestBound
-
-        default: throw UniffiInternalError.unexpectedEnumCase
-        }
-    }
-
-    public static func write(_ value: FfiNodeSelection, into buf: inout [UInt8]) {
-        switch value {
-
-
-        case .depthFirst:
-            writeInt(&buf, Int32(1))
-
-
-        case .bestBound:
-            writeInt(&buf, Int32(2))
-
-        }
-    }
-}
-
-
-public func FfiConverterTypeFfiNodeSelection_lift(_ buf: RustBuffer) throws -> FfiNodeSelection {
-    return try FfiConverterTypeFfiNodeSelection.lift(buf)
-}
-
-public func FfiConverterTypeFfiNodeSelection_lower(_ value: FfiNodeSelection) -> RustBuffer {
-    return FfiConverterTypeFfiNodeSelection.lower(value)
-}
-
-
-
-extension FfiNodeSelection: Equatable, Hashable {}
-
-
-
-// Note that we don't yet support `indirect` for enums.
-// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
-
-public enum FfiNonlinearInteriorPointTermination {
-
-    case converged
-    case iterationLimit
-    case infeasibleStart
-    case lineSearchFailed
-    case numericalFailure
-    case cancelled
-}
-
-
-public struct FfiConverterTypeFfiNonlinearInteriorPointTermination: FfiConverterRustBuffer {
-    typealias SwiftType = FfiNonlinearInteriorPointTermination
-
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiNonlinearInteriorPointTermination {
-        let variant: Int32 = try readInt(&buf)
-        switch variant {
-
-        case 1: return .converged
-
-        case 2: return .iterationLimit
-
-        case 3: return .infeasibleStart
-
-        case 4: return .lineSearchFailed
-
-        case 5: return .numericalFailure
-
-        case 6: return .cancelled
-
-        default: throw UniffiInternalError.unexpectedEnumCase
-        }
-    }
-
-    public static func write(_ value: FfiNonlinearInteriorPointTermination, into buf: inout [UInt8]) {
-        switch value {
-
-
-        case .converged:
-            writeInt(&buf, Int32(1))
-
-
-        case .iterationLimit:
-            writeInt(&buf, Int32(2))
-
-
-        case .infeasibleStart:
-            writeInt(&buf, Int32(3))
-
-
-        case .lineSearchFailed:
-            writeInt(&buf, Int32(4))
-
-
-        case .numericalFailure:
-            writeInt(&buf, Int32(5))
-
-
-        case .cancelled:
-            writeInt(&buf, Int32(6))
-
-        }
-    }
-}
-
-
-public func FfiConverterTypeFfiNonlinearInteriorPointTermination_lift(_ buf: RustBuffer) throws -> FfiNonlinearInteriorPointTermination {
-    return try FfiConverterTypeFfiNonlinearInteriorPointTermination.lift(buf)
-}
-
-public func FfiConverterTypeFfiNonlinearInteriorPointTermination_lower(_ value: FfiNonlinearInteriorPointTermination) -> RustBuffer {
-    return FfiConverterTypeFfiNonlinearInteriorPointTermination.lower(value)
-}
-
-
-
-extension FfiNonlinearInteriorPointTermination: Equatable, Hashable {}
-
-
 
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
@@ -5862,28 +5327,6 @@ public func solveMilpBranchAndBoundWithOptions(problem: FfiProblem, options: Ffi
         )
     })
 }
-<<<<<<< HEAD
-public func solveNonlinearInteriorPoint(modelValue: FfiNonlinearModel, constraints: [FfiNonlinearConstraint], initial: [Double], options: FfiNonlinearInteriorPointOptions)throws  -> FfiNonlinearInteriorPointResult {
-    return try  FfiConverterTypeFfiNonlinearInteriorPointResult.lift(try rustCallWithError(FfiConverterTypeFfiError.lift) {
-    uniffi_nc_ffi_fn_func_solve_nonlinear_interior_point(
-        FfiConverterTypeFfiNonlinearModel.lower(modelValue),
-        FfiConverterSequenceTypeFfiNonlinearConstraint.lower(constraints),
-        FfiConverterSequenceDouble.lower(initial),
-        FfiConverterTypeFfiNonlinearInteriorPointOptions.lower(options),$0
-    )
-})
-}
-public func solveNonlinearLeastSquares(modelValue: FfiNonlinearModel, initial: [Double], weights: [Double], loss: FfiRobustLoss, options: FfiNonlinearLeastSquaresOptions)throws  -> FfiNonlinearLeastSquaresResult {
-    return try  FfiConverterTypeFfiNonlinearLeastSquaresResult.lift(try rustCallWithError(FfiConverterTypeFfiError.lift) {
-    uniffi_nc_ffi_fn_func_solve_nonlinear_least_squares(
-        FfiConverterTypeFfiNonlinearModel.lower(modelValue),
-        FfiConverterSequenceDouble.lower(initial),
-        FfiConverterSequenceDouble.lower(weights),
-        FfiConverterTypeFfiRobustLoss.lower(loss),
-        FfiConverterTypeFfiNonlinearLeastSquaresOptions.lower(options),$0
-    )
-})
-=======
 
 public func solveNonlinearInteriorPoint(modelValue: FfiNonlinearModel, constraints: [FfiNonlinearConstraint], initial: [Double], options: FfiNonlinearInteriorPointOptions) throws -> FfiNonlinearInteriorPointResult {
     return try FfiConverterTypeFfiNonlinearInteriorPointResult.lift(rustCallWithError(FfiConverterTypeFfiError.lift) {
@@ -5894,7 +5337,6 @@ public func solveNonlinearInteriorPoint(modelValue: FfiNonlinearModel, constrain
             FfiConverterTypeFfiNonlinearInteriorPointOptions.lower(options), $0
         )
     })
->>>>>>> e825a9ef6d86e9259ea8668f71df72e5fd6e549d
 }
 
 public func solveNonlinearLeastSquares(modelValue: FfiNonlinearModel, initial: [Double], weights: [Double], loss: FfiRobustLoss, options: FfiNonlinearLeastSquaresOptions) throws -> FfiNonlinearLeastSquaresResult {
@@ -6160,14 +5602,7 @@ private var initializationResult: InitializationResult {
     if uniffi_nc_ffi_checksum_func_solve_milp_branch_and_bound_with_options() != 57270 {
         return InitializationResult.apiChecksumMismatch
     }
-<<<<<<< HEAD
-    if (uniffi_nc_ffi_checksum_func_solve_nonlinear_interior_point() != 4463) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nc_ffi_checksum_func_solve_nonlinear_least_squares() != 12728) {
-=======
     if uniffi_nc_ffi_checksum_func_solve_nonlinear_interior_point() != 4463 {
->>>>>>> e825a9ef6d86e9259ea8668f71df72e5fd6e549d
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_nc_ffi_checksum_func_solve_nonlinear_least_squares() != 12728 {
