@@ -11,6 +11,45 @@ public enum NonlinearBackend: Sendable, Hashable {
 /// One result contract and one model representation, independently of where
 /// the nonlinear algorithm executes.
 public enum NonlinearModelSolver {
+    public static func minimizeInteriorPoint(
+        problem: ConstrainedNonlinearProblem, initial: [Double],
+        backend: NonlinearBackend = .swift,
+        options: NonlinearInteriorPointOptions = .init()
+    ) throws -> NonlinearInteriorPointResult {
+        try problem.validate()
+        guard options.maxOuterIterations > 0, options.maxInnerIterations > 0,
+              options.maxLineSearchIterations > 0 else {
+            throw NonlinearOptimizationError.invalidConfiguration(
+                "iteration limits must be positive")
+        }
+        switch backend {
+        case .swift:
+            return try NonlinearInteriorPointSolver.minimize(
+                problem: problem, initial: initial, options: options)
+        case .rust:
+            do {
+                let value = try FFIKernels.solveNonlinearInteriorPoint(
+                    model: ffi(problem.model),
+                    constraints: problem.constraints.map { .init(
+                        expression: ffi($0.expression), bound: ffi($0.bound)) },
+                    initial: initial, options: ffi(options))
+                return .init(
+                    point: value.point, objective: value.objective,
+                    constraintValues: value.constraintValues,
+                    multipliers: value.multipliers.map { .init(
+                        lower: $0.lower, upper: $0.upper, equality: $0.equality) },
+                    maximumViolation: value.maximumViolation,
+                    stationarityNorm: value.stationarityNorm,
+                    complementarity: value.complementarity,
+                    outerIterations: value.outerIterations,
+                    innerIterations: value.innerIterations, evaluations: value.evaluations,
+                    finalBarrier: value.finalBarrier,
+                    acceptedSteps: value.acceptedSteps, rejectedSteps: value.rejectedSteps,
+                    termination: interiorPointTermination(value.termination))
+            } catch { throw translate(error) }
+        }
+    }
+
     public static func minimizeSQP(
         problem: ConstrainedNonlinearProblem, initial: [Double],
         backend: NonlinearBackend = .swift, options: SQPOptions = .init()
@@ -268,6 +307,22 @@ public enum NonlinearModelSolver {
               innerOptions: ffi(options.innerOptions))
     }
 
+    private static func ffi(_ options: NonlinearInteriorPointOptions)
+        -> FFINonlinearInteriorPointOptions {
+        .init(maxOuterIterations: options.maxOuterIterations,
+              maxInnerIterations: options.maxInnerIterations,
+              feasibilityTolerance: options.feasibilityTolerance,
+              stationarityTolerance: options.stationarityTolerance,
+              complementarityTolerance: options.complementarityTolerance,
+              initialBarrier: options.initialBarrier,
+              barrierReduction: options.barrierReduction,
+              minimumBarrier: options.minimumBarrier,
+              equalityPenalty: options.equalityPenalty,
+              armijo: options.armijo, backtracking: options.backtracking,
+              fractionToBoundary: options.fractionToBoundary,
+              maxLineSearchIterations: options.maxLineSearchIterations)
+    }
+
     private static func ffi(_ options: SQPOptions) -> FFISQPOptions {
         .init(
             maxIterations: options.maxIterations,
@@ -321,6 +376,19 @@ public enum NonlinearModelSolver {
         case .stepLimit: return .stepLimit
         case .lineSearchFailed: return .lineSearchFailed
         case .qpFailure: return .qpFailure
+        case .cancelled: return .cancelled
+        }
+    }
+
+    private static func interiorPointTermination(
+        _ value: FFINonlinearInteriorPointTermination
+    ) -> NonlinearInteriorPointTermination {
+        switch value {
+        case .converged: return .converged
+        case .iterationLimit: return .iterationLimit
+        case .infeasibleStart: return .infeasibleStart
+        case .lineSearchFailed: return .lineSearchFailed
+        case .numericalFailure: return .numericalFailure
         case .cancelled: return .cancelled
         }
     }

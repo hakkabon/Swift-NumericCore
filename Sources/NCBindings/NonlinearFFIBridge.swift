@@ -124,6 +124,48 @@ public struct FFIConstrainedResult: Sendable, Hashable {
     public let termination: FFIConstrainedTermination
 }
 
+public struct FFINonlinearInteriorPointOptions: Sendable, Hashable {
+    public var maxOuterIterations: Int, maxInnerIterations: Int
+    public var feasibilityTolerance: Double, stationarityTolerance: Double
+    public var complementarityTolerance: Double
+    public var initialBarrier: Double, barrierReduction: Double, minimumBarrier: Double
+    public var equalityPenalty: Double, armijo: Double, backtracking: Double
+    public var fractionToBoundary: Double
+    public var maxLineSearchIterations: Int
+    public init(maxOuterIterations: Int, maxInnerIterations: Int,
+                feasibilityTolerance: Double, stationarityTolerance: Double,
+                complementarityTolerance: Double, initialBarrier: Double,
+                barrierReduction: Double, minimumBarrier: Double,
+                equalityPenalty: Double, armijo: Double, backtracking: Double,
+                fractionToBoundary: Double, maxLineSearchIterations: Int) {
+        self.maxOuterIterations = maxOuterIterations
+        self.maxInnerIterations = maxInnerIterations
+        self.feasibilityTolerance = feasibilityTolerance
+        self.stationarityTolerance = stationarityTolerance
+        self.complementarityTolerance = complementarityTolerance
+        self.initialBarrier = initialBarrier; self.barrierReduction = barrierReduction
+        self.minimumBarrier = minimumBarrier; self.equalityPenalty = equalityPenalty
+        self.armijo = armijo; self.backtracking = backtracking
+        self.fractionToBoundary = fractionToBoundary
+        self.maxLineSearchIterations = maxLineSearchIterations
+    }
+}
+
+public enum FFINonlinearInteriorPointTermination: Sendable, Hashable {
+    case converged, iterationLimit, infeasibleStart, lineSearchFailed
+    case numericalFailure, cancelled
+}
+
+public struct FFINonlinearInteriorPointResult: Sendable, Hashable {
+    public let point: [Double], objective: Double, constraintValues: [Double]
+    public let multipliers: [FFIConstraintMultiplier]
+    public let maximumViolation: Double, stationarityNorm: Double, complementarity: Double
+    public let outerIterations: Int, innerIterations: Int, evaluations: Int
+    public let finalBarrier: Double
+    public let acceptedSteps: Int, rejectedSteps: Int
+    public let termination: FFINonlinearInteriorPointTermination
+}
+
 public struct FFISQPOptions: Sendable, Hashable {
     public var maxIterations: Int
     public var feasibilityTolerance: Double, stationarityTolerance: Double, stepTolerance: Double
@@ -193,6 +235,55 @@ public struct FFISparseResidualEvaluation: Sendable, Hashable {
 }
 
 extension FFIKernels {
+    public static func solveNonlinearInteriorPoint(
+        model: FFINonlinearModel, constraints: [FFINonlinearConstraint], initial: [Double],
+        options: FFINonlinearInteriorPointOptions
+    ) throws -> FFINonlinearInteriorPointResult {
+        do {
+            let value = try NCBindings.solveNonlinearInteriorPoint(
+                modelValue: ffi(model),
+                constraints: constraints.map { FfiNonlinearConstraint(
+                    expression: ffi($0.expression),
+                    bound: FfiBound(lower: $0.bound.lower, upper: $0.bound.upper)) },
+                initial: initial,
+                options: FfiNonlinearInteriorPointOptions(
+                    maxOuterIterations: UInt64(options.maxOuterIterations),
+                    maxInnerIterations: UInt64(options.maxInnerIterations),
+                    feasibilityTolerance: options.feasibilityTolerance,
+                    stationarityTolerance: options.stationarityTolerance,
+                    complementarityTolerance: options.complementarityTolerance,
+                    initialBarrier: options.initialBarrier,
+                    barrierReduction: options.barrierReduction,
+                    minimumBarrier: options.minimumBarrier,
+                    equalityPenalty: options.equalityPenalty,
+                    armijo: options.armijo, backtracking: options.backtracking,
+                    fractionToBoundary: options.fractionToBoundary,
+                    maxLineSearchIterations: UInt64(options.maxLineSearchIterations)))
+            let status: FFINonlinearInteriorPointTermination
+            switch value.termination {
+            case .converged: status = .converged
+            case .iterationLimit: status = .iterationLimit
+            case .infeasibleStart: status = .infeasibleStart
+            case .lineSearchFailed: status = .lineSearchFailed
+            case .numericalFailure: status = .numericalFailure
+            case .cancelled: status = .cancelled
+            }
+            return .init(
+                point: value.point, objective: value.objective,
+                constraintValues: value.constraintValues,
+                multipliers: value.multipliers.map { .init(
+                    lower: $0.lower, upper: $0.upper, equality: $0.equality) },
+                maximumViolation: value.maximumViolation,
+                stationarityNorm: value.stationarityNorm,
+                complementarity: value.complementarity,
+                outerIterations: Int(value.outerIterations),
+                innerIterations: Int(value.innerIterations), evaluations: Int(value.evaluations),
+                finalBarrier: value.finalBarrier,
+                acceptedSteps: Int(value.acceptedSteps), rejectedSteps: Int(value.rejectedSteps),
+                termination: status)
+        } catch { throw Self.translate(error) }
+    }
+
     public static func solveSQP(
         model: FFINonlinearModel, constraints: [FFINonlinearConstraint], initial: [Double],
         options: FFISQPOptions

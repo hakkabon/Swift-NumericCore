@@ -110,7 +110,10 @@ Swift-NumericCore/
   method backed by projected L-BFGS, including multiplier, feasibility, and
   projected-stationarity diagnostics. `SequentialQuadraticProgramming` adds a
   BFGS-Lagrangian SQP path using convex QP subproblems and an exact L1 merit
-  line search, with matching Swift and Rust backend contracts.
+  line search. `NonlinearInteriorPointSolver` adds feasible-start log barriers
+  for nonlinear inequalities and variable bounds, augmented equality handling,
+  and primal/dual/complementarity certificates. Both constrained methods have
+  matching Swift and Rust backend contracts.
   `NonlinearModelSolver` provides one model/options/result contract for Swift
   execution or the Rust FFI backend, including robust least squares and
   constrained models. Shared graph models also expose reverse-mode sparse

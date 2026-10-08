@@ -2,6 +2,65 @@ import XCTest
 @testable import NumericCoreOptimization
 
 final class NonlinearOptimizationTests: XCTestCase {
+    func testNonlinearInteriorPointConformsAcrossBackends() throws {
+        let objective = NonlinearExpression(nodes: [
+            .parameter(0), .constant(2), .subtract(0, 1), .pow(2, 2)
+        ], output: 3)
+        let constraint = NonlinearExpression(nodes: [.parameter(0)], output: 0)
+        let model = try NonlinearModel.objective(
+            parameterCount: 1, bounds: [.free], expression: objective)
+        let problem = try ConstrainedNonlinearProblem(
+            model: model,
+            constraints: [.init(expression: constraint, bound: .init(upper: 1))])
+        let swift = try NonlinearModelSolver.minimizeInteriorPoint(
+            problem: problem, initial: [0], backend: .swift)
+        let rust = try NonlinearModelSolver.minimizeInteriorPoint(
+            problem: problem, initial: [0], backend: .rust)
+        for result in [swift, rust] {
+            XCTAssertEqual(result.termination, .converged)
+            XCTAssertEqual(result.point[0], 1, accuracy: 1e-4)
+            XCTAssertLessThanOrEqual(result.complementarity, 1e-7)
+            XCTAssertGreaterThan(result.multipliers[0].upper, 1.9)
+        }
+        XCTAssertEqual(rust.point[0], swift.point[0], accuracy: 1e-7)
+    }
+
+    func testNonlinearInteriorPointSolvesEqualityAcrossBackends() throws {
+        let objective = NonlinearExpression(nodes: [
+            .parameter(0), .pow(0, 2), .parameter(1), .pow(2, 2), .add(1, 3)
+        ], output: 4)
+        let equality = NonlinearExpression(
+            nodes: [.parameter(0), .parameter(1), .add(0, 1)], output: 2)
+        let model = try NonlinearModel.objective(
+            parameterCount: 2, bounds: [.free, .free], expression: objective)
+        let problem = try ConstrainedNonlinearProblem(
+            model: model, constraints: [.init(expression: equality, bound: .fixed(1))])
+        for backend in [NonlinearBackend.swift, .rust] {
+            let result = try NonlinearModelSolver.minimizeInteriorPoint(
+                problem: problem, initial: [0, 0], backend: backend)
+            XCTAssertEqual(result.termination, .converged)
+            XCTAssertEqual(result.point[0], 0.5, accuracy: 1e-4)
+            XCTAssertEqual(result.point[1], 0.5, accuracy: 1e-4)
+            XCTAssertLessThan(result.maximumViolation, 1e-7)
+        }
+    }
+
+    func testNonlinearInteriorPointReportsNonStrictStart() throws {
+        let expression = NonlinearExpression(nodes: [.parameter(0), .pow(0, 2)], output: 1)
+        let constraint = NonlinearExpression(nodes: [.parameter(0)], output: 0)
+        let model = try NonlinearModel.objective(
+            parameterCount: 1, bounds: [.free], expression: expression)
+        let problem = try ConstrainedNonlinearProblem(
+            model: model,
+            constraints: [.init(expression: constraint, bound: .init(upper: 1))])
+        for backend in [NonlinearBackend.swift, .rust] {
+            let result = try NonlinearModelSolver.minimizeInteriorPoint(
+                problem: problem, initial: [1], backend: backend)
+            XCTAssertEqual(result.termination, .infeasibleStart)
+            XCTAssertEqual(result.outerIterations, 0)
+        }
+    }
+
     func testSQPSolvesEqualityConstrainedQuadratic() throws {
         let objective = NonlinearExpression(nodes: [
             .parameter(0), .pow(0, 2), .parameter(1), .pow(2, 2), .add(1, 3)
