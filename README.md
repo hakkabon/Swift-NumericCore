@@ -118,7 +118,7 @@ Swift-NumericCore/
   both backends, providing scalable derivative primitives without callbacks
   crossing the FFI boundary.
   `QuadraticProblem` and `ConvexQuadraticSolver` add continuous convex QP with
-  sparse linear constraints, variable bounds, warm starts, dual estimates, and
+  sparse linear constraints, variable bounds, reusable warm starts, dual estimates, and
   primal/dual/KKT diagnostics as the subproblem foundation for future SQP.
   The module also
   includes central-difference derivative verification, cancellable iteration

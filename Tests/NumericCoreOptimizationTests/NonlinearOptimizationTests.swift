@@ -354,6 +354,11 @@ final class NonlinearOptimizationTests: XCTestCase {
         XCTAssertEqual(result.point[1], 0.5, accuracy: 1e-5)
         XCTAssertLessThan(result.maximumRowViolation, 1e-5)
         XCTAssertLessThan(result.stationarityNorm, 1e-5)
+
+        let restarted = try ConvexQuadraticSolver.solve(problem, warmStart: result.warmStart)
+        XCTAssertEqual(restarted.termination, .converged)
+        XCTAssertEqual(restarted.point[0], 0.5, accuracy: 1e-5)
+        XCTAssertLessThanOrEqual(restarted.iterations, result.iterations)
     }
 
     func testConvexQPRejectsIndefiniteHessian() throws {

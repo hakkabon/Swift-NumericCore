@@ -43,9 +43,11 @@ public enum OptimizationSolveConfiguration: Sendable, Hashable {
 public struct SimplexSolveOptions: Sendable, Hashable {
     public var maxIterations: UInt64
     public var tolerance: Double
-    public init(maxIterations: UInt64 = 10_000, tolerance: Double = 1e-9) {
+    public var scaling: Bool
+    public init(maxIterations: UInt64 = 10_000, tolerance: Double = 1e-9, scaling: Bool = true) {
         self.maxIterations = maxIterations
         self.tolerance = tolerance
+        self.scaling = scaling
     }
 }
 
@@ -55,23 +57,30 @@ public struct InteriorPointSolveOptions: Sendable, Hashable {
     public var sigma: Double
     public var bigBound: Double
     public var stepFraction: Double
+    public var scaling: Bool
     public init(maxIterations: UInt64 = 200, tolerance: Double = 1e-8,
                 sigma: Double = 0.1, bigBound: Double = 1e12,
-                stepFraction: Double = 0.995) {
+                stepFraction: Double = 0.995, scaling: Bool = true) {
         self.maxIterations = maxIterations
         self.tolerance = tolerance
         self.sigma = sigma
         self.bigBound = bigBound
         self.stepFraction = stepFraction
+        self.scaling = scaling
     }
 }
 
 public struct BranchAndBoundSolveOptions: Sendable, Hashable {
     public var maxNodes: UInt64
     public var integerTolerance: Double
-    public init(maxNodes: UInt64 = 10_000, integerTolerance: Double = 1e-6) {
+    public var scaling: Bool
+    public var initialIncumbent: [Double]?
+    public init(maxNodes: UInt64 = 10_000, integerTolerance: Double = 1e-6,
+                scaling: Bool = true, initialIncumbent: [Double]? = nil) {
         self.maxNodes = maxNodes
         self.integerTolerance = integerTolerance
+        self.scaling = scaling
+        self.initialIncumbent = initialIncumbent
     }
 }
 
@@ -174,17 +183,19 @@ extension CompiledProblem {
                 : FFIKernels.solveLPSimplex(ffiProblem)
         case .simplex(let options):
             result = try FFIKernels.solveLPSimplex(ffiProblem, options: .init(
-                maxIterations: options.maxIterations, tolerance: options.tolerance
+                maxIterations: options.maxIterations, tolerance: options.tolerance,
+                scaling: options.scaling
             ))
         case .interiorPoint(let options):
             result = try FFIKernels.solveLPInteriorPoint(ffiProblem, options: .init(
                 maxIterations: options.maxIterations, tolerance: options.tolerance,
                 sigma: options.sigma, bigBound: options.bigBound,
-                stepFraction: options.stepFraction
+                stepFraction: options.stepFraction, scaling: options.scaling
             ))
         case .branchAndBound(let options):
             let report = try FFIKernels.solveMILP(ffiProblem, options: .init(
-                maxNodes: options.maxNodes, integerTolerance: options.integerTolerance
+                maxNodes: options.maxNodes, integerTolerance: options.integerTolerance,
+                scaling: options.scaling, initialIncumbent: options.initialIncumbent
             ))
             milpReport = report
             result = report.solution

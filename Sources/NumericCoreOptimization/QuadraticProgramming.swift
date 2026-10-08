@@ -124,6 +124,11 @@ public struct QuadraticResult: Sendable, Hashable {
     public let stationarityNorm: Double
     public let maximumRowViolation: Double
     public let maximumVariableViolation: Double
+
+    /// Snapshot for a related follow-up QP, retaining both dual blocks.
+    public var warmStart: QuadraticWarmStart {
+        .init(primal: point, rowDual: rowDual, variableDual: variableDual)
+    }
 }
 
 public struct QuadraticIteration: Sendable, Hashable {

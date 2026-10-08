@@ -238,6 +238,25 @@ final class SolveTests: XCTestCase {
         XCTAssertFalse(solution.diagnostics.finite)
     }
 
+    func testBranchAndBoundWarmStartSurvivesEarlyNodeLimit() throws {
+        let source = """
+        var x >= 0 integer;
+        var y >= 0 integer;
+        maximize profit: 5 x + 4 y;
+        subject to c1: 6 x + 4 y <= 24;
+        subject to c2: x + 2 y <= 6;
+        """
+        let solution = try AMPLParser.parse(source).compile().solve(
+            configuration: .branchAndBound(.init(
+                maxNodes: 1, scaling: true, initialIncumbent: [4, 0]
+            ))
+        )
+        XCTAssertEqual(solution.status, .iterationLimit)
+        XCTAssertEqual(solution.variableValues, [4, 0])
+        XCTAssertEqual(solution.objectiveValue, 20, accuracy: 1e-12)
+        XCTAssertTrue(solution.diagnostics.isVerified(tolerance: 1e-8))
+    }
+
     func testConfiguredSimplexPreservesExistingSolutionPath() throws {
         let solution = try AMPLParser.parse(Self.exampleSource).compile().solve(
             configuration: .simplex(.init(maxIterations: 1_000, tolerance: 1e-10))

@@ -891,12 +891,16 @@ public func FfiConverterTypeFfiBound_lower(_ value: FfiBound) -> RustBuffer {
 public struct FfiBranchAndBoundOptions {
     public var maxNodes: UInt64
     public var integerTolerance: Double
+    public var scaling: Bool
+    public var initialIncumbent: [Double]
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
-    public init(maxNodes: UInt64, integerTolerance: Double) {
+    public init(maxNodes: UInt64, integerTolerance: Double, scaling: Bool, initialIncumbent: [Double]) {
         self.maxNodes = maxNodes
         self.integerTolerance = integerTolerance
+        self.scaling = scaling
+        self.initialIncumbent = initialIncumbent
     }
 }
 
@@ -910,12 +914,16 @@ extension FfiBranchAndBoundOptions: Equatable, Hashable {
         if lhs.integerTolerance != rhs.integerTolerance {
             return false
         }
+        if lhs.scaling != rhs.scaling { return false }
+        if lhs.initialIncumbent != rhs.initialIncumbent { return false }
         return true
     }
 
     public func hash(into hasher: inout Hasher) {
         hasher.combine(maxNodes)
         hasher.combine(integerTolerance)
+        hasher.combine(scaling)
+        hasher.combine(initialIncumbent)
     }
 }
 
@@ -925,13 +933,17 @@ public struct FfiConverterTypeFfiBranchAndBoundOptions: FfiConverterRustBuffer {
         return
             try FfiBranchAndBoundOptions(
                 maxNodes: FfiConverterUInt64.read(from: &buf),
-                integerTolerance: FfiConverterDouble.read(from: &buf)
+                integerTolerance: FfiConverterDouble.read(from: &buf),
+                scaling: FfiConverterBool.read(from: &buf),
+                initialIncumbent: FfiConverterSequenceDouble.read(from: &buf)
         )
     }
 
     public static func write(_ value: FfiBranchAndBoundOptions, into buf: inout [UInt8]) {
         FfiConverterUInt64.write(value.maxNodes, into: &buf)
         FfiConverterDouble.write(value.integerTolerance, into: &buf)
+        FfiConverterBool.write(value.scaling, into: &buf)
+        FfiConverterSequenceDouble.write(value.initialIncumbent, into: &buf)
     }
 }
 
@@ -1495,15 +1507,17 @@ public struct FfiInteriorPointOptions {
     public var sigma: Double
     public var bigBound: Double
     public var stepFraction: Double
+    public var scaling: Bool
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
-    public init(maxIterations: UInt64, tolerance: Double, sigma: Double, bigBound: Double, stepFraction: Double) {
+    public init(maxIterations: UInt64, tolerance: Double, sigma: Double, bigBound: Double, stepFraction: Double, scaling: Bool) {
         self.maxIterations = maxIterations
         self.tolerance = tolerance
         self.sigma = sigma
         self.bigBound = bigBound
         self.stepFraction = stepFraction
+        self.scaling = scaling
     }
 }
 
@@ -1526,6 +1540,7 @@ extension FfiInteriorPointOptions: Equatable, Hashable {
         if lhs.stepFraction != rhs.stepFraction {
             return false
         }
+        if lhs.scaling != rhs.scaling { return false }
         return true
     }
 
@@ -1535,6 +1550,7 @@ extension FfiInteriorPointOptions: Equatable, Hashable {
         hasher.combine(sigma)
         hasher.combine(bigBound)
         hasher.combine(stepFraction)
+        hasher.combine(scaling)
     }
 }
 
@@ -1547,7 +1563,8 @@ public struct FfiConverterTypeFfiInteriorPointOptions: FfiConverterRustBuffer {
                 tolerance: FfiConverterDouble.read(from: &buf),
                 sigma: FfiConverterDouble.read(from: &buf),
                 bigBound: FfiConverterDouble.read(from: &buf),
-                stepFraction: FfiConverterDouble.read(from: &buf)
+                stepFraction: FfiConverterDouble.read(from: &buf),
+                scaling: FfiConverterBool.read(from: &buf)
         )
     }
 
@@ -1557,6 +1574,7 @@ public struct FfiConverterTypeFfiInteriorPointOptions: FfiConverterRustBuffer {
         FfiConverterDouble.write(value.sigma, into: &buf)
         FfiConverterDouble.write(value.bigBound, into: &buf)
         FfiConverterDouble.write(value.stepFraction, into: &buf)
+        FfiConverterBool.write(value.scaling, into: &buf)
     }
 }
 
@@ -2822,12 +2840,14 @@ public func FfiConverterTypeFfiRobustLoss_lower(_ value: FfiRobustLoss) -> RustB
 public struct FfiSimplexOptions {
     public var maxIterations: UInt64
     public var tolerance: Double
+    public var scaling: Bool
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
-    public init(maxIterations: UInt64, tolerance: Double) {
+    public init(maxIterations: UInt64, tolerance: Double, scaling: Bool) {
         self.maxIterations = maxIterations
         self.tolerance = tolerance
+        self.scaling = scaling
     }
 }
 
@@ -2841,12 +2861,14 @@ extension FfiSimplexOptions: Equatable, Hashable {
         if lhs.tolerance != rhs.tolerance {
             return false
         }
+        if lhs.scaling != rhs.scaling { return false }
         return true
     }
 
     public func hash(into hasher: inout Hasher) {
         hasher.combine(maxIterations)
         hasher.combine(tolerance)
+        hasher.combine(scaling)
     }
 }
 
@@ -2856,13 +2878,15 @@ public struct FfiConverterTypeFfiSimplexOptions: FfiConverterRustBuffer {
         return
             try FfiSimplexOptions(
                 maxIterations: FfiConverterUInt64.read(from: &buf),
-                tolerance: FfiConverterDouble.read(from: &buf)
+                tolerance: FfiConverterDouble.read(from: &buf),
+                scaling: FfiConverterBool.read(from: &buf)
         )
     }
 
     public static func write(_ value: FfiSimplexOptions, into buf: inout [UInt8]) {
         FfiConverterUInt64.write(value.maxIterations, into: &buf)
         FfiConverterDouble.write(value.tolerance, into: &buf)
+        FfiConverterBool.write(value.scaling, into: &buf)
     }
 }
 
