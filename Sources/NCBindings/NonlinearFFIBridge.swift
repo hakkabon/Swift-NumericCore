@@ -124,6 +124,27 @@ public struct FFIConstrainedResult: Sendable, Hashable {
     public let termination: FFIConstrainedTermination
 }
 
+public struct FFIFeasibilityRestorationOptions: Sendable, Hashable {
+    public var maxIterations: Int
+    public var feasibilityTolerance: Double, interiorMargin: Double
+    public init(maxIterations: Int, feasibilityTolerance: Double, interiorMargin: Double) {
+        self.maxIterations = maxIterations
+        self.feasibilityTolerance = feasibilityTolerance
+        self.interiorMargin = interiorMargin
+    }
+}
+
+public enum FFIFeasibilityRestorationTermination: Sendable, Hashable {
+    case alreadyFeasible, converged, iterationLimit, stalled
+}
+
+public struct FFIFeasibilityRestorationResult: Sendable, Hashable {
+    public let point: [Double]
+    public let maximumViolation: Double, squaredViolation: Double
+    public let iterations: Int, evaluations: Int
+    public let termination: FFIFeasibilityRestorationTermination
+}
+
 public struct FFINonlinearInteriorPointOptions: Sendable, Hashable {
     public var maxOuterIterations: Int, maxInnerIterations: Int
     public var feasibilityTolerance: Double, stationarityTolerance: Double
@@ -132,12 +153,15 @@ public struct FFINonlinearInteriorPointOptions: Sendable, Hashable {
     public var equalityPenalty: Double, armijo: Double, backtracking: Double
     public var fractionToBoundary: Double
     public var maxLineSearchIterations: Int
+    public var restoration: Bool
+    public var restorationOptions: FFIFeasibilityRestorationOptions
     public init(maxOuterIterations: Int, maxInnerIterations: Int,
                 feasibilityTolerance: Double, stationarityTolerance: Double,
                 complementarityTolerance: Double, initialBarrier: Double,
                 barrierReduction: Double, minimumBarrier: Double,
                 equalityPenalty: Double, armijo: Double, backtracking: Double,
-                fractionToBoundary: Double, maxLineSearchIterations: Int) {
+                fractionToBoundary: Double, maxLineSearchIterations: Int,
+                restoration: Bool, restorationOptions: FFIFeasibilityRestorationOptions) {
         self.maxOuterIterations = maxOuterIterations
         self.maxInnerIterations = maxInnerIterations
         self.feasibilityTolerance = feasibilityTolerance
@@ -148,11 +172,12 @@ public struct FFINonlinearInteriorPointOptions: Sendable, Hashable {
         self.armijo = armijo; self.backtracking = backtracking
         self.fractionToBoundary = fractionToBoundary
         self.maxLineSearchIterations = maxLineSearchIterations
+        self.restoration = restoration; self.restorationOptions = restorationOptions
     }
 }
 
 public enum FFINonlinearInteriorPointTermination: Sendable, Hashable {
-    case converged, iterationLimit, infeasibleStart, lineSearchFailed
+    case converged, iterationLimit, infeasibleStart, restorationFailed, lineSearchFailed
     case numericalFailure, cancelled
 }
 
@@ -211,6 +236,10 @@ public struct FFISQPOptions: Sendable, Hashable {
     public var qpMaxIterations: Int
     public var qpRho: Double, qpAbsoluteTolerance: Double
     public var qpRelativeTolerance: Double, qpConvexityTolerance: Double
+    public var restoration: Bool
+    public var restorationOptions: FFIFeasibilityRestorationOptions
+    public var globalization: FFISQPGlobalization
+    public var filterConstraintMargin: Double, filterObjectiveMargin: Double
 
     public init(maxIterations: Int, feasibilityTolerance: Double,
                 stationarityTolerance: Double, stepTolerance: Double,
@@ -218,7 +247,10 @@ public struct FFISQPOptions: Sendable, Hashable {
                 armijo: Double, backtracking: Double, maxLineSearchIterations: Int,
                 hessianRegularization: Double, qpMaxIterations: Int, qpRho: Double,
                 qpAbsoluteTolerance: Double, qpRelativeTolerance: Double,
-                qpConvexityTolerance: Double) {
+                qpConvexityTolerance: Double, restoration: Bool,
+                restorationOptions: FFIFeasibilityRestorationOptions,
+                globalization: FFISQPGlobalization,
+                filterConstraintMargin: Double, filterObjectiveMargin: Double) {
         self.maxIterations = maxIterations
         self.feasibilityTolerance = feasibilityTolerance
         self.stationarityTolerance = stationarityTolerance
@@ -231,11 +263,18 @@ public struct FFISQPOptions: Sendable, Hashable {
         self.qpAbsoluteTolerance = qpAbsoluteTolerance
         self.qpRelativeTolerance = qpRelativeTolerance
         self.qpConvexityTolerance = qpConvexityTolerance
+        self.restoration = restoration; self.restorationOptions = restorationOptions
+        self.globalization = globalization
+        self.filterConstraintMargin = filterConstraintMargin
+        self.filterObjectiveMargin = filterObjectiveMargin
     }
 }
 
+public enum FFISQPGlobalization: Sendable, Hashable { case merit, filter }
+
 public enum FFISQPTermination: Sendable, Hashable {
-    case converged, iterationLimit, stepLimit, lineSearchFailed, qpFailure, cancelled
+    case converged, iterationLimit, stepLimit, lineSearchFailed, qpFailure
+    case restorationFailed, cancelled
 }
 
 public struct FFISQPResult: Sendable, Hashable {
@@ -270,6 +309,35 @@ public struct FFISparseResidualEvaluation: Sendable, Hashable {
 }
 
 extension FFIKernels {
+    public static func restoreNonlinearFeasibility(
+        model: FFINonlinearModel, constraints: [FFINonlinearConstraint], initial: [Double],
+        options: FFIFeasibilityRestorationOptions
+    ) throws -> FFIFeasibilityRestorationResult {
+        do {
+            let value = try NCBindings.restoreNonlinearFeasibility(
+                modelValue: ffi(model),
+                constraints: constraints.map { FfiNonlinearConstraint(
+                    expression: ffi($0.expression),
+                    bound: FfiBound(lower: $0.bound.lower, upper: $0.bound.upper)) },
+                initial: initial,
+                options: FfiFeasibilityRestorationOptions(
+                    maxIterations: UInt64(options.maxIterations),
+                    feasibilityTolerance: options.feasibilityTolerance,
+                    interiorMargin: options.interiorMargin))
+            let status: FFIFeasibilityRestorationTermination
+            switch value.termination {
+            case .alreadyFeasible: status = .alreadyFeasible
+            case .converged: status = .converged
+            case .iterationLimit: status = .iterationLimit
+            case .stalled: status = .stalled
+            }
+            return .init(point: value.point, maximumViolation: value.maximumViolation,
+                         squaredViolation: value.squaredViolation,
+                         iterations: Int(value.iterations), evaluations: Int(value.evaluations),
+                         termination: status)
+        } catch { throw Self.translate(error) }
+    }
+
     public static func solveMixedIntegerNonlinear(
         model: FFINonlinearModel, constraints: [FFINonlinearConstraint],
         isInteger: [Bool], initial: [Double], options: FFIMixedIntegerNonlinearOptions
@@ -340,12 +408,18 @@ extension FFIKernels {
                     equalityPenalty: options.equalityPenalty,
                     armijo: options.armijo, backtracking: options.backtracking,
                     fractionToBoundary: options.fractionToBoundary,
-                    maxLineSearchIterations: UInt64(options.maxLineSearchIterations)))
+                    maxLineSearchIterations: UInt64(options.maxLineSearchIterations),
+                    restoration: options.restoration,
+                    restorationOptions: FfiFeasibilityRestorationOptions(
+                        maxIterations: UInt64(options.restorationOptions.maxIterations),
+                        feasibilityTolerance: options.restorationOptions.feasibilityTolerance,
+                        interiorMargin: options.restorationOptions.interiorMargin)))
             let status: FFINonlinearInteriorPointTermination
             switch value.termination {
             case .converged: status = .converged
             case .iterationLimit: status = .iterationLimit
             case .infeasibleStart: status = .infeasibleStart
+            case .restorationFailed: status = .restorationFailed
             case .lineSearchFailed: status = .lineSearchFailed
             case .numericalFailure: status = .numericalFailure
             case .cancelled: status = .cancelled
@@ -389,7 +463,15 @@ extension FFIKernels {
                     qpMaxIterations: UInt64(options.qpMaxIterations), qpRho: options.qpRho,
                     qpAbsoluteTolerance: options.qpAbsoluteTolerance,
                     qpRelativeTolerance: options.qpRelativeTolerance,
-                    qpConvexityTolerance: options.qpConvexityTolerance))
+                    qpConvexityTolerance: options.qpConvexityTolerance,
+                    restoration: options.restoration,
+                    restorationOptions: FfiFeasibilityRestorationOptions(
+                        maxIterations: UInt64(options.restorationOptions.maxIterations),
+                        feasibilityTolerance: options.restorationOptions.feasibilityTolerance,
+                        interiorMargin: options.restorationOptions.interiorMargin),
+                    globalization: options.globalization == .merit ? .merit : .filter,
+                    filterConstraintMargin: options.filterConstraintMargin,
+                    filterObjectiveMargin: options.filterObjectiveMargin))
             let status: FFISQPTermination
             switch value.termination {
             case .converged: status = .converged
@@ -397,6 +479,7 @@ extension FFIKernels {
             case .stepLimit: status = .stepLimit
             case .lineSearchFailed: status = .lineSearchFailed
             case .qpFailure: status = .qpFailure
+            case .restorationFailed: status = .restorationFailed
             case .cancelled: status = .cancelled
             }
             return .init(

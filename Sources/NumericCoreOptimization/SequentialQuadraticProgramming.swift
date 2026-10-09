@@ -12,13 +12,22 @@ public struct SQPOptions: Sendable, Hashable {
     public var maxLineSearchIterations: Int
     public var hessianRegularization: Double
     public var qpOptions: QuadraticOptions
+    public var restoration: Bool
+    public var restorationOptions: FeasibilityRestorationOptions
+    public var globalization: SQPGlobalization
+    public var filterConstraintMargin: Double
+    public var filterObjectiveMargin: Double
 
     public init(maxIterations: Int = 100, feasibilityTolerance: Double = 1e-7,
                 stationarityTolerance: Double = 1e-6, stepTolerance: Double = 1e-10,
                 meritPenalty: Double = 10, penaltyIncrease: Double = 10,
                 armijo: Double = 1e-4, backtracking: Double = 0.5,
                 maxLineSearchIterations: Int = 30, hessianRegularization: Double = 1e-8,
-                qpOptions: QuadraticOptions = .init()) {
+                qpOptions: QuadraticOptions = .init(), restoration: Bool = false,
+                restorationOptions: FeasibilityRestorationOptions = .init(),
+                globalization: SQPGlobalization = .merit,
+                filterConstraintMargin: Double = 1e-4,
+                filterObjectiveMargin: Double = 1e-4) {
         self.maxIterations = maxIterations
         self.feasibilityTolerance = feasibilityTolerance
         self.stationarityTolerance = stationarityTolerance
@@ -30,11 +39,19 @@ public struct SQPOptions: Sendable, Hashable {
         self.maxLineSearchIterations = maxLineSearchIterations
         self.hessianRegularization = hessianRegularization
         self.qpOptions = qpOptions
+        self.restoration = restoration
+        self.restorationOptions = restorationOptions
+        self.globalization = globalization
+        self.filterConstraintMargin = filterConstraintMargin
+        self.filterObjectiveMargin = filterObjectiveMargin
     }
 }
 
+public enum SQPGlobalization: Sendable, Hashable { case merit, filter }
+
 public enum SQPTermination: Sendable, Hashable {
-    case converged, iterationLimit, stepLimit, lineSearchFailed, qpFailure, cancelled
+    case converged, iterationLimit, stepLimit, lineSearchFailed, qpFailure
+    case restorationFailed, cancelled
 }
 
 public struct SQPResult: Sendable, Hashable {
@@ -75,14 +92,34 @@ public enum SequentialQuadraticProgramming {
         }
         let n = initial.count
         var point = sqpProject(initial, problem.model.bounds)
+        var restorationEvaluations = 0
+        let initialConstraints = try problem.evaluateConstraints(at: point)
+        if options.restoration,
+           sqpMaximumViolation(problem, initialConstraints) > options.feasibilityTolerance {
+            let restored = try FeasibilityRestoration.restore(
+                problem: problem, initial: point, options: options.restorationOptions)
+            restorationEvaluations = restored.evaluations
+            point = restored.point
+            if restored.maximumViolation > options.feasibilityTolerance
+                || restored.termination == .iterationLimit || restored.termination == .stalled {
+                let objective = try problem.model.evaluateObjective(parameters: point)
+                let constraints = try problem.evaluateConstraints(at: point)
+                return sqpResult(problem, point, objective, constraints,
+                                 [ConstraintMultiplier](repeating: .init(),
+                                                        count: problem.constraints.count),
+                                 0, restored.evaluations, 0, 0, options.meritPenalty, 0,
+                                 .restorationFailed)
+            }
+        }
         var objective = try problem.model.evaluateObjective(parameters: point)
         var constraints = try problem.evaluateConstraints(at: point)
-        var evaluations = 1
+        var evaluations = 1 + restorationEvaluations
         var hessian = sqpIdentity(n)
         var multipliers = [ConstraintMultiplier](repeating: .init(), count: problem.constraints.count)
         var penalty = options.meritPenalty
         var acceptedSteps = 0, rejectedSteps = 0
         var lastStepNorm = 0.0
+        var filter = [(sqpViolationSum(problem, constraints), objective.value)]
 
         for iteration in 1...options.maxIterations {
             let violation = sqpMaximumViolation(problem, constraints)
@@ -136,7 +173,24 @@ public enum SequentialQuadraticProgramming {
                 evaluations += 1
                 let trialMerit = trialObjective.value
                     + penalty * sqpViolationSum(problem, trialConstraints)
-                if trialMerit <= currentMerit - options.armijo * alpha * predicted {
+                let trialViolation = sqpViolationSum(problem, trialConstraints)
+                let currentViolation = sqpViolationSum(problem, constraints)
+                let acceptedByMerit = trialMerit
+                    <= currentMerit - options.armijo * alpha * predicted
+                let acceptedByFilter = filter.allSatisfy { violation, value in
+                    trialViolation <= (1 - options.filterConstraintMargin) * violation
+                        || trialObjective.value <= value - options.filterObjectiveMargin * violation
+                }
+                let accept: Bool
+                switch options.globalization {
+                case .merit: accept = acceptedByMerit
+                case .filter where currentViolation <= options.feasibilityTolerance:
+                    accept = acceptedByMerit
+                case .filter:
+                    accept = acceptedByFilter
+                        && (trialViolation < currentViolation || acceptedByMerit)
+                }
+                if accept {
                     accepted = (trial, trialObjective, trialConstraints); break
                 }
                 rejectedSteps += 1; alpha *= options.backtracking
@@ -147,6 +201,13 @@ public enum SequentialQuadraticProgramming {
                                  penalty, lastStepNorm, .lineSearchFailed)
             }
             acceptedSteps += 1
+            if options.globalization == .filter {
+                let newPair = (sqpViolationSum(problem, newConstraints), newObjective.value)
+                filter.removeAll { violation, value in
+                    violation >= newPair.0 && value >= newPair.1
+                }
+                filter.append(newPair)
+            }
             let actualStep = zip(newPoint, point).map(-)
             let newLagrangian = sqpLagrangian(
                 problem, newObjective.gradient, newConstraints, candidateMultipliers)
@@ -301,7 +362,10 @@ private func sqpValidate(_ options: SQPOptions) throws {
           options.penaltyIncrease.isFinite, options.penaltyIncrease > 1,
           options.armijo.isFinite, options.armijo > 0, options.armijo < 1,
           options.backtracking.isFinite, options.backtracking > 0, options.backtracking < 1,
-          options.hessianRegularization.isFinite, options.hessianRegularization > 0 else {
+          options.hessianRegularization.isFinite, options.hessianRegularization > 0,
+          options.filterConstraintMargin.isFinite, options.filterConstraintMargin > 0,
+          options.filterConstraintMargin < 1, options.filterObjectiveMargin.isFinite,
+          options.filterObjectiveMargin > 0 else {
         throw NonlinearOptimizationError.invalidConfiguration("invalid SQP options")
     }
 }

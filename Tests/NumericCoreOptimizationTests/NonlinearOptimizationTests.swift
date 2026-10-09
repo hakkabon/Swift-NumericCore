@@ -2,6 +2,61 @@ import XCTest
 @testable import NumericCoreOptimization
 
 final class NonlinearOptimizationTests: XCTestCase {
+    func testFeasibilityRestorationConformsAcrossBackends() throws {
+        let objective = NonlinearExpression(nodes: [
+            .parameter(0), .pow(0, 2)
+        ], output: 1)
+        let constraint = NonlinearExpression(nodes: [
+            .parameter(0), .pow(0, 2)
+        ], output: 1)
+        let model = try NonlinearModel.objective(
+            parameterCount: 1, bounds: [.init(lower: -2, upper: 2)], expression: objective)
+        let problem = try ConstrainedNonlinearProblem(
+            model: model, constraints: [.init(expression: constraint, bound: .init(lower: 1))])
+        for backend in [NonlinearBackend.swift, .rust] {
+            let result = try NonlinearModelSolver.restoreFeasibility(
+                problem: problem, initial: [0.2], backend: backend)
+            XCTAssertLessThanOrEqual(result.maximumViolation, 1e-7)
+            XCTAssertGreaterThanOrEqual(abs(result.point[0]), 1 - 1e-7)
+        }
+    }
+
+    func testInteriorPointRestorationRecoversBoundaryStartAcrossBackends() throws {
+        let objective = NonlinearExpression(nodes: [
+            .parameter(0), .pow(0, 2)
+        ], output: 1)
+        let constraint = NonlinearExpression(nodes: [.parameter(0)], output: 0)
+        let model = try NonlinearModel.objective(
+            parameterCount: 1, bounds: [.free], expression: objective)
+        let problem = try ConstrainedNonlinearProblem(
+            model: model, constraints: [.init(expression: constraint, bound: .init(upper: 1))])
+        for backend in [NonlinearBackend.swift, .rust] {
+            let result = try NonlinearModelSolver.minimizeInteriorPoint(
+                problem: problem, initial: [1], backend: backend,
+                options: .init(restoration: true))
+            XCTAssertEqual(result.termination, .converged)
+            XCTAssertLessThanOrEqual(result.maximumViolation, 1e-7)
+        }
+    }
+
+    func testSQPFilterGlobalizationWithRestorationAcrossBackends() throws {
+        let objective = NonlinearExpression(nodes: [
+            .parameter(0), .constant(2), .subtract(0, 1), .pow(2, 2)
+        ], output: 3)
+        let constraint = NonlinearExpression(nodes: [.parameter(0)], output: 0)
+        let model = try NonlinearModel.objective(
+            parameterCount: 1, bounds: [.free], expression: objective)
+        let problem = try ConstrainedNonlinearProblem(
+            model: model, constraints: [.init(expression: constraint, bound: .init(lower: 1))])
+        for backend in [NonlinearBackend.swift, .rust] {
+            let result = try NonlinearModelSolver.minimizeSQP(
+                problem: problem, initial: [0], backend: backend,
+                options: .init(restoration: true, globalization: .filter))
+            XCTAssertEqual(result.termination, .converged)
+            XCTAssertGreaterThanOrEqual(result.point[0], 1 - 1e-7)
+        }
+    }
+
     func testMixedIntegerNonlinearSolvesSpecializedBoundedObjective() throws {
         let objective = NonlinearExpression(nodes: [
             .parameter(0), .constant(2.4), .subtract(0, 1), .pow(2, 2)

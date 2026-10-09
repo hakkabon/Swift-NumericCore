@@ -15,6 +15,8 @@ public struct NonlinearInteriorPointOptions: Sendable, Hashable {
     public var backtracking: Double
     public var fractionToBoundary: Double
     public var maxLineSearchIterations: Int
+    public var restoration: Bool
+    public var restorationOptions: FeasibilityRestorationOptions
 
     public init(maxOuterIterations: Int = 50, maxInnerIterations: Int = 100,
                 feasibilityTolerance: Double = 1e-7,
@@ -24,7 +26,9 @@ public struct NonlinearInteriorPointOptions: Sendable, Hashable {
                 minimumBarrier: Double = 1e-7, equalityPenalty: Double = 10,
                 armijo: Double = 1e-4, backtracking: Double = 0.5,
                 fractionToBoundary: Double = 0.995,
-                maxLineSearchIterations: Int = 40) {
+                maxLineSearchIterations: Int = 40, restoration: Bool = false,
+                restorationOptions: FeasibilityRestorationOptions = .init(
+                    interiorMargin: 1e-6)) {
         self.maxOuterIterations = maxOuterIterations
         self.maxInnerIterations = maxInnerIterations
         self.feasibilityTolerance = feasibilityTolerance
@@ -38,11 +42,13 @@ public struct NonlinearInteriorPointOptions: Sendable, Hashable {
         self.backtracking = backtracking
         self.fractionToBoundary = fractionToBoundary
         self.maxLineSearchIterations = maxLineSearchIterations
+        self.restoration = restoration
+        self.restorationOptions = restorationOptions
     }
 }
 
 public enum NonlinearInteriorPointTermination: Sendable, Hashable {
-    case converged, iterationLimit, infeasibleStart, lineSearchFailed
+    case converged, iterationLimit, infeasibleStart, restorationFailed, lineSearchFailed
     case numericalFailure, cancelled
 }
 
@@ -89,15 +95,30 @@ public enum NonlinearInteriorPointSolver {
             throw NonlinearOptimizationError.invalidInitialPoint
         }
         var point = initial
-        let initialValues = try problem.evaluateConstraints(at: point)
+        var restorationEvaluations = 0
+        var initialValues = try problem.evaluateConstraints(at: point)
         if !ipStrictInterior(problem, point, initialValues) {
-            return try ipFinish(problem, point,
-                                [Double](repeating: 0, count: ipEqualityCount(problem)),
-                                0, 1, options.initialBarrier, 0, 0, .infeasibleStart)
+            guard options.restoration else {
+                return try ipFinish(problem, point,
+                                    [Double](repeating: 0, count: ipEqualityCount(problem)),
+                                    0, 1, options.initialBarrier, 0, 0, .infeasibleStart)
+            }
+            let restored = try FeasibilityRestoration.restore(
+                problem: problem, initial: point, options: options.restorationOptions)
+            restorationEvaluations = restored.evaluations
+            point = restored.point
+            initialValues = try problem.evaluateConstraints(at: point)
+            guard ipStrictInterior(problem, point, initialValues) else {
+                return try ipFinish(problem, point,
+                                    [Double](repeating: 0, count: ipEqualityCount(problem)),
+                                    0, restored.evaluations + 1, options.initialBarrier,
+                                    0, 0, .restorationFailed)
+            }
         }
         var equalityMultipliers = [Double](repeating: 0, count: ipEqualityCount(problem))
         var barrier = options.initialBarrier
-        var totalInner = 0, evaluations = 1, acceptedSteps = 0, rejectedSteps = 0
+        var totalInner = 0, evaluations = 1 + restorationEvaluations
+        var acceptedSteps = 0, rejectedSteps = 0
         for outer in 1...options.maxOuterIterations {
             var inverseHessian = ipIdentity(problem.model.parameterCount)
             for _ in 0..<options.maxInnerIterations {

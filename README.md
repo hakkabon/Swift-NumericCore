@@ -130,7 +130,10 @@ Swift-NumericCore/
   `MixedIntegerNonlinearSolver` adds local MINLP branch-and-bound with bounded
   L-BFGS, SQP, or augmented-Lagrangian node relaxations on Swift and Rust. Its
   diagnostics explicitly distinguish local search exhaustion from certified
-  global optimality.
+  global optimality. `FeasibilityRestoration` adds a shared Phase-I squared-
+  violation solve, while SQP can opt into filter globalization and nonlinear
+  interior point can restore boundary or infeasible starts before its barrier
+  sequence.
 - `NumericCoreAMPL` — `Model` (variables/params/constraints/objective,
   including the `integer` qualifier), a hand-rolled lexer/parser for
   the grammar in `docs/design/ampl-grammar.md`

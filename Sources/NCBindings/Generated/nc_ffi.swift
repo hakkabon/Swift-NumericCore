@@ -1551,6 +1551,160 @@ public func FfiConverterTypeFfiCsrMatrixF64_lower(_ value: FfiCsrMatrixF64) -> R
 }
 
 
+public struct FfiFeasibilityRestorationOptions {
+    public var maxIterations: UInt64
+    public var feasibilityTolerance: Double
+    public var interiorMargin: Double
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(maxIterations: UInt64, feasibilityTolerance: Double, interiorMargin: Double) {
+        self.maxIterations = maxIterations
+        self.feasibilityTolerance = feasibilityTolerance
+        self.interiorMargin = interiorMargin
+    }
+}
+
+
+
+extension FfiFeasibilityRestorationOptions: Equatable, Hashable {
+    public static func ==(lhs: FfiFeasibilityRestorationOptions, rhs: FfiFeasibilityRestorationOptions) -> Bool {
+        if lhs.maxIterations != rhs.maxIterations {
+            return false
+        }
+        if lhs.feasibilityTolerance != rhs.feasibilityTolerance {
+            return false
+        }
+        if lhs.interiorMargin != rhs.interiorMargin {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(maxIterations)
+        hasher.combine(feasibilityTolerance)
+        hasher.combine(interiorMargin)
+    }
+}
+
+
+public struct FfiConverterTypeFfiFeasibilityRestorationOptions: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiFeasibilityRestorationOptions {
+        return
+            try FfiFeasibilityRestorationOptions(
+                maxIterations: FfiConverterUInt64.read(from: &buf),
+                feasibilityTolerance: FfiConverterDouble.read(from: &buf),
+                interiorMargin: FfiConverterDouble.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiFeasibilityRestorationOptions, into buf: inout [UInt8]) {
+        FfiConverterUInt64.write(value.maxIterations, into: &buf)
+        FfiConverterDouble.write(value.feasibilityTolerance, into: &buf)
+        FfiConverterDouble.write(value.interiorMargin, into: &buf)
+    }
+}
+
+
+public func FfiConverterTypeFfiFeasibilityRestorationOptions_lift(_ buf: RustBuffer) throws -> FfiFeasibilityRestorationOptions {
+    return try FfiConverterTypeFfiFeasibilityRestorationOptions.lift(buf)
+}
+
+public func FfiConverterTypeFfiFeasibilityRestorationOptions_lower(_ value: FfiFeasibilityRestorationOptions) -> RustBuffer {
+    return FfiConverterTypeFfiFeasibilityRestorationOptions.lower(value)
+}
+
+
+public struct FfiFeasibilityRestorationResult {
+    public var point: [Double]
+    public var maximumViolation: Double
+    public var squaredViolation: Double
+    public var iterations: UInt64
+    public var evaluations: UInt64
+    public var termination: FfiFeasibilityRestorationTermination
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(point: [Double], maximumViolation: Double, squaredViolation: Double, iterations: UInt64, evaluations: UInt64, termination: FfiFeasibilityRestorationTermination) {
+        self.point = point
+        self.maximumViolation = maximumViolation
+        self.squaredViolation = squaredViolation
+        self.iterations = iterations
+        self.evaluations = evaluations
+        self.termination = termination
+    }
+}
+
+
+
+extension FfiFeasibilityRestorationResult: Equatable, Hashable {
+    public static func ==(lhs: FfiFeasibilityRestorationResult, rhs: FfiFeasibilityRestorationResult) -> Bool {
+        if lhs.point != rhs.point {
+            return false
+        }
+        if lhs.maximumViolation != rhs.maximumViolation {
+            return false
+        }
+        if lhs.squaredViolation != rhs.squaredViolation {
+            return false
+        }
+        if lhs.iterations != rhs.iterations {
+            return false
+        }
+        if lhs.evaluations != rhs.evaluations {
+            return false
+        }
+        if lhs.termination != rhs.termination {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(point)
+        hasher.combine(maximumViolation)
+        hasher.combine(squaredViolation)
+        hasher.combine(iterations)
+        hasher.combine(evaluations)
+        hasher.combine(termination)
+    }
+}
+
+
+public struct FfiConverterTypeFfiFeasibilityRestorationResult: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiFeasibilityRestorationResult {
+        return
+            try FfiFeasibilityRestorationResult(
+                point: FfiConverterSequenceDouble.read(from: &buf),
+                maximumViolation: FfiConverterDouble.read(from: &buf),
+                squaredViolation: FfiConverterDouble.read(from: &buf),
+                iterations: FfiConverterUInt64.read(from: &buf),
+                evaluations: FfiConverterUInt64.read(from: &buf),
+                termination: FfiConverterTypeFfiFeasibilityRestorationTermination.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiFeasibilityRestorationResult, into buf: inout [UInt8]) {
+        FfiConverterSequenceDouble.write(value.point, into: &buf)
+        FfiConverterDouble.write(value.maximumViolation, into: &buf)
+        FfiConverterDouble.write(value.squaredViolation, into: &buf)
+        FfiConverterUInt64.write(value.iterations, into: &buf)
+        FfiConverterUInt64.write(value.evaluations, into: &buf)
+        FfiConverterTypeFfiFeasibilityRestorationTermination.write(value.termination, into: &buf)
+    }
+}
+
+
+public func FfiConverterTypeFfiFeasibilityRestorationResult_lift(_ buf: RustBuffer) throws -> FfiFeasibilityRestorationResult {
+    return try FfiConverterTypeFfiFeasibilityRestorationResult.lift(buf)
+}
+
+public func FfiConverterTypeFfiFeasibilityRestorationResult_lower(_ value: FfiFeasibilityRestorationResult) -> RustBuffer {
+    return FfiConverterTypeFfiFeasibilityRestorationResult.lower(value)
+}
+
+
 public struct FfiInteriorPointOptions {
     public var maxIterations: UInt64
     public var tolerance: Double
@@ -2684,10 +2838,12 @@ public struct FfiNonlinearInteriorPointOptions {
     public var backtracking: Double
     public var fractionToBoundary: Double
     public var maxLineSearchIterations: UInt64
+    public var restoration: Bool
+    public var restorationOptions: FfiFeasibilityRestorationOptions
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
-    public init(maxOuterIterations: UInt64, maxInnerIterations: UInt64, feasibilityTolerance: Double, stationarityTolerance: Double, complementarityTolerance: Double, initialBarrier: Double, barrierReduction: Double, minimumBarrier: Double, equalityPenalty: Double, armijo: Double, backtracking: Double, fractionToBoundary: Double, maxLineSearchIterations: UInt64) {
+    public init(maxOuterIterations: UInt64, maxInnerIterations: UInt64, feasibilityTolerance: Double, stationarityTolerance: Double, complementarityTolerance: Double, initialBarrier: Double, barrierReduction: Double, minimumBarrier: Double, equalityPenalty: Double, armijo: Double, backtracking: Double, fractionToBoundary: Double, maxLineSearchIterations: UInt64, restoration: Bool, restorationOptions: FfiFeasibilityRestorationOptions) {
         self.maxOuterIterations = maxOuterIterations
         self.maxInnerIterations = maxInnerIterations
         self.feasibilityTolerance = feasibilityTolerance
@@ -2701,6 +2857,8 @@ public struct FfiNonlinearInteriorPointOptions {
         self.backtracking = backtracking
         self.fractionToBoundary = fractionToBoundary
         self.maxLineSearchIterations = maxLineSearchIterations
+        self.restoration = restoration
+        self.restorationOptions = restorationOptions
     }
 }
 
@@ -2747,6 +2905,12 @@ extension FfiNonlinearInteriorPointOptions: Equatable, Hashable {
         if lhs.maxLineSearchIterations != rhs.maxLineSearchIterations {
             return false
         }
+        if lhs.restoration != rhs.restoration {
+            return false
+        }
+        if lhs.restorationOptions != rhs.restorationOptions {
+            return false
+        }
         return true
     }
 
@@ -2764,6 +2928,8 @@ extension FfiNonlinearInteriorPointOptions: Equatable, Hashable {
         hasher.combine(backtracking)
         hasher.combine(fractionToBoundary)
         hasher.combine(maxLineSearchIterations)
+        hasher.combine(restoration)
+        hasher.combine(restorationOptions)
     }
 }
 
@@ -2784,7 +2950,9 @@ public struct FfiConverterTypeFfiNonlinearInteriorPointOptions: FfiConverterRust
                 armijo: FfiConverterDouble.read(from: &buf),
                 backtracking: FfiConverterDouble.read(from: &buf),
                 fractionToBoundary: FfiConverterDouble.read(from: &buf),
-                maxLineSearchIterations: FfiConverterUInt64.read(from: &buf)
+                maxLineSearchIterations: FfiConverterUInt64.read(from: &buf),
+                restoration: FfiConverterBool.read(from: &buf),
+                restorationOptions: FfiConverterTypeFfiFeasibilityRestorationOptions.read(from: &buf)
         )
     }
 
@@ -2802,6 +2970,8 @@ public struct FfiConverterTypeFfiNonlinearInteriorPointOptions: FfiConverterRust
         FfiConverterDouble.write(value.backtracking, into: &buf)
         FfiConverterDouble.write(value.fractionToBoundary, into: &buf)
         FfiConverterUInt64.write(value.maxLineSearchIterations, into: &buf)
+        FfiConverterBool.write(value.restoration, into: &buf)
+        FfiConverterTypeFfiFeasibilityRestorationOptions.write(value.restorationOptions, into: &buf)
     }
 }
 
@@ -4165,10 +4335,15 @@ public struct FfiSqpOptions {
     public var qpAbsoluteTolerance: Double
     public var qpRelativeTolerance: Double
     public var qpConvexityTolerance: Double
+    public var restoration: Bool
+    public var restorationOptions: FfiFeasibilityRestorationOptions
+    public var globalization: FfiSqpGlobalization
+    public var filterConstraintMargin: Double
+    public var filterObjectiveMargin: Double
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
-    public init(maxIterations: UInt64, feasibilityTolerance: Double, stationarityTolerance: Double, stepTolerance: Double, meritPenalty: Double, penaltyIncrease: Double, armijo: Double, backtracking: Double, maxLineSearchIterations: UInt64, hessianRegularization: Double, qpMaxIterations: UInt64, qpRho: Double, qpAbsoluteTolerance: Double, qpRelativeTolerance: Double, qpConvexityTolerance: Double) {
+    public init(maxIterations: UInt64, feasibilityTolerance: Double, stationarityTolerance: Double, stepTolerance: Double, meritPenalty: Double, penaltyIncrease: Double, armijo: Double, backtracking: Double, maxLineSearchIterations: UInt64, hessianRegularization: Double, qpMaxIterations: UInt64, qpRho: Double, qpAbsoluteTolerance: Double, qpRelativeTolerance: Double, qpConvexityTolerance: Double, restoration: Bool, restorationOptions: FfiFeasibilityRestorationOptions, globalization: FfiSqpGlobalization, filterConstraintMargin: Double, filterObjectiveMargin: Double) {
         self.maxIterations = maxIterations
         self.feasibilityTolerance = feasibilityTolerance
         self.stationarityTolerance = stationarityTolerance
@@ -4184,6 +4359,11 @@ public struct FfiSqpOptions {
         self.qpAbsoluteTolerance = qpAbsoluteTolerance
         self.qpRelativeTolerance = qpRelativeTolerance
         self.qpConvexityTolerance = qpConvexityTolerance
+        self.restoration = restoration
+        self.restorationOptions = restorationOptions
+        self.globalization = globalization
+        self.filterConstraintMargin = filterConstraintMargin
+        self.filterObjectiveMargin = filterObjectiveMargin
     }
 }
 
@@ -4236,6 +4416,21 @@ extension FfiSqpOptions: Equatable, Hashable {
         if lhs.qpConvexityTolerance != rhs.qpConvexityTolerance {
             return false
         }
+        if lhs.restoration != rhs.restoration {
+            return false
+        }
+        if lhs.restorationOptions != rhs.restorationOptions {
+            return false
+        }
+        if lhs.globalization != rhs.globalization {
+            return false
+        }
+        if lhs.filterConstraintMargin != rhs.filterConstraintMargin {
+            return false
+        }
+        if lhs.filterObjectiveMargin != rhs.filterObjectiveMargin {
+            return false
+        }
         return true
     }
 
@@ -4255,6 +4450,11 @@ extension FfiSqpOptions: Equatable, Hashable {
         hasher.combine(qpAbsoluteTolerance)
         hasher.combine(qpRelativeTolerance)
         hasher.combine(qpConvexityTolerance)
+        hasher.combine(restoration)
+        hasher.combine(restorationOptions)
+        hasher.combine(globalization)
+        hasher.combine(filterConstraintMargin)
+        hasher.combine(filterObjectiveMargin)
     }
 }
 
@@ -4277,7 +4477,12 @@ public struct FfiConverterTypeFfiSqpOptions: FfiConverterRustBuffer {
                 qpRho: FfiConverterDouble.read(from: &buf),
                 qpAbsoluteTolerance: FfiConverterDouble.read(from: &buf),
                 qpRelativeTolerance: FfiConverterDouble.read(from: &buf),
-                qpConvexityTolerance: FfiConverterDouble.read(from: &buf)
+                qpConvexityTolerance: FfiConverterDouble.read(from: &buf),
+                restoration: FfiConverterBool.read(from: &buf),
+                restorationOptions: FfiConverterTypeFfiFeasibilityRestorationOptions.read(from: &buf),
+                globalization: FfiConverterTypeFfiSqpGlobalization.read(from: &buf),
+                filterConstraintMargin: FfiConverterDouble.read(from: &buf),
+                filterObjectiveMargin: FfiConverterDouble.read(from: &buf)
         )
     }
 
@@ -4297,6 +4502,11 @@ public struct FfiConverterTypeFfiSqpOptions: FfiConverterRustBuffer {
         FfiConverterDouble.write(value.qpAbsoluteTolerance, into: &buf)
         FfiConverterDouble.write(value.qpRelativeTolerance, into: &buf)
         FfiConverterDouble.write(value.qpConvexityTolerance, into: &buf)
+        FfiConverterBool.write(value.restoration, into: &buf)
+        FfiConverterTypeFfiFeasibilityRestorationOptions.write(value.restorationOptions, into: &buf)
+        FfiConverterTypeFfiSqpGlobalization.write(value.globalization, into: &buf)
+        FfiConverterDouble.write(value.filterConstraintMargin, into: &buf)
+        FfiConverterDouble.write(value.filterObjectiveMargin, into: &buf)
     }
 }
 
@@ -4739,6 +4949,75 @@ extension FfiError: Error { }
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
 
+public enum FfiFeasibilityRestorationTermination {
+
+    case alreadyFeasible
+    case converged
+    case iterationLimit
+    case stalled
+}
+
+
+public struct FfiConverterTypeFfiFeasibilityRestorationTermination: FfiConverterRustBuffer {
+    typealias SwiftType = FfiFeasibilityRestorationTermination
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiFeasibilityRestorationTermination {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .alreadyFeasible
+
+        case 2: return .converged
+
+        case 3: return .iterationLimit
+
+        case 4: return .stalled
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: FfiFeasibilityRestorationTermination, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .alreadyFeasible:
+            writeInt(&buf, Int32(1))
+
+
+        case .converged:
+            writeInt(&buf, Int32(2))
+
+
+        case .iterationLimit:
+            writeInt(&buf, Int32(3))
+
+
+        case .stalled:
+            writeInt(&buf, Int32(4))
+
+        }
+    }
+}
+
+
+public func FfiConverterTypeFfiFeasibilityRestorationTermination_lift(_ buf: RustBuffer) throws -> FfiFeasibilityRestorationTermination {
+    return try FfiConverterTypeFfiFeasibilityRestorationTermination.lift(buf)
+}
+
+public func FfiConverterTypeFfiFeasibilityRestorationTermination_lower(_ value: FfiFeasibilityRestorationTermination) -> RustBuffer {
+    return FfiConverterTypeFfiFeasibilityRestorationTermination.lower(value)
+}
+
+
+
+extension FfiFeasibilityRestorationTermination: Equatable, Hashable {}
+
+
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+
 public enum FfiIterativeTermination {
 
     case converged
@@ -5013,6 +5292,7 @@ public enum FfiNonlinearInteriorPointTermination {
     case converged
     case iterationLimit
     case infeasibleStart
+    case restorationFailed
     case lineSearchFailed
     case numericalFailure
     case cancelled
@@ -5032,11 +5312,13 @@ public struct FfiConverterTypeFfiNonlinearInteriorPointTermination: FfiConverter
 
         case 3: return .infeasibleStart
 
-        case 4: return .lineSearchFailed
+        case 4: return .restorationFailed
 
-        case 5: return .numericalFailure
+        case 5: return .lineSearchFailed
 
-        case 6: return .cancelled
+        case 6: return .numericalFailure
+
+        case 7: return .cancelled
 
         default: throw UniffiInternalError.unexpectedEnumCase
         }
@@ -5058,16 +5340,20 @@ public struct FfiConverterTypeFfiNonlinearInteriorPointTermination: FfiConverter
             writeInt(&buf, Int32(3))
 
 
-        case .lineSearchFailed:
+        case .restorationFailed:
             writeInt(&buf, Int32(4))
 
 
-        case .numericalFailure:
+        case .lineSearchFailed:
             writeInt(&buf, Int32(5))
 
 
-        case .cancelled:
+        case .numericalFailure:
             writeInt(&buf, Int32(6))
+
+
+        case .cancelled:
+            writeInt(&buf, Int32(7))
 
         }
     }
@@ -5560,6 +5846,61 @@ extension FfiSparseStatisticalPreconditioner: Equatable, Hashable {}
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
 
+public enum FfiSqpGlobalization {
+
+    case merit
+    case filter
+}
+
+
+public struct FfiConverterTypeFfiSqpGlobalization: FfiConverterRustBuffer {
+    typealias SwiftType = FfiSqpGlobalization
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiSqpGlobalization {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .merit
+
+        case 2: return .filter
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: FfiSqpGlobalization, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .merit:
+            writeInt(&buf, Int32(1))
+
+
+        case .filter:
+            writeInt(&buf, Int32(2))
+
+        }
+    }
+}
+
+
+public func FfiConverterTypeFfiSqpGlobalization_lift(_ buf: RustBuffer) throws -> FfiSqpGlobalization {
+    return try FfiConverterTypeFfiSqpGlobalization.lift(buf)
+}
+
+public func FfiConverterTypeFfiSqpGlobalization_lower(_ value: FfiSqpGlobalization) -> RustBuffer {
+    return FfiConverterTypeFfiSqpGlobalization.lower(value)
+}
+
+
+
+extension FfiSqpGlobalization: Equatable, Hashable {}
+
+
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+
 public enum FfiSqpTermination {
 
     case converged
@@ -5567,6 +5908,7 @@ public enum FfiSqpTermination {
     case stepLimit
     case lineSearchFailed
     case qpFailure
+    case restorationFailed
     case cancelled
 }
 
@@ -5588,7 +5930,9 @@ public struct FfiConverterTypeFfiSqpTermination: FfiConverterRustBuffer {
 
         case 5: return .qpFailure
 
-        case 6: return .cancelled
+        case 6: return .restorationFailed
+
+        case 7: return .cancelled
 
         default: throw UniffiInternalError.unexpectedEnumCase
         }
@@ -5618,8 +5962,12 @@ public struct FfiConverterTypeFfiSqpTermination: FfiConverterRustBuffer {
             writeInt(&buf, Int32(5))
 
 
-        case .cancelled:
+        case .restorationFailed:
             writeInt(&buf, Int32(6))
+
+
+        case .cancelled:
+            writeInt(&buf, Int32(7))
 
         }
     }
@@ -6048,6 +6396,16 @@ public func norm2F64(x: [Double]) -> Double {
     )
 })
 }
+public func restoreNonlinearFeasibility(modelValue: FfiNonlinearModel, constraints: [FfiNonlinearConstraint], initial: [Double], options: FfiFeasibilityRestorationOptions)throws  -> FfiFeasibilityRestorationResult {
+    return try  FfiConverterTypeFfiFeasibilityRestorationResult.lift(try rustCallWithError(FfiConverterTypeFfiError.lift) {
+    uniffi_nc_ffi_fn_func_restore_nonlinear_feasibility(
+        FfiConverterTypeFfiNonlinearModel.lower(modelValue),
+        FfiConverterSequenceTypeFfiNonlinearConstraint.lower(constraints),
+        FfiConverterSequenceDouble.lower(initial),
+        FfiConverterTypeFfiFeasibilityRestorationOptions.lower(options),$0
+    )
+})
+}
 public func solveConstrainedNonlinear(modelValue: FfiNonlinearModel, constraints: [FfiNonlinearConstraint], initial: [Double], options: FfiConstrainedOptions)throws  -> FfiConstrainedResult {
     return try  FfiConverterTypeFfiConstrainedResult.lift(try rustCallWithError(FfiConverterTypeFfiError.lift) {
     uniffi_nc_ffi_fn_func_solve_constrained_nonlinear(
@@ -6375,6 +6733,9 @@ private var initializationResult: InitializationResult {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nc_ffi_checksum_func_norm2_f64() != 34231) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nc_ffi_checksum_func_restore_nonlinear_feasibility() != 64896) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nc_ffi_checksum_func_solve_constrained_nonlinear() != 26438) {

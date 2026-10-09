@@ -12,7 +12,7 @@ public enum NonlinearSolveConfiguration: Sendable, Hashable {
 
 public enum NonlinearAMPLSolveStatus: Sendable, Hashable {
     case converged, iterationLimit, stepLimit, lineSearchFailed
-    case qpFailure, penaltyLimit, cancelled
+    case qpFailure, restorationFailed, penaltyLimit, cancelled
     case searchExhausted, localGapLimit, nodeLimit, infeasible, relaxationFailure
 }
 
@@ -136,6 +136,7 @@ public extension CompiledNonlinearProblem {
         case .stepLimit: return .stepLimit
         case .lineSearchFailed: return .lineSearchFailed
         case .qpFailure: return .qpFailure
+        case .restorationFailed: return .restorationFailed
         case .cancelled: return .cancelled
         }
     }

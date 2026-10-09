@@ -11,6 +11,39 @@ public enum NonlinearBackend: Sendable, Hashable {
 /// One result contract and one model representation, independently of where
 /// the nonlinear algorithm executes.
 public enum NonlinearModelSolver {
+    public static func restoreFeasibility(
+        problem: ConstrainedNonlinearProblem, initial: [Double],
+        backend: NonlinearBackend = .swift,
+        options: FeasibilityRestorationOptions = .init()
+    ) throws -> FeasibilityRestorationResult {
+        switch backend {
+        case .swift:
+            return try FeasibilityRestoration.restore(
+                problem: problem, initial: initial, options: options)
+        case .rust:
+            do {
+                let value = try FFIKernels.restoreNonlinearFeasibility(
+                    model: ffi(problem.model), constraints: problem.constraints.map {
+                        .init(expression: ffi($0.expression), bound: ffi($0.bound))
+                    }, initial: initial,
+                    options: .init(maxIterations: options.maxIterations,
+                                   feasibilityTolerance: options.feasibilityTolerance,
+                                   interiorMargin: options.interiorMargin))
+                let termination: FeasibilityRestorationTermination
+                switch value.termination {
+                case .alreadyFeasible: termination = .alreadyFeasible
+                case .converged: termination = .converged
+                case .iterationLimit: termination = .iterationLimit
+                case .stalled: termination = .stalled
+                }
+                return .init(point: value.point, maximumViolation: value.maximumViolation,
+                             squaredViolation: value.squaredViolation,
+                             iterations: value.iterations, evaluations: value.evaluations,
+                             termination: termination)
+            } catch { throw translate(error) }
+        }
+    }
+
     public static func minimizeMixedInteger(
         problem: MixedIntegerNonlinearProblem, initial: [Double],
         backend: NonlinearBackend = .swift,
@@ -373,7 +406,12 @@ public enum NonlinearModelSolver {
               equalityPenalty: options.equalityPenalty,
               armijo: options.armijo, backtracking: options.backtracking,
               fractionToBoundary: options.fractionToBoundary,
-              maxLineSearchIterations: options.maxLineSearchIterations)
+              maxLineSearchIterations: options.maxLineSearchIterations,
+              restoration: options.restoration,
+              restorationOptions: .init(
+                maxIterations: options.restorationOptions.maxIterations,
+                feasibilityTolerance: options.restorationOptions.feasibilityTolerance,
+                interiorMargin: options.restorationOptions.interiorMargin))
     }
 
     private static func ffi(_ options: SQPOptions) -> FFISQPOptions {
@@ -389,7 +427,15 @@ public enum NonlinearModelSolver {
             qpMaxIterations: options.qpOptions.maxIterations, qpRho: options.qpOptions.rho,
             qpAbsoluteTolerance: options.qpOptions.absoluteTolerance,
             qpRelativeTolerance: options.qpOptions.relativeTolerance,
-            qpConvexityTolerance: options.qpOptions.convexityTolerance)
+            qpConvexityTolerance: options.qpOptions.convexityTolerance,
+            restoration: options.restoration,
+            restorationOptions: .init(
+                maxIterations: options.restorationOptions.maxIterations,
+                feasibilityTolerance: options.restorationOptions.feasibilityTolerance,
+                interiorMargin: options.restorationOptions.interiorMargin),
+            globalization: options.globalization == .merit ? .merit : .filter,
+            filterConstraintMargin: options.filterConstraintMargin,
+            filterObjectiveMargin: options.filterObjectiveMargin)
     }
 
     private static func lbfgs(_ value: FFILBFGSResult) -> LBFGSResult {
@@ -429,6 +475,7 @@ public enum NonlinearModelSolver {
         case .stepLimit: return .stepLimit
         case .lineSearchFailed: return .lineSearchFailed
         case .qpFailure: return .qpFailure
+        case .restorationFailed: return .restorationFailed
         case .cancelled: return .cancelled
         }
     }
@@ -440,6 +487,7 @@ public enum NonlinearModelSolver {
         case .converged: return .converged
         case .iterationLimit: return .iterationLimit
         case .infeasibleStart: return .infeasibleStart
+        case .restorationFailed: return .restorationFailed
         case .lineSearchFailed: return .lineSearchFailed
         case .numericalFailure: return .numericalFailure
         case .cancelled: return .cancelled
