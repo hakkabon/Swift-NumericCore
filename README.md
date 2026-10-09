@@ -133,7 +133,9 @@ Swift-NumericCore/
   global optimality. `FeasibilityRestoration` adds a shared Phase-I squared-
   violation solve, while SQP can opt into filter globalization and nonlinear
   interior point can restore boundary or infeasible starts before its barrier
-  sequence.
+  sequence. Exact graph Hessians, Hessian-vector products, weighted Lagrangian
+  curvature, and a sparse KKT contract support second-order constrained work;
+  SQP can opt into exact Lagrangian Hessians.
 - `NumericCoreAMPL` — `Model` (variables/params/constraints/objective,
   including the `integer` qualifier), a hand-rolled lexer/parser for
   the grammar in `docs/design/ampl-grammar.md`

@@ -189,6 +189,108 @@ public enum NonlinearModelSolver {
         }
     }
 
+    public static func secondOrderObjective(
+        model: NonlinearModel, parameters: [Double], backend: NonlinearBackend = .swift
+    ) throws -> SecondOrderValue {
+        guard let objective = model.objective else {
+            throw NonlinearOptimizationError.invalidConfiguration("model does not contain an objective")
+        }
+        switch backend {
+        case .swift: return try objective.evaluateSecondOrder(parameters: parameters)
+        case .rust:
+            do {
+                let value = try FFIKernels.evaluateNonlinearObjectiveSecondOrder(
+                    model: ffi(model), parameters: parameters)
+                return .init(value: value.value, gradient: value.gradient, hessian: value.hessian)
+            } catch { throw translate(error) }
+        }
+    }
+
+    public static func sparseObjectiveHessian(
+        model: NonlinearModel, parameters: [Double], zeroTolerance: Double = 0,
+        backend: NonlinearBackend = .swift
+    ) throws -> SparseHessian {
+        guard let objective = model.objective else {
+            throw NonlinearOptimizationError.invalidConfiguration("model does not contain an objective")
+        }
+        switch backend {
+        case .swift:
+            return try objective.evaluateSparseHessian(
+                parameters: parameters, zeroTolerance: zeroTolerance).hessian
+        case .rust:
+            do {
+                let value = try FFIKernels.evaluateNonlinearObjectiveSparseHessian(
+                    model: ffi(model), parameters: parameters, zeroTolerance: zeroTolerance)
+                return .init(dimension: value.dimension, rowPointers: value.rowPointers,
+                             columnIndices: value.columnIndices, values: value.values)
+            } catch { throw translate(error) }
+        }
+    }
+
+    public static func objectiveHessianVectorProduct(
+        model: NonlinearModel, parameters: [Double], direction: [Double],
+        backend: NonlinearBackend = .swift
+    ) throws -> [Double] {
+        guard let objective = model.objective else {
+            throw NonlinearOptimizationError.invalidConfiguration("model does not contain an objective")
+        }
+        switch backend {
+        case .swift: return try objective.hessianVectorProduct(
+            parameters: parameters, direction: direction)
+        case .rust:
+            do { return try FFIKernels.evaluateNonlinearObjectiveHessianVectorProduct(
+                model: ffi(model), parameters: parameters, direction: direction) }
+            catch { throw translate(error) }
+        }
+    }
+
+    public static func lagrangianHessianVectorProduct(
+        problem: ConstrainedNonlinearProblem, parameters: [Double],
+        constraintWeights: [Double], direction: [Double],
+        backend: NonlinearBackend = .swift
+    ) throws -> [Double] {
+        switch backend {
+        case .swift: return try problem.lagrangianHessianVectorProduct(
+            parameters: parameters, constraintWeights: constraintWeights, direction: direction)
+        case .rust:
+            do { return try FFIKernels.evaluateNonlinearLagrangianHessianVectorProduct(
+                model: ffi(problem.model), constraints: problem.constraints.map {
+                    .init(expression: ffi($0.expression), bound: ffi($0.bound))
+                }, parameters: parameters, constraintWeights: constraintWeights,
+                direction: direction) }
+            catch { throw translate(error) }
+        }
+    }
+
+    public static func solveSparseKKT(
+        problem: SparseKKTProblem, backend: NonlinearBackend = .swift
+    ) throws -> SparseKKTResult {
+        switch backend {
+        case .swift: return try SparseKKTSolver.solve(problem)
+        case .rust:
+            do {
+                let value = try FFIKernels.solveSparseKKT(
+                    hessian: .init(dimension: problem.hessian.dimension,
+                        rowPointers: problem.hessian.rowPointers,
+                        columnIndices: problem.hessian.columnIndices,
+                        values: problem.hessian.values),
+                    jacobian: .init(rows: problem.jacobian.rows,
+                        columns: problem.jacobian.columns,
+                        rowPointers: problem.jacobian.rowPointers,
+                        columnIndices: problem.jacobian.columnIndices,
+                        values: problem.jacobian.values),
+                    primalRightHandSide: problem.primalRightHandSide,
+                    constraintRightHandSide: problem.constraintRightHandSide,
+                    primalRegularization: problem.primalRegularization,
+                    dualRegularization: problem.dualRegularization)
+                return .init(primal: value.primal, dual: value.dual,
+                             residualNorm: value.residualNorm,
+                             relativeResidual: value.relativeResidual,
+                             factorNonzeros: value.factorNonzeros)
+            } catch { throw translate(error) }
+        }
+    }
+
     public static func sparseResiduals(
         model: NonlinearModel, parameters: [Double], backend: NonlinearBackend = .swift
     ) throws -> SparseResidualEvaluation {
@@ -435,7 +537,8 @@ public enum NonlinearModelSolver {
                 interiorMargin: options.restorationOptions.interiorMargin),
             globalization: options.globalization == .merit ? .merit : .filter,
             filterConstraintMargin: options.filterConstraintMargin,
-            filterObjectiveMargin: options.filterObjectiveMargin)
+            filterObjectiveMargin: options.filterObjectiveMargin,
+            curvature: options.curvature == .bfgs ? .bfgs : .exactLagrangian)
     }
 
     private static func lbfgs(_ value: FFILBFGSResult) -> LBFGSResult {

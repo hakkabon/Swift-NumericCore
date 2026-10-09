@@ -3671,6 +3671,85 @@ public func FfiConverterTypeFfiRobustLoss_lower(_ value: FfiRobustLoss) -> RustB
 }
 
 
+public struct FfiSecondOrderValue {
+    public var value: Double
+    public var gradient: [Double]
+    /**
+     * Row-major square Hessian.
+     */
+    public var hessian: [Double]
+    public var dimension: UInt64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(value: Double, gradient: [Double],
+        /**
+         * Row-major square Hessian.
+         */hessian: [Double], dimension: UInt64) {
+        self.value = value
+        self.gradient = gradient
+        self.hessian = hessian
+        self.dimension = dimension
+    }
+}
+
+
+
+extension FfiSecondOrderValue: Equatable, Hashable {
+    public static func ==(lhs: FfiSecondOrderValue, rhs: FfiSecondOrderValue) -> Bool {
+        if lhs.value != rhs.value {
+            return false
+        }
+        if lhs.gradient != rhs.gradient {
+            return false
+        }
+        if lhs.hessian != rhs.hessian {
+            return false
+        }
+        if lhs.dimension != rhs.dimension {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(value)
+        hasher.combine(gradient)
+        hasher.combine(hessian)
+        hasher.combine(dimension)
+    }
+}
+
+
+public struct FfiConverterTypeFfiSecondOrderValue: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiSecondOrderValue {
+        return
+            try FfiSecondOrderValue(
+                value: FfiConverterDouble.read(from: &buf),
+                gradient: FfiConverterSequenceDouble.read(from: &buf),
+                hessian: FfiConverterSequenceDouble.read(from: &buf),
+                dimension: FfiConverterUInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiSecondOrderValue, into buf: inout [UInt8]) {
+        FfiConverterDouble.write(value.value, into: &buf)
+        FfiConverterSequenceDouble.write(value.gradient, into: &buf)
+        FfiConverterSequenceDouble.write(value.hessian, into: &buf)
+        FfiConverterUInt64.write(value.dimension, into: &buf)
+    }
+}
+
+
+public func FfiConverterTypeFfiSecondOrderValue_lift(_ buf: RustBuffer) throws -> FfiSecondOrderValue {
+    return try FfiConverterTypeFfiSecondOrderValue.lift(buf)
+}
+
+public func FfiConverterTypeFfiSecondOrderValue_lower(_ value: FfiSecondOrderValue) -> RustBuffer {
+    return FfiConverterTypeFfiSecondOrderValue.lower(value)
+}
+
+
 public struct FfiSimplexOptions {
     public var maxIterations: UInt64
     public var tolerance: Double
@@ -3942,6 +4021,79 @@ public func FfiConverterTypeFfiSparseDirectResult_lower(_ value: FfiSparseDirect
 }
 
 
+public struct FfiSparseHessian {
+    public var dimension: UInt64
+    public var rowPointers: [UInt64]
+    public var columnIndices: [UInt64]
+    public var values: [Double]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(dimension: UInt64, rowPointers: [UInt64], columnIndices: [UInt64], values: [Double]) {
+        self.dimension = dimension
+        self.rowPointers = rowPointers
+        self.columnIndices = columnIndices
+        self.values = values
+    }
+}
+
+
+
+extension FfiSparseHessian: Equatable, Hashable {
+    public static func ==(lhs: FfiSparseHessian, rhs: FfiSparseHessian) -> Bool {
+        if lhs.dimension != rhs.dimension {
+            return false
+        }
+        if lhs.rowPointers != rhs.rowPointers {
+            return false
+        }
+        if lhs.columnIndices != rhs.columnIndices {
+            return false
+        }
+        if lhs.values != rhs.values {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(dimension)
+        hasher.combine(rowPointers)
+        hasher.combine(columnIndices)
+        hasher.combine(values)
+    }
+}
+
+
+public struct FfiConverterTypeFfiSparseHessian: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiSparseHessian {
+        return
+            try FfiSparseHessian(
+                dimension: FfiConverterUInt64.read(from: &buf),
+                rowPointers: FfiConverterSequenceUInt64.read(from: &buf),
+                columnIndices: FfiConverterSequenceUInt64.read(from: &buf),
+                values: FfiConverterSequenceDouble.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiSparseHessian, into buf: inout [UInt8]) {
+        FfiConverterUInt64.write(value.dimension, into: &buf)
+        FfiConverterSequenceUInt64.write(value.rowPointers, into: &buf)
+        FfiConverterSequenceUInt64.write(value.columnIndices, into: &buf)
+        FfiConverterSequenceDouble.write(value.values, into: &buf)
+    }
+}
+
+
+public func FfiConverterTypeFfiSparseHessian_lift(_ buf: RustBuffer) throws -> FfiSparseHessian {
+    return try FfiConverterTypeFfiSparseHessian.lift(buf)
+}
+
+public func FfiConverterTypeFfiSparseHessian_lower(_ value: FfiSparseHessian) -> RustBuffer {
+    return FfiConverterTypeFfiSparseHessian.lower(value)
+}
+
+
 public struct FfiSparseJacobian {
     public var rows: UInt64
     public var columns: UInt64
@@ -4020,6 +4172,87 @@ public func FfiConverterTypeFfiSparseJacobian_lift(_ buf: RustBuffer) throws -> 
 
 public func FfiConverterTypeFfiSparseJacobian_lower(_ value: FfiSparseJacobian) -> RustBuffer {
     return FfiConverterTypeFfiSparseJacobian.lower(value)
+}
+
+
+public struct FfiSparseKktResult {
+    public var primal: [Double]
+    public var dual: [Double]
+    public var residualNorm: Double
+    public var relativeResidual: Double
+    public var factorNonzeros: UInt64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(primal: [Double], dual: [Double], residualNorm: Double, relativeResidual: Double, factorNonzeros: UInt64) {
+        self.primal = primal
+        self.dual = dual
+        self.residualNorm = residualNorm
+        self.relativeResidual = relativeResidual
+        self.factorNonzeros = factorNonzeros
+    }
+}
+
+
+
+extension FfiSparseKktResult: Equatable, Hashable {
+    public static func ==(lhs: FfiSparseKktResult, rhs: FfiSparseKktResult) -> Bool {
+        if lhs.primal != rhs.primal {
+            return false
+        }
+        if lhs.dual != rhs.dual {
+            return false
+        }
+        if lhs.residualNorm != rhs.residualNorm {
+            return false
+        }
+        if lhs.relativeResidual != rhs.relativeResidual {
+            return false
+        }
+        if lhs.factorNonzeros != rhs.factorNonzeros {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(primal)
+        hasher.combine(dual)
+        hasher.combine(residualNorm)
+        hasher.combine(relativeResidual)
+        hasher.combine(factorNonzeros)
+    }
+}
+
+
+public struct FfiConverterTypeFfiSparseKktResult: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiSparseKktResult {
+        return
+            try FfiSparseKktResult(
+                primal: FfiConverterSequenceDouble.read(from: &buf),
+                dual: FfiConverterSequenceDouble.read(from: &buf),
+                residualNorm: FfiConverterDouble.read(from: &buf),
+                relativeResidual: FfiConverterDouble.read(from: &buf),
+                factorNonzeros: FfiConverterUInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiSparseKktResult, into buf: inout [UInt8]) {
+        FfiConverterSequenceDouble.write(value.primal, into: &buf)
+        FfiConverterSequenceDouble.write(value.dual, into: &buf)
+        FfiConverterDouble.write(value.residualNorm, into: &buf)
+        FfiConverterDouble.write(value.relativeResidual, into: &buf)
+        FfiConverterUInt64.write(value.factorNonzeros, into: &buf)
+    }
+}
+
+
+public func FfiConverterTypeFfiSparseKktResult_lift(_ buf: RustBuffer) throws -> FfiSparseKktResult {
+    return try FfiConverterTypeFfiSparseKktResult.lift(buf)
+}
+
+public func FfiConverterTypeFfiSparseKktResult_lower(_ value: FfiSparseKktResult) -> RustBuffer {
+    return FfiConverterTypeFfiSparseKktResult.lower(value)
 }
 
 
@@ -4340,10 +4573,11 @@ public struct FfiSqpOptions {
     public var globalization: FfiSqpGlobalization
     public var filterConstraintMargin: Double
     public var filterObjectiveMargin: Double
+    public var curvature: FfiSqpCurvature
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
-    public init(maxIterations: UInt64, feasibilityTolerance: Double, stationarityTolerance: Double, stepTolerance: Double, meritPenalty: Double, penaltyIncrease: Double, armijo: Double, backtracking: Double, maxLineSearchIterations: UInt64, hessianRegularization: Double, qpMaxIterations: UInt64, qpRho: Double, qpAbsoluteTolerance: Double, qpRelativeTolerance: Double, qpConvexityTolerance: Double, restoration: Bool, restorationOptions: FfiFeasibilityRestorationOptions, globalization: FfiSqpGlobalization, filterConstraintMargin: Double, filterObjectiveMargin: Double) {
+    public init(maxIterations: UInt64, feasibilityTolerance: Double, stationarityTolerance: Double, stepTolerance: Double, meritPenalty: Double, penaltyIncrease: Double, armijo: Double, backtracking: Double, maxLineSearchIterations: UInt64, hessianRegularization: Double, qpMaxIterations: UInt64, qpRho: Double, qpAbsoluteTolerance: Double, qpRelativeTolerance: Double, qpConvexityTolerance: Double, restoration: Bool, restorationOptions: FfiFeasibilityRestorationOptions, globalization: FfiSqpGlobalization, filterConstraintMargin: Double, filterObjectiveMargin: Double, curvature: FfiSqpCurvature) {
         self.maxIterations = maxIterations
         self.feasibilityTolerance = feasibilityTolerance
         self.stationarityTolerance = stationarityTolerance
@@ -4364,6 +4598,7 @@ public struct FfiSqpOptions {
         self.globalization = globalization
         self.filterConstraintMargin = filterConstraintMargin
         self.filterObjectiveMargin = filterObjectiveMargin
+        self.curvature = curvature
     }
 }
 
@@ -4431,6 +4666,9 @@ extension FfiSqpOptions: Equatable, Hashable {
         if lhs.filterObjectiveMargin != rhs.filterObjectiveMargin {
             return false
         }
+        if lhs.curvature != rhs.curvature {
+            return false
+        }
         return true
     }
 
@@ -4455,6 +4693,7 @@ extension FfiSqpOptions: Equatable, Hashable {
         hasher.combine(globalization)
         hasher.combine(filterConstraintMargin)
         hasher.combine(filterObjectiveMargin)
+        hasher.combine(curvature)
     }
 }
 
@@ -4482,7 +4721,8 @@ public struct FfiConverterTypeFfiSqpOptions: FfiConverterRustBuffer {
                 restorationOptions: FfiConverterTypeFfiFeasibilityRestorationOptions.read(from: &buf),
                 globalization: FfiConverterTypeFfiSqpGlobalization.read(from: &buf),
                 filterConstraintMargin: FfiConverterDouble.read(from: &buf),
-                filterObjectiveMargin: FfiConverterDouble.read(from: &buf)
+                filterObjectiveMargin: FfiConverterDouble.read(from: &buf),
+                curvature: FfiConverterTypeFfiSqpCurvature.read(from: &buf)
         )
     }
 
@@ -4507,6 +4747,7 @@ public struct FfiConverterTypeFfiSqpOptions: FfiConverterRustBuffer {
         FfiConverterTypeFfiSqpGlobalization.write(value.globalization, into: &buf)
         FfiConverterDouble.write(value.filterConstraintMargin, into: &buf)
         FfiConverterDouble.write(value.filterObjectiveMargin, into: &buf)
+        FfiConverterTypeFfiSqpCurvature.write(value.curvature, into: &buf)
     }
 }
 
@@ -5846,6 +6087,61 @@ extension FfiSparseStatisticalPreconditioner: Equatable, Hashable {}
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
 
+public enum FfiSqpCurvature {
+
+    case bfgs
+    case exactLagrangian
+}
+
+
+public struct FfiConverterTypeFfiSqpCurvature: FfiConverterRustBuffer {
+    typealias SwiftType = FfiSqpCurvature
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiSqpCurvature {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .bfgs
+
+        case 2: return .exactLagrangian
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: FfiSqpCurvature, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .bfgs:
+            writeInt(&buf, Int32(1))
+
+
+        case .exactLagrangian:
+            writeInt(&buf, Int32(2))
+
+        }
+    }
+}
+
+
+public func FfiConverterTypeFfiSqpCurvature_lift(_ buf: RustBuffer) throws -> FfiSqpCurvature {
+    return try FfiConverterTypeFfiSqpCurvature.lift(buf)
+}
+
+public func FfiConverterTypeFfiSqpCurvature_lower(_ value: FfiSqpCurvature) -> RustBuffer {
+    return FfiConverterTypeFfiSqpCurvature.lower(value)
+}
+
+
+
+extension FfiSqpCurvature: Equatable, Hashable {}
+
+
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+
 public enum FfiSqpGlobalization {
 
     case merit
@@ -6326,11 +6622,48 @@ public func dotF64(x: [Double], y: [Double])throws  -> Double {
     )
 })
 }
+public func evaluateNonlinearLagrangianHessianVectorProduct(modelValue: FfiNonlinearModel, constraints: [FfiNonlinearConstraint], parameters: [Double], constraintWeights: [Double], direction: [Double])throws  -> [Double] {
+    return try  FfiConverterSequenceDouble.lift(try rustCallWithError(FfiConverterTypeFfiError.lift) {
+    uniffi_nc_ffi_fn_func_evaluate_nonlinear_lagrangian_hessian_vector_product(
+        FfiConverterTypeFfiNonlinearModel.lower(modelValue),
+        FfiConverterSequenceTypeFfiNonlinearConstraint.lower(constraints),
+        FfiConverterSequenceDouble.lower(parameters),
+        FfiConverterSequenceDouble.lower(constraintWeights),
+        FfiConverterSequenceDouble.lower(direction),$0
+    )
+})
+}
+public func evaluateNonlinearObjectiveHessianVectorProduct(modelValue: FfiNonlinearModel, parameters: [Double], direction: [Double])throws  -> [Double] {
+    return try  FfiConverterSequenceDouble.lift(try rustCallWithError(FfiConverterTypeFfiError.lift) {
+    uniffi_nc_ffi_fn_func_evaluate_nonlinear_objective_hessian_vector_product(
+        FfiConverterTypeFfiNonlinearModel.lower(modelValue),
+        FfiConverterSequenceDouble.lower(parameters),
+        FfiConverterSequenceDouble.lower(direction),$0
+    )
+})
+}
+public func evaluateNonlinearObjectiveSecondOrder(modelValue: FfiNonlinearModel, parameters: [Double])throws  -> FfiSecondOrderValue {
+    return try  FfiConverterTypeFfiSecondOrderValue.lift(try rustCallWithError(FfiConverterTypeFfiError.lift) {
+    uniffi_nc_ffi_fn_func_evaluate_nonlinear_objective_second_order(
+        FfiConverterTypeFfiNonlinearModel.lower(modelValue),
+        FfiConverterSequenceDouble.lower(parameters),$0
+    )
+})
+}
 public func evaluateNonlinearObjectiveSparse(modelValue: FfiNonlinearModel, parameters: [Double])throws  -> FfiSparseObjectiveEvaluation {
     return try  FfiConverterTypeFfiSparseObjectiveEvaluation.lift(try rustCallWithError(FfiConverterTypeFfiError.lift) {
     uniffi_nc_ffi_fn_func_evaluate_nonlinear_objective_sparse(
         FfiConverterTypeFfiNonlinearModel.lower(modelValue),
         FfiConverterSequenceDouble.lower(parameters),$0
+    )
+})
+}
+public func evaluateNonlinearObjectiveSparseHessian(modelValue: FfiNonlinearModel, parameters: [Double], zeroTolerance: Double)throws  -> FfiSparseHessian {
+    return try  FfiConverterTypeFfiSparseHessian.lift(try rustCallWithError(FfiConverterTypeFfiError.lift) {
+    uniffi_nc_ffi_fn_func_evaluate_nonlinear_objective_sparse_hessian(
+        FfiConverterTypeFfiNonlinearModel.lower(modelValue),
+        FfiConverterSequenceDouble.lower(parameters),
+        FfiConverterDouble.lower(zeroTolerance),$0
     )
 })
 }
@@ -6528,6 +6861,19 @@ public func solveNonlinearObjective(modelValue: FfiNonlinearModel, initial: [Dou
     )
 })
 }
+public func solveNonlinearSparseKkt(hessian: FfiSparseHessian, jacobian: FfiSparseJacobian, primalRhs: [Double], constraintRhs: [Double], primalRegularization: Double, dualRegularization: Double, dropTolerance: Double)throws  -> FfiSparseKktResult {
+    return try  FfiConverterTypeFfiSparseKktResult.lift(try rustCallWithError(FfiConverterTypeFfiError.lift) {
+    uniffi_nc_ffi_fn_func_solve_nonlinear_sparse_kkt(
+        FfiConverterTypeFfiSparseHessian.lower(hessian),
+        FfiConverterTypeFfiSparseJacobian.lower(jacobian),
+        FfiConverterSequenceDouble.lower(primalRhs),
+        FfiConverterSequenceDouble.lower(constraintRhs),
+        FfiConverterDouble.lower(primalRegularization),
+        FfiConverterDouble.lower(dualRegularization),
+        FfiConverterDouble.lower(dropTolerance),$0
+    )
+})
+}
 public func solveSparseBicgstab(matrix: FfiCsrMatrixF64, rhs: [Double], options: FfiLinearSolveOptions)throws  -> FfiLinearSolveResult {
     return try  FfiConverterTypeFfiLinearSolveResult.lift(try rustCallWithError(FfiConverterTypeFfiError.lift) {
     uniffi_nc_ffi_fn_func_solve_sparse_bicgstab(
@@ -6711,7 +7057,19 @@ private var initializationResult: InitializationResult {
     if (uniffi_nc_ffi_checksum_func_dot_f64() != 22855) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_nc_ffi_checksum_func_evaluate_nonlinear_lagrangian_hessian_vector_product() != 27621) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nc_ffi_checksum_func_evaluate_nonlinear_objective_hessian_vector_product() != 49981) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nc_ffi_checksum_func_evaluate_nonlinear_objective_second_order() != 28523) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_nc_ffi_checksum_func_evaluate_nonlinear_objective_sparse() != 51398) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nc_ffi_checksum_func_evaluate_nonlinear_objective_sparse_hessian() != 36626) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nc_ffi_checksum_func_evaluate_nonlinear_residuals_sparse() != 29069) {
@@ -6769,6 +7127,9 @@ private var initializationResult: InitializationResult {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nc_ffi_checksum_func_solve_nonlinear_objective() != 7735) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nc_ffi_checksum_func_solve_nonlinear_sparse_kkt() != 7751) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nc_ffi_checksum_func_solve_sparse_bicgstab() != 12346) {

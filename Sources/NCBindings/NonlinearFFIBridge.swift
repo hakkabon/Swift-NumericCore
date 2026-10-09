@@ -240,6 +240,7 @@ public struct FFISQPOptions: Sendable, Hashable {
     public var restorationOptions: FFIFeasibilityRestorationOptions
     public var globalization: FFISQPGlobalization
     public var filterConstraintMargin: Double, filterObjectiveMargin: Double
+    public var curvature: FFISQPCurvature
 
     public init(maxIterations: Int, feasibilityTolerance: Double,
                 stationarityTolerance: Double, stepTolerance: Double,
@@ -250,7 +251,8 @@ public struct FFISQPOptions: Sendable, Hashable {
                 qpConvexityTolerance: Double, restoration: Bool,
                 restorationOptions: FFIFeasibilityRestorationOptions,
                 globalization: FFISQPGlobalization,
-                filterConstraintMargin: Double, filterObjectiveMargin: Double) {
+                filterConstraintMargin: Double, filterObjectiveMargin: Double,
+                curvature: FFISQPCurvature) {
         self.maxIterations = maxIterations
         self.feasibilityTolerance = feasibilityTolerance
         self.stationarityTolerance = stationarityTolerance
@@ -267,10 +269,12 @@ public struct FFISQPOptions: Sendable, Hashable {
         self.globalization = globalization
         self.filterConstraintMargin = filterConstraintMargin
         self.filterObjectiveMargin = filterObjectiveMargin
+        self.curvature = curvature
     }
 }
 
 public enum FFISQPGlobalization: Sendable, Hashable { case merit, filter }
+public enum FFISQPCurvature: Sendable, Hashable { case bfgs, exactLagrangian }
 
 public enum FFISQPTermination: Sendable, Hashable {
     case converged, iterationLimit, stepLimit, lineSearchFailed, qpFailure
@@ -296,6 +300,31 @@ public struct FFISparseJacobian: Sendable, Hashable {
     public let rows: Int, columns: Int
     public let rowPointers: [Int], columnIndices: [Int]
     public let values: [Double]
+    public init(rows: Int, columns: Int, rowPointers: [Int],
+                columnIndices: [Int], values: [Double]) {
+        self.rows = rows; self.columns = columns; self.rowPointers = rowPointers
+        self.columnIndices = columnIndices; self.values = values
+    }
+}
+
+public struct FFISecondOrderValue: Sendable, Hashable {
+    public let value: Double, gradient: [Double], hessian: [[Double]]
+}
+
+public struct FFISparseHessian: Sendable, Hashable {
+    public let dimension: Int
+    public let rowPointers: [Int], columnIndices: [Int]
+    public let values: [Double]
+    public init(dimension: Int, rowPointers: [Int], columnIndices: [Int], values: [Double]) {
+        self.dimension = dimension; self.rowPointers = rowPointers
+        self.columnIndices = columnIndices; self.values = values
+    }
+}
+
+public struct FFISparseKKTResult: Sendable, Hashable {
+    public let primal: [Double], dual: [Double]
+    public let residualNorm: Double, relativeResidual: Double
+    public let factorNonzeros: Int
 }
 
 public struct FFISparseObjectiveEvaluation: Sendable, Hashable {
@@ -471,7 +500,8 @@ extension FFIKernels {
                         interiorMargin: options.restorationOptions.interiorMargin),
                     globalization: options.globalization == .merit ? .merit : .filter,
                     filterConstraintMargin: options.filterConstraintMargin,
-                    filterObjectiveMargin: options.filterObjectiveMargin))
+                    filterObjectiveMargin: options.filterObjectiveMargin,
+                    curvature: options.curvature == .bfgs ? .bfgs : .exactLagrangian))
             let status: FFISQPTermination
             switch value.termination {
             case .converged: status = .converged
@@ -506,6 +536,78 @@ extension FFIKernels {
                 dimension: Int(result.derivative.dimension),
                 indices: result.derivative.indices.map(Int.init),
                 values: result.derivative.values))
+        } catch { throw Self.translate(error) }
+    }
+
+    public static func evaluateNonlinearObjectiveSecondOrder(
+        model: FFINonlinearModel, parameters: [Double]
+    ) throws -> FFISecondOrderValue {
+        do {
+            let value = try NCBindings.evaluateNonlinearObjectiveSecondOrder(
+                modelValue: ffi(model), parameters: parameters)
+            let n = Int(value.dimension)
+            let hessian = (0..<n).map { row in
+                Array(value.hessian[(row * n)..<((row + 1) * n)])
+            }
+            return .init(value: value.value, gradient: value.gradient, hessian: hessian)
+        } catch { throw Self.translate(error) }
+    }
+
+    public static func evaluateNonlinearObjectiveSparseHessian(
+        model: FFINonlinearModel, parameters: [Double], zeroTolerance: Double
+    ) throws -> FFISparseHessian {
+        do {
+            let value = try NCBindings.evaluateNonlinearObjectiveSparseHessian(
+                modelValue: ffi(model), parameters: parameters, zeroTolerance: zeroTolerance)
+            return .init(dimension: Int(value.dimension),
+                         rowPointers: value.rowPointers.map(Int.init),
+                         columnIndices: value.columnIndices.map(Int.init), values: value.values)
+        } catch { throw Self.translate(error) }
+    }
+
+    public static func evaluateNonlinearObjectiveHessianVectorProduct(
+        model: FFINonlinearModel, parameters: [Double], direction: [Double]
+    ) throws -> [Double] {
+        do { return try NCBindings.evaluateNonlinearObjectiveHessianVectorProduct(
+            modelValue: ffi(model), parameters: parameters, direction: direction) }
+        catch { throw Self.translate(error) }
+    }
+
+    public static func evaluateNonlinearLagrangianHessianVectorProduct(
+        model: FFINonlinearModel, constraints: [FFINonlinearConstraint],
+        parameters: [Double], constraintWeights: [Double], direction: [Double]
+    ) throws -> [Double] {
+        do { return try NCBindings.evaluateNonlinearLagrangianHessianVectorProduct(
+            modelValue: ffi(model), constraints: constraints.map { .init(
+                expression: ffi($0.expression),
+                bound: .init(lower: $0.bound.lower, upper: $0.bound.upper)) },
+            parameters: parameters, constraintWeights: constraintWeights, direction: direction) }
+        catch { throw Self.translate(error) }
+    }
+
+    public static func solveSparseKKT(
+        hessian: FFISparseHessian, jacobian: FFISparseJacobian,
+        primalRightHandSide: [Double], constraintRightHandSide: [Double],
+        primalRegularization: Double, dualRegularization: Double,
+        dropTolerance: Double = 1e-14
+    ) throws -> FFISparseKKTResult {
+        do {
+            let value = try NCBindings.solveNonlinearSparseKkt(
+                hessian: .init(dimension: UInt64(hessian.dimension),
+                               rowPointers: hessian.rowPointers.map(UInt64.init),
+                               columnIndices: hessian.columnIndices.map(UInt64.init),
+                               values: hessian.values),
+                jacobian: .init(rows: UInt64(jacobian.rows), columns: UInt64(jacobian.columns),
+                                rowPointers: jacobian.rowPointers.map(UInt64.init),
+                                columnIndices: jacobian.columnIndices.map(UInt64.init),
+                                values: jacobian.values),
+                primalRhs: primalRightHandSide, constraintRhs: constraintRightHandSide,
+                primalRegularization: primalRegularization,
+                dualRegularization: dualRegularization, dropTolerance: dropTolerance)
+            return .init(primal: value.primal, dual: value.dual,
+                         residualNorm: value.residualNorm,
+                         relativeResidual: value.relativeResidual,
+                         factorNonzeros: Int(value.factorNonzeros))
         } catch { throw Self.translate(error) }
     }
 

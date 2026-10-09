@@ -17,10 +17,12 @@ it does not assemble the full Jacobian. The same operations are available via
 the Phase 12 value-only UniFFI model boundary.
 
 The dense derivative and existing nonlinear solver APIs remain source
-compatible. Phase 13 deliberately stops at derivative primitives: current
+compatible. Phase 13 deliberately stopped at first-order primitives: current
 L-BFGS, Levenberg-Marquardt, and augmented-Lagrangian implementations are not
 silently changed to iterative linear algebra. These products establish the
 contract for future matrix-free Gauss-Newton/Krylov and constrained methods.
+Phase 22 adds exact Hessians, Hessian-vector products, and sparse KKT solves on
+the same shared graph.
 
 The generated Swift bindings and `NumericCoreFFI` binary remain a lockstep
 artifact. The Rust release containing these exports must be tagged before the

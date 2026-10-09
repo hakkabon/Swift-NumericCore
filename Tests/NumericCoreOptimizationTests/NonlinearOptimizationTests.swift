@@ -2,6 +2,59 @@ import XCTest
 @testable import NumericCoreOptimization
 
 final class NonlinearOptimizationTests: XCTestCase {
+    func testExactSecondOrderDerivativesConformAcrossBackends() throws {
+        let expression = NonlinearExpression(nodes: [
+            .parameter(0), .parameter(1), .multiply(0, 1), .pow(0, 2), .add(2, 3)
+        ], output: 4)
+        let model = try NonlinearModel.objective(
+            parameterCount: 2, bounds: [.free, .free], expression: expression)
+        for backend in [NonlinearBackend.swift, .rust] {
+            let value = try NonlinearModelSolver.secondOrderObjective(
+                model: model, parameters: [2, 3], backend: backend)
+            XCTAssertEqual(value.gradient, [7, 2])
+            XCTAssertEqual(value.hessian, [[2, 1], [1, 0]])
+            XCTAssertEqual(try NonlinearModelSolver.objectiveHessianVectorProduct(
+                model: model, parameters: [2, 3], direction: [4, 5], backend: backend),
+                [13, 4])
+            let sparse = try NonlinearModelSolver.sparseObjectiveHessian(
+                model: model, parameters: [2, 3], backend: backend)
+            XCTAssertEqual(try sparse.multiplying([4, 5]), [13, 4])
+        }
+    }
+
+    func testSparseKKTConformsAcrossBackends() throws {
+        let problem = SparseKKTProblem(
+            hessian: .init(dimension: 2, rowPointers: [0, 1, 2],
+                           columnIndices: [0, 1], values: [2, 2]),
+            jacobian: .init(rows: 1, columns: 2, rowPointers: [0, 2],
+                            columnIndices: [0, 1], values: [1, 1]),
+            primalRightHandSide: [-2, -4], constraintRightHandSide: [-1])
+        for backend in [NonlinearBackend.swift, .rust] {
+            let value = try NonlinearModelSolver.solveSparseKKT(problem: problem, backend: backend)
+            XCTAssertEqual(value.primal[0], 0, accuracy: 1e-12)
+            XCTAssertEqual(value.primal[1], -1, accuracy: 1e-12)
+            XCTAssertLessThan(value.relativeResidual, 1e-12)
+        }
+    }
+
+    func testSQPExactLagrangianCurvatureAcrossBackends() throws {
+        let objective = NonlinearExpression(nodes: [
+            .parameter(0), .constant(2), .subtract(0, 1), .pow(2, 2)
+        ], output: 3)
+        let constraint = NonlinearExpression(nodes: [.parameter(0), .pow(0, 2)], output: 1)
+        let model = try NonlinearModel.objective(
+            parameterCount: 1, bounds: [.free], expression: objective)
+        let problem = try ConstrainedNonlinearProblem(
+            model: model, constraints: [.init(expression: constraint, bound: .init(upper: 1))])
+        for backend in [NonlinearBackend.swift, .rust] {
+            let result = try NonlinearModelSolver.minimizeSQP(
+                problem: problem, initial: [0.5], backend: backend,
+                options: .init(curvature: .exactLagrangian))
+            XCTAssertEqual(result.termination, .converged)
+            XCTAssertEqual(result.point[0], 1, accuracy: 1e-5)
+        }
+    }
+
     func testFeasibilityRestorationConformsAcrossBackends() throws {
         let objective = NonlinearExpression(nodes: [
             .parameter(0), .pow(0, 2)

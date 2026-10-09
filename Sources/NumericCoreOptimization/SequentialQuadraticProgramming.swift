@@ -17,6 +17,7 @@ public struct SQPOptions: Sendable, Hashable {
     public var globalization: SQPGlobalization
     public var filterConstraintMargin: Double
     public var filterObjectiveMargin: Double
+    public var curvature: SQPCurvature
 
     public init(maxIterations: Int = 100, feasibilityTolerance: Double = 1e-7,
                 stationarityTolerance: Double = 1e-6, stepTolerance: Double = 1e-10,
@@ -27,7 +28,8 @@ public struct SQPOptions: Sendable, Hashable {
                 restorationOptions: FeasibilityRestorationOptions = .init(),
                 globalization: SQPGlobalization = .merit,
                 filterConstraintMargin: Double = 1e-4,
-                filterObjectiveMargin: Double = 1e-4) {
+                filterObjectiveMargin: Double = 1e-4,
+                curvature: SQPCurvature = .bfgs) {
         self.maxIterations = maxIterations
         self.feasibilityTolerance = feasibilityTolerance
         self.stationarityTolerance = stationarityTolerance
@@ -44,10 +46,12 @@ public struct SQPOptions: Sendable, Hashable {
         self.globalization = globalization
         self.filterConstraintMargin = filterConstraintMargin
         self.filterObjectiveMargin = filterObjectiveMargin
+        self.curvature = curvature
     }
 }
 
 public enum SQPGlobalization: Sendable, Hashable { case merit, filter }
+public enum SQPCurvature: Sendable, Hashable { case bfgs, exactLagrangian }
 
 public enum SQPTermination: Sendable, Hashable {
     case converged, iterationLimit, stepLimit, lineSearchFailed, qpFailure
@@ -131,6 +135,13 @@ public enum SequentialQuadraticProgramming {
                                  iteration - 1, evaluations, acceptedSteps, rejectedSteps,
                                  penalty, lastStepNorm, .converged)
             }
+            if options.curvature == .exactLagrangian {
+                hessian = try problem.lagrangianHessian(
+                    parameters: point,
+                    constraintWeights: multipliers.map {
+                        $0.equality != 0 ? $0.equality : $0.upper - $0.lower
+                    })
+            }
             sqpRegularize(&hessian, options.hessianRegularization)
             let subproblem = try sqpSubproblem(problem, point, objective.gradient,
                                                constraints, hessian)
@@ -212,7 +223,9 @@ public enum SequentialQuadraticProgramming {
             let newLagrangian = sqpLagrangian(
                 problem, newObjective.gradient, newConstraints, candidateMultipliers)
             let y = zip(newLagrangian, oldLagrangian).map(-)
-            sqpBFGS(&hessian, actualStep, y, options.hessianRegularization)
+            if options.curvature == .bfgs {
+                sqpBFGS(&hessian, actualStep, y, options.hessianRegularization)
+            }
             point = newPoint; objective = newObjective; constraints = newConstraints
             multipliers = candidateMultipliers
             let newViolation = sqpMaximumViolation(problem, constraints)
