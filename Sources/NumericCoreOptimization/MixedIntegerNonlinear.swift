@@ -4,6 +4,10 @@ public enum NonlinearRelaxationStrategy: Sendable, Hashable {
     case sqp, augmentedLagrangian
 }
 
+public enum MINLPNodeSelection: Sendable, Hashable {
+    case depthFirst, bestLocalBound
+}
+
 public struct MixedIntegerNonlinearOptions: Sendable, Hashable {
     public var maxNodes: Int
     public var integerTolerance: Double
@@ -11,6 +15,9 @@ public struct MixedIntegerNonlinearOptions: Sendable, Hashable {
     public var absoluteGapTolerance: Double
     public var relativeGapTolerance: Double
     public var relaxationStrategy: NonlinearRelaxationStrategy
+    public var nodeSelection: MINLPNodeSelection
+    public var enableRoundingHeuristic: Bool
+    public var initialIncumbent: [Double]?
     public var sqpOptions: SQPOptions
     public var constrainedOptions: ConstrainedOptions
     public var unconstrainedOptions: LBFGSOptions
@@ -19,6 +26,9 @@ public struct MixedIntegerNonlinearOptions: Sendable, Hashable {
                 feasibilityTolerance: Double = 1e-7,
                 absoluteGapTolerance: Double = 0, relativeGapTolerance: Double = 0,
                 relaxationStrategy: NonlinearRelaxationStrategy = .sqp,
+                nodeSelection: MINLPNodeSelection = .depthFirst,
+                enableRoundingHeuristic: Bool = true,
+                initialIncumbent: [Double]? = nil,
                 sqpOptions: SQPOptions = .init(),
                 constrainedOptions: ConstrainedOptions = .init(),
                 unconstrainedOptions: LBFGSOptions = .init()) {
@@ -26,7 +36,9 @@ public struct MixedIntegerNonlinearOptions: Sendable, Hashable {
         self.feasibilityTolerance = feasibilityTolerance
         self.absoluteGapTolerance = absoluteGapTolerance
         self.relativeGapTolerance = relativeGapTolerance
-        self.relaxationStrategy = relaxationStrategy; self.sqpOptions = sqpOptions
+        self.relaxationStrategy = relaxationStrategy; self.nodeSelection = nodeSelection
+        self.enableRoundingHeuristic = enableRoundingHeuristic
+        self.initialIncumbent = initialIncumbent; self.sqpOptions = sqpOptions
         self.constrainedOptions = constrainedOptions
         self.unconstrainedOptions = unconstrainedOptions
     }
@@ -72,6 +84,9 @@ public struct MixedIntegerNonlinearResult: Sendable, Hashable {
     public let nodesPrunedInfeasible: Int
     public let maximumDepth: Int
     public let incumbentsFound: Int
+    public let heuristicAttempts: Int
+    public let heuristicSuccesses: Int
+    public let warmIncumbentAccepted: Bool
     public let bestRelaxationObjective: Double?
     public let absoluteGap: Double?
     public let relativeGap: Double?
@@ -99,14 +114,29 @@ public enum MixedIntegerNonlinearSolver {
             throw NonlinearOptimizationError.invalidInitialPoint
         }
         var nodes = [MINLPNode(bounds: problem.model.bounds,
-                               start: minlpClamp(initial, problem.model.bounds), depth: 0)]
-        var incumbent: MINLPRelaxation?
+                               start: minlpClamp(initial, problem.model.bounds), depth: 0,
+                               localBound: nil)]
+        var incumbent = try options.initialIncumbent.flatMap {
+            try minlpEvaluateCandidate(problem, $0, options.integerTolerance,
+                                       options.feasibilityTolerance)
+        }
+        let warmAccepted = incumbent != nil
         var explored = 0, solved = 0, pruned = 0, maximumDepth = 0, incumbents = 0
+        incumbents = warmAccepted ? 1 : 0
+        var heuristicAttempts = 0, heuristicSuccesses = 0
         var failures = 0, bestRelaxation: Double?
         var localGapReached = false
         while !nodes.isEmpty {
             if explored >= options.maxNodes { break }
-            let node = nodes.removeLast(); explored += 1
+            let nodeIndex: Int
+            switch options.nodeSelection {
+            case .depthFirst: nodeIndex = nodes.count - 1
+            case .bestLocalBound:
+                nodeIndex = nodes.indices.min {
+                    (nodes[$0].localBound ?? -.infinity) < (nodes[$1].localBound ?? -.infinity)
+                }!
+            }
+            let node = nodes.remove(at: nodeIndex); explored += 1
             maximumDepth = max(maximumDepth, node.depth)
             guard let relaxation = try minlpRelax(problem, node, options) else {
                 pruned += 1; failures += 1; continue
@@ -117,9 +147,18 @@ public enum MixedIntegerNonlinearSolver {
                                relaxationObjective: relaxation.objective,
                                incumbentObjective: incumbent?.objective)) == false {
                 return minlpResult(incumbent, explored, solved, pruned, maximumDepth,
-                                   incumbents, bestRelaxation, .cancelled)
+                                   incumbents, heuristicAttempts, heuristicSuccesses,
+                                   warmAccepted, bestRelaxation, .cancelled)
             }
             if relaxation.violation > options.feasibilityTolerance { pruned += 1; continue }
+            if options.enableRoundingHeuristic,
+               minlpBranchIndex(problem, relaxation.point, options.integerTolerance) != nil {
+                heuristicAttempts += 1
+                if let candidate = try minlpPolishRounded(problem, relaxation, options),
+                   incumbent == nil || candidate.objective < incumbent!.objective {
+                    incumbent = candidate; incumbents += 1; heuristicSuccesses += 1
+                }
+            }
             if let index = minlpBranchIndex(problem, relaxation.point,
                                             options.integerTolerance) {
                 let value = relaxation.point[index]
@@ -128,11 +167,13 @@ public enum MixedIntegerNonlinearSolver {
                 let upperValid = minlpTightenLower(&upperBounds[index], ceil(value))
                 if upperValid {
                     nodes.append(.init(bounds: upperBounds,
-                        start: minlpClamp(relaxation.point, upperBounds), depth: node.depth + 1))
+                        start: minlpClamp(relaxation.point, upperBounds), depth: node.depth + 1,
+                        localBound: relaxation.objective))
                 }
                 if lowerValid {
                     nodes.append(.init(bounds: lowerBounds,
-                        start: minlpClamp(relaxation.point, lowerBounds), depth: node.depth + 1))
+                        start: minlpClamp(relaxation.point, lowerBounds), depth: node.depth + 1,
+                        localBound: relaxation.objective))
                 }
             } else {
                 guard let candidate = try minlpSnappedCandidate(
@@ -160,11 +201,15 @@ public enum MixedIntegerNonlinearSolver {
         } else if localGapReached { termination = .localGapLimit
         } else { termination = nodes.isEmpty ? .searchExhausted : .nodeLimit }
         return minlpResult(incumbent, explored, solved, pruned, maximumDepth,
-                           incumbents, bestRelaxation, termination)
+                           incumbents, heuristicAttempts, heuristicSuccesses,
+                           warmAccepted, bestRelaxation, termination)
     }
 }
 
-private struct MINLPNode { var bounds: [ParameterBound]; var start: [Double]; var depth: Int }
+private struct MINLPNode {
+    var bounds: [ParameterBound]; var start: [Double]; var depth: Int
+    var localBound: Double?
+}
 private struct MINLPRelaxation {
     var point: [Double]; var objective: Double; var values: [Double]
     var multipliers: [ConstraintMultiplier]; var violation: Double; var stationarity: Double
@@ -204,6 +249,47 @@ private func minlpRelax(_ problem: MixedIntegerNonlinearProblem, _ node: MINLPNo
     }
 }
 
+private func minlpPolishRounded(_ problem: MixedIntegerNonlinearProblem,
+                                _ relaxation: MINLPRelaxation,
+                                _ options: MixedIntegerNonlinearOptions) throws
+    -> MINLPRelaxation? {
+    var bounds = problem.model.bounds, start = relaxation.point
+    for i in problem.isInteger.indices where problem.isInteger[i] {
+        let rounded = start[i].rounded()
+        if let lower = bounds[i].lower, rounded < lower { return nil }
+        if let upper = bounds[i].upper, rounded > upper { return nil }
+        bounds[i] = .fixed(rounded); start[i] = rounded
+    }
+    guard let candidate = try minlpRelax(problem,
+        .init(bounds: bounds, start: start, depth: 0, localBound: nil), options),
+        candidate.violation <= options.feasibilityTolerance else { return nil }
+    return candidate
+}
+
+private func minlpEvaluateCandidate(_ problem: MixedIntegerNonlinearProblem, _ point: [Double],
+                                    _ integerTolerance: Double,
+                                    _ feasibilityTolerance: Double) throws -> MINLPRelaxation? {
+    guard point.count == problem.model.parameterCount, point.allSatisfy(\.isFinite) else {
+        throw NonlinearOptimizationError.invalidConfiguration(
+            "initial incumbent must contain one finite value per parameter")
+    }
+    for i in point.indices {
+        if problem.isInteger[i], abs(point[i] - point[i].rounded()) > integerTolerance { return nil }
+        if let lower = problem.model.bounds[i].lower, point[i] < lower - feasibilityTolerance { return nil }
+        if let upper = problem.model.bounds[i].upper, point[i] > upper + feasibilityTolerance { return nil }
+    }
+    let objective = try problem.model.evaluateObjective(parameters: point)
+    let evaluated = try problem.constraints.map { try $0.expression.evaluate(parameters: point) }
+    let violation = zip(problem.constraints, evaluated).reduce(0.0) { maximum, pair in
+        max(maximum, pair.0.bound.lower.map { max(0, $0 - pair.1.value) } ?? 0,
+            pair.0.bound.upper.map { max(0, pair.1.value - $0) } ?? 0)
+    }
+    guard violation <= feasibilityTolerance else { return nil }
+    return .init(point: point, objective: objective.value, values: evaluated.map(\.value),
+                 multipliers: [], violation: violation,
+                 stationarity: objective.gradient.map(abs).max() ?? 0)
+}
+
 private func minlpBranchIndex(_ problem: MixedIntegerNonlinearProblem, _ point: [Double],
                               _ tolerance: Double) -> Int? {
     zip(problem.isInteger, point).enumerated().compactMap { index, pair -> (Int, Double)? in
@@ -239,7 +325,8 @@ private func minlpSnappedCandidate(
 
 private func minlpResult(
     _ incumbent: MINLPRelaxation?, _ nodes: Int, _ relaxations: Int, _ pruned: Int,
-    _ depth: Int, _ incumbents: Int, _ best: Double?,
+    _ depth: Int, _ incumbents: Int, _ heuristicAttempts: Int,
+    _ heuristicSuccesses: Int, _ warmIncumbentAccepted: Bool, _ best: Double?,
     _ termination: MixedIntegerNonlinearTermination
 ) -> MixedIntegerNonlinearResult {
     let gap = incumbent.flatMap { value in best.map { max(0, value.objective - $0) } }
@@ -250,7 +337,10 @@ private func minlpResult(
                  stationarityNorm: incumbent?.stationarity ?? .infinity,
                  nodesExplored: nodes, relaxationsSolved: relaxations,
                  nodesPrunedInfeasible: pruned, maximumDepth: depth,
-                 incumbentsFound: incumbents, bestRelaxationObjective: best,
+                 incumbentsFound: incumbents, heuristicAttempts: heuristicAttempts,
+                 heuristicSuccesses: heuristicSuccesses,
+                 warmIncumbentAccepted: warmIncumbentAccepted,
+                 bestRelaxationObjective: best,
                  absoluteGap: gap, relativeGap: relative,
                  globalOptimalityCertified: false, termination: termination)
 }

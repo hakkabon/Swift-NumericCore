@@ -2597,16 +2597,22 @@ public struct FfiMixedIntegerNonlinearOptions {
     public var absoluteGapTolerance: Double
     public var relativeGapTolerance: Double
     public var relaxationStrategy: FfiNonlinearRelaxationStrategy
+    public var nodeSelection: FfiMinlpNodeSelection
+    public var enableRoundingHeuristic: Bool
+    public var initialIncumbent: [Double]
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
-    public init(maxNodes: UInt64, integerTolerance: Double, feasibilityTolerance: Double, absoluteGapTolerance: Double, relativeGapTolerance: Double, relaxationStrategy: FfiNonlinearRelaxationStrategy) {
+    public init(maxNodes: UInt64, integerTolerance: Double, feasibilityTolerance: Double, absoluteGapTolerance: Double, relativeGapTolerance: Double, relaxationStrategy: FfiNonlinearRelaxationStrategy, nodeSelection: FfiMinlpNodeSelection, enableRoundingHeuristic: Bool, initialIncumbent: [Double]) {
         self.maxNodes = maxNodes
         self.integerTolerance = integerTolerance
         self.feasibilityTolerance = feasibilityTolerance
         self.absoluteGapTolerance = absoluteGapTolerance
         self.relativeGapTolerance = relativeGapTolerance
         self.relaxationStrategy = relaxationStrategy
+        self.nodeSelection = nodeSelection
+        self.enableRoundingHeuristic = enableRoundingHeuristic
+        self.initialIncumbent = initialIncumbent
     }
 }
 
@@ -2632,6 +2638,15 @@ extension FfiMixedIntegerNonlinearOptions: Equatable, Hashable {
         if lhs.relaxationStrategy != rhs.relaxationStrategy {
             return false
         }
+        if lhs.nodeSelection != rhs.nodeSelection {
+            return false
+        }
+        if lhs.enableRoundingHeuristic != rhs.enableRoundingHeuristic {
+            return false
+        }
+        if lhs.initialIncumbent != rhs.initialIncumbent {
+            return false
+        }
         return true
     }
 
@@ -2642,6 +2657,9 @@ extension FfiMixedIntegerNonlinearOptions: Equatable, Hashable {
         hasher.combine(absoluteGapTolerance)
         hasher.combine(relativeGapTolerance)
         hasher.combine(relaxationStrategy)
+        hasher.combine(nodeSelection)
+        hasher.combine(enableRoundingHeuristic)
+        hasher.combine(initialIncumbent)
     }
 }
 
@@ -2655,7 +2673,10 @@ public struct FfiConverterTypeFfiMixedIntegerNonlinearOptions: FfiConverterRustB
                 feasibilityTolerance: FfiConverterDouble.read(from: &buf),
                 absoluteGapTolerance: FfiConverterDouble.read(from: &buf),
                 relativeGapTolerance: FfiConverterDouble.read(from: &buf),
-                relaxationStrategy: FfiConverterTypeFfiNonlinearRelaxationStrategy.read(from: &buf)
+                relaxationStrategy: FfiConverterTypeFfiNonlinearRelaxationStrategy.read(from: &buf),
+                nodeSelection: FfiConverterTypeFfiMinlpNodeSelection.read(from: &buf),
+                enableRoundingHeuristic: FfiConverterBool.read(from: &buf),
+                initialIncumbent: FfiConverterSequenceDouble.read(from: &buf)
         )
     }
 
@@ -2666,6 +2687,9 @@ public struct FfiConverterTypeFfiMixedIntegerNonlinearOptions: FfiConverterRustB
         FfiConverterDouble.write(value.absoluteGapTolerance, into: &buf)
         FfiConverterDouble.write(value.relativeGapTolerance, into: &buf)
         FfiConverterTypeFfiNonlinearRelaxationStrategy.write(value.relaxationStrategy, into: &buf)
+        FfiConverterTypeFfiMinlpNodeSelection.write(value.nodeSelection, into: &buf)
+        FfiConverterBool.write(value.enableRoundingHeuristic, into: &buf)
+        FfiConverterSequenceDouble.write(value.initialIncumbent, into: &buf)
     }
 }
 
@@ -2691,6 +2715,9 @@ public struct FfiMixedIntegerNonlinearResult {
     public var nodesPrunedInfeasible: UInt64
     public var maximumDepth: UInt64
     public var incumbentsFound: UInt64
+    public var heuristicAttempts: UInt64
+    public var heuristicSuccesses: UInt64
+    public var warmIncumbentAccepted: Bool
     public var bestRelaxationObjective: Double?
     public var absoluteGap: Double?
     public var relativeGap: Double?
@@ -2699,7 +2726,7 @@ public struct FfiMixedIntegerNonlinearResult {
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
-    public init(point: [Double], objective: Double, constraintValues: [Double], multipliers: [FfiConstraintMultiplier], maximumViolation: Double, stationarityNorm: Double, nodesExplored: UInt64, relaxationsSolved: UInt64, nodesPrunedInfeasible: UInt64, maximumDepth: UInt64, incumbentsFound: UInt64, bestRelaxationObjective: Double?, absoluteGap: Double?, relativeGap: Double?, globalOptimalityCertified: Bool, termination: FfiMixedIntegerNonlinearTermination) {
+    public init(point: [Double], objective: Double, constraintValues: [Double], multipliers: [FfiConstraintMultiplier], maximumViolation: Double, stationarityNorm: Double, nodesExplored: UInt64, relaxationsSolved: UInt64, nodesPrunedInfeasible: UInt64, maximumDepth: UInt64, incumbentsFound: UInt64, heuristicAttempts: UInt64, heuristicSuccesses: UInt64, warmIncumbentAccepted: Bool, bestRelaxationObjective: Double?, absoluteGap: Double?, relativeGap: Double?, globalOptimalityCertified: Bool, termination: FfiMixedIntegerNonlinearTermination) {
         self.point = point
         self.objective = objective
         self.constraintValues = constraintValues
@@ -2711,6 +2738,9 @@ public struct FfiMixedIntegerNonlinearResult {
         self.nodesPrunedInfeasible = nodesPrunedInfeasible
         self.maximumDepth = maximumDepth
         self.incumbentsFound = incumbentsFound
+        self.heuristicAttempts = heuristicAttempts
+        self.heuristicSuccesses = heuristicSuccesses
+        self.warmIncumbentAccepted = warmIncumbentAccepted
         self.bestRelaxationObjective = bestRelaxationObjective
         self.absoluteGap = absoluteGap
         self.relativeGap = relativeGap
@@ -2756,6 +2786,15 @@ extension FfiMixedIntegerNonlinearResult: Equatable, Hashable {
         if lhs.incumbentsFound != rhs.incumbentsFound {
             return false
         }
+        if lhs.heuristicAttempts != rhs.heuristicAttempts {
+            return false
+        }
+        if lhs.heuristicSuccesses != rhs.heuristicSuccesses {
+            return false
+        }
+        if lhs.warmIncumbentAccepted != rhs.warmIncumbentAccepted {
+            return false
+        }
         if lhs.bestRelaxationObjective != rhs.bestRelaxationObjective {
             return false
         }
@@ -2786,6 +2825,9 @@ extension FfiMixedIntegerNonlinearResult: Equatable, Hashable {
         hasher.combine(nodesPrunedInfeasible)
         hasher.combine(maximumDepth)
         hasher.combine(incumbentsFound)
+        hasher.combine(heuristicAttempts)
+        hasher.combine(heuristicSuccesses)
+        hasher.combine(warmIncumbentAccepted)
         hasher.combine(bestRelaxationObjective)
         hasher.combine(absoluteGap)
         hasher.combine(relativeGap)
@@ -2810,6 +2852,9 @@ public struct FfiConverterTypeFfiMixedIntegerNonlinearResult: FfiConverterRustBu
                 nodesPrunedInfeasible: FfiConverterUInt64.read(from: &buf),
                 maximumDepth: FfiConverterUInt64.read(from: &buf),
                 incumbentsFound: FfiConverterUInt64.read(from: &buf),
+                heuristicAttempts: FfiConverterUInt64.read(from: &buf),
+                heuristicSuccesses: FfiConverterUInt64.read(from: &buf),
+                warmIncumbentAccepted: FfiConverterBool.read(from: &buf),
                 bestRelaxationObjective: FfiConverterOptionDouble.read(from: &buf),
                 absoluteGap: FfiConverterOptionDouble.read(from: &buf),
                 relativeGap: FfiConverterOptionDouble.read(from: &buf),
@@ -2830,6 +2875,9 @@ public struct FfiConverterTypeFfiMixedIntegerNonlinearResult: FfiConverterRustBu
         FfiConverterUInt64.write(value.nodesPrunedInfeasible, into: &buf)
         FfiConverterUInt64.write(value.maximumDepth, into: &buf)
         FfiConverterUInt64.write(value.incumbentsFound, into: &buf)
+        FfiConverterUInt64.write(value.heuristicAttempts, into: &buf)
+        FfiConverterUInt64.write(value.heuristicSuccesses, into: &buf)
+        FfiConverterBool.write(value.warmIncumbentAccepted, into: &buf)
         FfiConverterOptionDouble.write(value.bestRelaxationObjective, into: &buf)
         FfiConverterOptionDouble.write(value.absoluteGap, into: &buf)
         FfiConverterOptionDouble.write(value.relativeGap, into: &buf)
@@ -5522,6 +5570,61 @@ public func FfiConverterTypeFfiLinearPreconditioner_lower(_ value: FfiLinearPrec
 
 
 extension FfiLinearPreconditioner: Equatable, Hashable {}
+
+
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+
+public enum FfiMinlpNodeSelection {
+
+    case depthFirst
+    case bestLocalBound
+}
+
+
+public struct FfiConverterTypeFfiMinlpNodeSelection: FfiConverterRustBuffer {
+    typealias SwiftType = FfiMinlpNodeSelection
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiMinlpNodeSelection {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .depthFirst
+
+        case 2: return .bestLocalBound
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: FfiMinlpNodeSelection, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .depthFirst:
+            writeInt(&buf, Int32(1))
+
+
+        case .bestLocalBound:
+            writeInt(&buf, Int32(2))
+
+        }
+    }
+}
+
+
+public func FfiConverterTypeFfiMinlpNodeSelection_lift(_ buf: RustBuffer) throws -> FfiMinlpNodeSelection {
+    return try FfiConverterTypeFfiMinlpNodeSelection.lift(buf)
+}
+
+public func FfiConverterTypeFfiMinlpNodeSelection_lower(_ value: FfiMinlpNodeSelection) -> RustBuffer {
+    return FfiConverterTypeFfiMinlpNodeSelection.lower(value)
+}
+
+
+
+extension FfiMinlpNodeSelection: Equatable, Hashable {}
 
 
 

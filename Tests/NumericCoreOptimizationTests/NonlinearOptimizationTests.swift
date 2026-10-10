@@ -156,6 +156,45 @@ final class NonlinearOptimizationTests: XCTestCase {
         }
     }
 
+    func testMINLPRoundingPolishingFindsIncumbentAcrossBackends() throws {
+        let objective = NonlinearExpression(nodes: [
+            .parameter(0), .constant(2.4), .subtract(0, 1), .pow(2, 2)
+        ], output: 3)
+        let model = try NonlinearModel.objective(
+            parameterCount: 1, bounds: [.init(lower: 0, upper: 4)], expression: objective)
+        let problem = try MixedIntegerNonlinearProblem(
+            model: model, constraints: [], isInteger: [true])
+        for backend in [NonlinearBackend.swift, .rust] {
+            let result = try NonlinearModelSolver.minimizeMixedInteger(
+                problem: problem, initial: [1], backend: backend,
+                options: .init(maxNodes: 1, nodeSelection: .bestLocalBound))
+            XCTAssertEqual(result.termination, .nodeLimit)
+            XCTAssertEqual(result.point, [2])
+            XCTAssertEqual(result.heuristicAttempts, 1)
+            XCTAssertEqual(result.heuristicSuccesses, 1)
+            XCTAssertFalse(result.globalOptimalityCertified)
+        }
+    }
+
+    func testMINLPWarmIncumbentConformsAcrossBackends() throws {
+        let objective = NonlinearExpression(nodes: [
+            .parameter(0), .constant(2.4), .subtract(0, 1), .pow(2, 2)
+        ], output: 3)
+        let model = try NonlinearModel.objective(
+            parameterCount: 1, bounds: [.init(lower: 0, upper: 4)], expression: objective)
+        let problem = try MixedIntegerNonlinearProblem(
+            model: model, constraints: [], isInteger: [true])
+        for backend in [NonlinearBackend.swift, .rust] {
+            let result = try NonlinearModelSolver.minimizeMixedInteger(
+                problem: problem, initial: [1], backend: backend,
+                options: .init(maxNodes: 1, enableRoundingHeuristic: false,
+                               initialIncumbent: [3]))
+            XCTAssertTrue(result.warmIncumbentAccepted)
+            XCTAssertEqual(result.point, [3])
+            XCTAssertEqual(result.incumbentsFound, 1)
+        }
+    }
+
     func testNonlinearInteriorPointConformsAcrossBackends() throws {
         let objective = NonlinearExpression(nodes: [
             .parameter(0), .constant(2), .subtract(0, 1), .pow(2, 2)

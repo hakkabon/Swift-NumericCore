@@ -129,6 +129,8 @@ Swift-NumericCore/
   validation.
   `MixedIntegerNonlinearSolver` adds local MINLP branch-and-bound with bounded
   L-BFGS, SQP, or augmented-Lagrangian node relaxations on Swift and Rust. Its
+  rounded-and-polished and warm-incumbent heuristics establish feasible points
+  early, while best-local-bound ordering can prioritize promising nodes. Its
   diagnostics explicitly distinguish local search exhaustion from certified
   global optimality. `FeasibilityRestoration` adds a shared Phase-I squared-
   violation solve, while SQP can opt into filter globalization and nonlinear

@@ -57,6 +57,8 @@ public enum NonlinearModelSolver {
             do {
                 let strategy: FFINonlinearRelaxationStrategy =
                     options.relaxationStrategy == .sqp ? .sqp : .augmentedLagrangian
+                let nodeSelection: FFIMINLPNodeSelection =
+                    options.nodeSelection == .depthFirst ? .depthFirst : .bestLocalBound
                 let value = try FFIKernels.solveMixedIntegerNonlinear(
                     model: ffi(problem.model),
                     constraints: problem.constraints.map { .init(
@@ -67,7 +69,10 @@ public enum NonlinearModelSolver {
                                    feasibilityTolerance: options.feasibilityTolerance,
                                    absoluteGapTolerance: options.absoluteGapTolerance,
                                    relativeGapTolerance: options.relativeGapTolerance,
-                                   relaxationStrategy: strategy))
+                                   relaxationStrategy: strategy,
+                                   nodeSelection: nodeSelection,
+                                   enableRoundingHeuristic: options.enableRoundingHeuristic,
+                                   initialIncumbent: options.initialIncumbent ?? []))
                 let termination: MixedIntegerNonlinearTermination
                 switch value.termination {
                 case .searchExhausted: termination = .searchExhausted
@@ -88,6 +93,9 @@ public enum NonlinearModelSolver {
                              nodesPrunedInfeasible: value.nodesPrunedInfeasible,
                              maximumDepth: value.maximumDepth,
                              incumbentsFound: value.incumbentsFound,
+                             heuristicAttempts: value.heuristicAttempts,
+                             heuristicSuccesses: value.heuristicSuccesses,
+                             warmIncumbentAccepted: value.warmIncumbentAccepted,
                              bestRelaxationObjective: value.bestRelaxationObjective,
                              absoluteGap: value.absoluteGap,
                              relativeGap: value.relativeGap,

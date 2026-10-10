@@ -213,19 +213,31 @@ public enum FFINonlinearRelaxationStrategy: Sendable, Hashable {
     case sqp, augmentedLagrangian
 }
 
+public enum FFIMINLPNodeSelection: Sendable, Hashable {
+    case depthFirst, bestLocalBound
+}
+
 public struct FFIMixedIntegerNonlinearOptions: Sendable, Hashable {
     public var maxNodes: Int
     public var integerTolerance: Double, feasibilityTolerance: Double
     public var absoluteGapTolerance: Double, relativeGapTolerance: Double
     public var relaxationStrategy: FFINonlinearRelaxationStrategy
+    public var nodeSelection: FFIMINLPNodeSelection
+    public var enableRoundingHeuristic: Bool
+    public var initialIncumbent: [Double]
     public init(maxNodes: Int, integerTolerance: Double, feasibilityTolerance: Double,
                 absoluteGapTolerance: Double, relativeGapTolerance: Double,
-                relaxationStrategy: FFINonlinearRelaxationStrategy) {
+                relaxationStrategy: FFINonlinearRelaxationStrategy,
+                nodeSelection: FFIMINLPNodeSelection,
+                enableRoundingHeuristic: Bool, initialIncumbent: [Double]) {
         self.maxNodes = maxNodes; self.integerTolerance = integerTolerance
         self.feasibilityTolerance = feasibilityTolerance
         self.absoluteGapTolerance = absoluteGapTolerance
         self.relativeGapTolerance = relativeGapTolerance
         self.relaxationStrategy = relaxationStrategy
+        self.nodeSelection = nodeSelection
+        self.enableRoundingHeuristic = enableRoundingHeuristic
+        self.initialIncumbent = initialIncumbent
     }
 }
 
@@ -239,6 +251,8 @@ public struct FFIMixedIntegerNonlinearResult: Sendable, Hashable {
     public let maximumViolation: Double, stationarityNorm: Double
     public let nodesExplored: Int, relaxationsSolved: Int, nodesPrunedInfeasible: Int
     public let maximumDepth: Int, incumbentsFound: Int
+    public let heuristicAttempts: Int, heuristicSuccesses: Int
+    public let warmIncumbentAccepted: Bool
     public let bestRelaxationObjective: Double?, absoluteGap: Double?, relativeGap: Double?
     public let globalOptimalityCertified: Bool
     public let termination: FFIMixedIntegerNonlinearTermination
@@ -392,6 +406,8 @@ extension FFIKernels {
         do {
             let strategy: FfiNonlinearRelaxationStrategy = options.relaxationStrategy == .sqp
                 ? .sqp : .augmentedLagrangian
+            let nodeSelection: FfiMinlpNodeSelection = options.nodeSelection == .depthFirst
+                ? .depthFirst : .bestLocalBound
             let value = try NCBindings.solveMixedIntegerNonlinear(
                 modelValue: ffi(model),
                 constraints: constraints.map { FfiNonlinearConstraint(
@@ -404,7 +420,9 @@ extension FFIKernels {
                     feasibilityTolerance: options.feasibilityTolerance,
                     absoluteGapTolerance: options.absoluteGapTolerance,
                     relativeGapTolerance: options.relativeGapTolerance,
-                    relaxationStrategy: strategy))
+                    relaxationStrategy: strategy, nodeSelection: nodeSelection,
+                    enableRoundingHeuristic: options.enableRoundingHeuristic,
+                    initialIncumbent: options.initialIncumbent))
             let termination: FFIMixedIntegerNonlinearTermination
             switch value.termination {
             case .searchExhausted: termination = .searchExhausted
@@ -425,6 +443,9 @@ extension FFIKernels {
                          nodesPrunedInfeasible: Int(value.nodesPrunedInfeasible),
                          maximumDepth: Int(value.maximumDepth),
                          incumbentsFound: Int(value.incumbentsFound),
+                         heuristicAttempts: Int(value.heuristicAttempts),
+                         heuristicSuccesses: Int(value.heuristicSuccesses),
+                         warmIncumbentAccepted: value.warmIncumbentAccepted,
                          bestRelaxationObjective: value.bestRelaxationObjective,
                          absoluteGap: value.absoluteGap, relativeGap: value.relativeGap,
                          globalOptimalityCertified: value.globalOptimalityCertified,
