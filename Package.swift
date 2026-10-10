@@ -49,7 +49,7 @@ let package = Package(
         .binaryTarget(
             name: "NumericCoreFFI",
             url: "https://github.com/hakkabon/Rust-NumericCore/releases/download/v0.19.0/NumericCoreFFI.xcframework.zip",
-            checksum: "b3215ce5773ebb37fe3faaea157c5ed2b2d41e39d2e241e11edc6b414b24c3f5"
+            checksum: "60a4c66cc8545cebdee571b05490f50921bbaa9d65b45cd93f6632910866b689"
         ),
 
         // Thin Swift wrapper around the UniFFI-generated bindings
