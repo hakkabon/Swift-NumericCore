@@ -90,6 +90,24 @@ public struct FFINonlinearLeastSquaresResult: Sendable, Hashable {
     public let acceptedSteps: Int, rejectedSteps: Int
 }
 
+public struct FFIMatrixFreeLeastSquaresOptions: Sendable, Hashable {
+    public var outer: FFINonlinearLeastSquaresOptions
+    public var maxKrylovIterations: Int
+    public var krylovTolerance: Double
+    public init(outer: FFINonlinearLeastSquaresOptions, maxKrylovIterations: Int,
+                krylovTolerance: Double) {
+        self.outer = outer; self.maxKrylovIterations = maxKrylovIterations
+        self.krylovTolerance = krylovTolerance
+    }
+}
+
+public struct FFIMatrixFreeLeastSquaresResult: Sendable, Hashable {
+    public let solution: FFINonlinearLeastSquaresResult
+    public let krylovIterations: Int
+    public let jacobianProducts: Int
+    public let transposeJacobianProducts: Int
+}
+
 public struct FFIConstrainedOptions: Sendable, Hashable {
     public var maxOuterIterations: Int
     public var feasibilityTolerance: Double, stationarityTolerance: Double
@@ -677,6 +695,33 @@ extension FFIKernels {
                 evaluations: Int(value.evaluations), termination: termination(value.termination),
                 finalDamping: value.finalDamping, acceptedSteps: Int(value.acceptedSteps),
                 rejectedSteps: Int(value.rejectedSteps))
+        } catch { throw Self.translate(error) }
+    }
+
+    public static func solveNonlinearLeastSquaresMatrixFree(
+        model: FFINonlinearModel, initial: [Double], weights: [Double],
+        loss: FFIRobustLoss, options: FFIMatrixFreeLeastSquaresOptions
+    ) throws -> FFIMatrixFreeLeastSquaresResult {
+        do {
+            let o = options.outer
+            let value = try NCBindings.solveNonlinearLeastSquaresMatrixFree(
+                modelValue: ffi(model), initial: initial, weights: weights, loss: ffi(loss),
+                options: FfiMatrixFreeLeastSquaresOptions(
+                    outer: FfiNonlinearLeastSquaresOptions(maxIterations: UInt64(o.maxIterations),
+                        gradientTolerance: o.gradientTolerance, stepTolerance: o.stepTolerance,
+                        costTolerance: o.costTolerance, initialDamping: o.initialDamping,
+                        dampingIncrease: o.dampingIncrease, dampingDecrease: o.dampingDecrease,
+                        maxDampingIterations: UInt64(o.maxDampingIterations)),
+                    maxKrylovIterations: UInt64(options.maxKrylovIterations),
+                    krylovTolerance: options.krylovTolerance))
+            let s = value.solution
+            return .init(solution: .init(point: s.point, residuals: s.residuals, cost: s.cost,
+                gradientNorm: s.gradientNorm, iterations: Int(s.iterations),
+                evaluations: Int(s.evaluations), termination: termination(s.termination),
+                finalDamping: s.finalDamping, acceptedSteps: Int(s.acceptedSteps),
+                rejectedSteps: Int(s.rejectedSteps)), krylovIterations: Int(value.krylovIterations),
+                jacobianProducts: Int(value.jacobianProducts),
+                transposeJacobianProducts: Int(value.transposeJacobianProducts))
         } catch { throw Self.translate(error) }
     }
 

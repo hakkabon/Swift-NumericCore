@@ -381,6 +381,35 @@ public enum NonlinearModelSolver {
         }
     }
 
+    public static func leastSquaresMatrixFree(
+        model: NonlinearModel, initial: [Double], weights: [Double] = [],
+        loss: RobustLoss = .squared, backend: NonlinearBackend = .swift,
+        options: MatrixFreeLeastSquaresOptions = .init()
+    ) throws -> MatrixFreeLeastSquaresResult {
+        try model.validate()
+        switch backend {
+        case .swift:
+            return try NonlinearLeastSquares.solveMatrixFree(model: model, initial: initial,
+                weights: weights, loss: loss, options: options)
+        case .rust:
+            do {
+                let value = try FFIKernels.solveNonlinearLeastSquaresMatrixFree(
+                    model: ffi(model), initial: initial, weights: weights, loss: ffi(loss),
+                    options: .init(outer: ffi(options.outer),
+                        maxKrylovIterations: options.maxKrylovIterations,
+                        krylovTolerance: options.krylovTolerance))
+                let s = value.solution
+                return .init(solution: .init(point: s.point, residuals: s.residuals, cost: s.cost,
+                    gradientNorm: s.gradientNorm, iterations: s.iterations,
+                    evaluations: s.evaluations, termination: termination(s.termination),
+                    finalDamping: s.finalDamping, acceptedSteps: s.acceptedSteps,
+                    rejectedSteps: s.rejectedSteps), krylovIterations: value.krylovIterations,
+                    jacobianProducts: value.jacobianProducts,
+                    transposeJacobianProducts: value.transposeJacobianProducts)
+            } catch { throw translate(error) }
+        }
+    }
+
     public static func minimize(
         problem: ConstrainedNonlinearProblem, initial: [Double],
         backend: NonlinearBackend = .swift, options: ConstrainedOptions = .init()

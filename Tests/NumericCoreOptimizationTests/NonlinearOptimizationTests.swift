@@ -475,6 +475,29 @@ final class NonlinearOptimizationTests: XCTestCase {
         XCTAssertEqual(result.point[0], 1.5, accuracy: 1e-8)
     }
 
+    func testMatrixFreeLeastSquaresConformsAcrossBackends() throws {
+        let first = NonlinearExpression(nodes: [
+            .parameter(0), .constant(2), .subtract(0, 1)
+        ], output: 2)
+        let second = NonlinearExpression(nodes: [
+            .parameter(0), .parameter(1), .add(0, 1), .constant(5), .subtract(2, 3)
+        ], output: 4)
+        let model = try NonlinearModel.leastSquares(
+            parameterCount: 2, bounds: [.free, .free], residuals: [first, second])
+        let swift = try NonlinearModelSolver.leastSquaresMatrixFree(
+            model: model, initial: [0, 0], backend: .swift)
+        let rust = try NonlinearModelSolver.leastSquaresMatrixFree(
+            model: model, initial: [0, 0], backend: .rust)
+        for result in [swift, rust] {
+            XCTAssertEqual(result.solution.point[0], 2, accuracy: 1e-6)
+            XCTAssertEqual(result.solution.point[1], 3, accuracy: 1e-6)
+            XCTAssertGreaterThan(result.krylovIterations, 0)
+            XCTAssertGreaterThan(result.jacobianProducts, 0)
+            XCTAssertGreaterThan(result.transposeJacobianProducts, 0)
+        }
+        XCTAssertEqual(swift.solution.cost, rust.solution.cost, accuracy: 1e-12)
+    }
+
     func testUnifiedConstrainedSolverCrossesRustFFI() throws {
         let objective = NonlinearExpression(nodes: [
             .parameter(0), .pow(0, 2), .parameter(1), .pow(2, 2), .add(1, 3)

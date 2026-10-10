@@ -2312,6 +2312,144 @@ public func FfiConverterTypeFfiMatrixF64_lower(_ value: FfiMatrixF64) -> RustBuf
 }
 
 
+public struct FfiMatrixFreeLeastSquaresOptions {
+    public var outer: FfiNonlinearLeastSquaresOptions
+    public var maxKrylovIterations: UInt64
+    public var krylovTolerance: Double
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(outer: FfiNonlinearLeastSquaresOptions, maxKrylovIterations: UInt64, krylovTolerance: Double) {
+        self.outer = outer
+        self.maxKrylovIterations = maxKrylovIterations
+        self.krylovTolerance = krylovTolerance
+    }
+}
+
+
+
+extension FfiMatrixFreeLeastSquaresOptions: Equatable, Hashable {
+    public static func ==(lhs: FfiMatrixFreeLeastSquaresOptions, rhs: FfiMatrixFreeLeastSquaresOptions) -> Bool {
+        if lhs.outer != rhs.outer {
+            return false
+        }
+        if lhs.maxKrylovIterations != rhs.maxKrylovIterations {
+            return false
+        }
+        if lhs.krylovTolerance != rhs.krylovTolerance {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(outer)
+        hasher.combine(maxKrylovIterations)
+        hasher.combine(krylovTolerance)
+    }
+}
+
+
+public struct FfiConverterTypeFfiMatrixFreeLeastSquaresOptions: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiMatrixFreeLeastSquaresOptions {
+        return
+            try FfiMatrixFreeLeastSquaresOptions(
+                outer: FfiConverterTypeFfiNonlinearLeastSquaresOptions.read(from: &buf),
+                maxKrylovIterations: FfiConverterUInt64.read(from: &buf),
+                krylovTolerance: FfiConverterDouble.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiMatrixFreeLeastSquaresOptions, into buf: inout [UInt8]) {
+        FfiConverterTypeFfiNonlinearLeastSquaresOptions.write(value.outer, into: &buf)
+        FfiConverterUInt64.write(value.maxKrylovIterations, into: &buf)
+        FfiConverterDouble.write(value.krylovTolerance, into: &buf)
+    }
+}
+
+
+public func FfiConverterTypeFfiMatrixFreeLeastSquaresOptions_lift(_ buf: RustBuffer) throws -> FfiMatrixFreeLeastSquaresOptions {
+    return try FfiConverterTypeFfiMatrixFreeLeastSquaresOptions.lift(buf)
+}
+
+public func FfiConverterTypeFfiMatrixFreeLeastSquaresOptions_lower(_ value: FfiMatrixFreeLeastSquaresOptions) -> RustBuffer {
+    return FfiConverterTypeFfiMatrixFreeLeastSquaresOptions.lower(value)
+}
+
+
+public struct FfiMatrixFreeLeastSquaresResult {
+    public var solution: FfiNonlinearLeastSquaresResult
+    public var krylovIterations: UInt64
+    public var jacobianProducts: UInt64
+    public var transposeJacobianProducts: UInt64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(solution: FfiNonlinearLeastSquaresResult, krylovIterations: UInt64, jacobianProducts: UInt64, transposeJacobianProducts: UInt64) {
+        self.solution = solution
+        self.krylovIterations = krylovIterations
+        self.jacobianProducts = jacobianProducts
+        self.transposeJacobianProducts = transposeJacobianProducts
+    }
+}
+
+
+
+extension FfiMatrixFreeLeastSquaresResult: Equatable, Hashable {
+    public static func ==(lhs: FfiMatrixFreeLeastSquaresResult, rhs: FfiMatrixFreeLeastSquaresResult) -> Bool {
+        if lhs.solution != rhs.solution {
+            return false
+        }
+        if lhs.krylovIterations != rhs.krylovIterations {
+            return false
+        }
+        if lhs.jacobianProducts != rhs.jacobianProducts {
+            return false
+        }
+        if lhs.transposeJacobianProducts != rhs.transposeJacobianProducts {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(solution)
+        hasher.combine(krylovIterations)
+        hasher.combine(jacobianProducts)
+        hasher.combine(transposeJacobianProducts)
+    }
+}
+
+
+public struct FfiConverterTypeFfiMatrixFreeLeastSquaresResult: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiMatrixFreeLeastSquaresResult {
+        return
+            try FfiMatrixFreeLeastSquaresResult(
+                solution: FfiConverterTypeFfiNonlinearLeastSquaresResult.read(from: &buf),
+                krylovIterations: FfiConverterUInt64.read(from: &buf),
+                jacobianProducts: FfiConverterUInt64.read(from: &buf),
+                transposeJacobianProducts: FfiConverterUInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiMatrixFreeLeastSquaresResult, into buf: inout [UInt8]) {
+        FfiConverterTypeFfiNonlinearLeastSquaresResult.write(value.solution, into: &buf)
+        FfiConverterUInt64.write(value.krylovIterations, into: &buf)
+        FfiConverterUInt64.write(value.jacobianProducts, into: &buf)
+        FfiConverterUInt64.write(value.transposeJacobianProducts, into: &buf)
+    }
+}
+
+
+public func FfiConverterTypeFfiMatrixFreeLeastSquaresResult_lift(_ buf: RustBuffer) throws -> FfiMatrixFreeLeastSquaresResult {
+    return try FfiConverterTypeFfiMatrixFreeLeastSquaresResult.lift(buf)
+}
+
+public func FfiConverterTypeFfiMatrixFreeLeastSquaresResult_lower(_ value: FfiMatrixFreeLeastSquaresResult) -> RustBuffer {
+    return FfiConverterTypeFfiMatrixFreeLeastSquaresResult.lower(value)
+}
+
+
 /**
  * MILP result plus the search certificate available at termination.
  */
@@ -6852,6 +6990,17 @@ public func solveNonlinearLeastSquares(modelValue: FfiNonlinearModel, initial: [
     )
 })
 }
+public func solveNonlinearLeastSquaresMatrixFree(modelValue: FfiNonlinearModel, initial: [Double], weights: [Double], loss: FfiRobustLoss, options: FfiMatrixFreeLeastSquaresOptions)throws  -> FfiMatrixFreeLeastSquaresResult {
+    return try  FfiConverterTypeFfiMatrixFreeLeastSquaresResult.lift(try rustCallWithError(FfiConverterTypeFfiError.lift) {
+    uniffi_nc_ffi_fn_func_solve_nonlinear_least_squares_matrix_free(
+        FfiConverterTypeFfiNonlinearModel.lower(modelValue),
+        FfiConverterSequenceDouble.lower(initial),
+        FfiConverterSequenceDouble.lower(weights),
+        FfiConverterTypeFfiRobustLoss.lower(loss),
+        FfiConverterTypeFfiMatrixFreeLeastSquaresOptions.lower(options),$0
+    )
+})
+}
 public func solveNonlinearObjective(modelValue: FfiNonlinearModel, initial: [Double], options: FfiLbfgsOptions)throws  -> FfiLbfgsResult {
     return try  FfiConverterTypeFfiLbfgsResult.lift(try rustCallWithError(FfiConverterTypeFfiError.lift) {
     uniffi_nc_ffi_fn_func_solve_nonlinear_objective(
@@ -7124,6 +7273,9 @@ private var initializationResult: InitializationResult {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nc_ffi_checksum_func_solve_nonlinear_least_squares() != 12728) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nc_ffi_checksum_func_solve_nonlinear_least_squares_matrix_free() != 52848) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nc_ffi_checksum_func_solve_nonlinear_objective() != 7735) {

@@ -135,7 +135,8 @@ Swift-NumericCore/
   interior point can restore boundary or infeasible starts before its barrier
   sequence. Exact graph Hessians, Hessian-vector products, weighted Lagrangian
   curvature, and a sparse KKT contract support second-order constrained work;
-  SQP can opt into exact Lagrangian Hessians.
+  SQP can opt into exact Lagrangian Hessians. Matrix-free nonlinear least
+  squares applies damped Gauss–Newton systems through `Jv`/`Jᵀv` Krylov products.
 - `NumericCoreAMPL` — `Model` (variables/params/constraints/objective,
   including the `integer` qualifier), a hand-rolled lexer/parser for
   the grammar in `docs/design/ampl-grammar.md`
