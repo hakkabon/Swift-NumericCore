@@ -12,14 +12,14 @@ jobs:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
-      - name: Test tagged Swift and vendored Rust FFI
+      - name: Test tagged Swift and remote Rust FFI
         run: swift test --filter NumericCoreTests
-      - name: Verify vendored FFI provenance
+      - name: Verify synchronized FFI provenance
         run: |
-          test -s Frameworks/FFI_VERSION
-          for slice in Frameworks/NumericCoreFFI.xcframework/*/; do
-            test -f "${slice}/Headers/module.modulemap"
-          done
+          test -s .ffi-version
+          RUST_TAG=$(cat .ffi-version)
+          grep -q "releases/download/${RUST_TAG}/NumericCoreFFI.xcframework.zip" Package.swift
+          test -s Sources/NCBindings/Generated/nc_ffi.swift
       - name: Notify ecosystem compatibility workflow
         env:
           TOKEN: ${{ secrets.DATALENSING_DISPATCH_TOKEN }}
