@@ -80,12 +80,13 @@ public struct BranchAndBoundSolveOptions: Sendable, Hashable {
     public var nodeSelection: MILPNodeSelection
     public var branchingStrategy: MILPBranchingStrategy
     public var boundPropagation: Bool
+    public var roundingHeuristic: Bool
     public init(maxNodes: UInt64 = 10_000, integerTolerance: Double = 1e-6,
                 scaling: Bool = true, initialIncumbent: [Double]? = nil,
                 absoluteGapTolerance: Double = 0, relativeGapTolerance: Double = 0,
                 nodeSelection: MILPNodeSelection = .bestBound,
                 branchingStrategy: MILPBranchingStrategy = .pseudoCost,
-                boundPropagation: Bool = true) {
+                boundPropagation: Bool = true, roundingHeuristic: Bool = true) {
         self.maxNodes = maxNodes
         self.integerTolerance = integerTolerance
         self.scaling = scaling
@@ -95,6 +96,7 @@ public struct BranchAndBoundSolveOptions: Sendable, Hashable {
         self.nodeSelection = nodeSelection
         self.branchingStrategy = branchingStrategy
         self.boundPropagation = boundPropagation
+        self.roundingHeuristic = roundingHeuristic
     }
 }
 
@@ -147,6 +149,8 @@ public struct MILPSearchReport: Sendable, Hashable {
     public let relaxationsSolved: UInt64
     public let boundsTightened: UInt64
     public let incumbentsFound: UInt64
+    public let heuristicAttempts: UInt64
+    public let heuristicSuccesses: UInt64
     public let termination: MILPTermination
 }
 
@@ -227,7 +231,8 @@ extension CompiledProblem {
                 relativeGapTolerance: options.relativeGapTolerance,
                 nodeSelection: options.nodeSelection == .depthFirst ? .depthFirst : .bestBound,
                 branchingStrategy: options.branchingStrategy == .mostFractional ? .mostFractional : .pseudoCost,
-                boundPropagation: options.boundPropagation
+                boundPropagation: options.boundPropagation,
+                roundingHeuristic: options.roundingHeuristic
             ))
             milpReport = report
             result = report.solution
@@ -267,6 +272,8 @@ extension CompiledProblem {
                     relaxationsSolved: report.relaxationsSolved,
                     boundsTightened: report.boundsTightened,
                     incumbentsFound: report.incumbentsFound,
+                    heuristicAttempts: report.heuristicAttempts,
+                    heuristicSuccesses: report.heuristicSuccesses,
                     termination: mapTermination(report.termination)
                 )
             }

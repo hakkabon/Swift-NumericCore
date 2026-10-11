@@ -228,7 +228,9 @@ final class SolveTests: XCTestCase {
         subject to c2: x + 2 y <= 6;
         """
         let solution = try AMPLParser.parse(source).compile().solve(
-            configuration: .branchAndBound(.init(maxNodes: 2, integerTolerance: 1e-6))
+            configuration: .branchAndBound(.init(
+                maxNodes: 2, integerTolerance: 1e-6, roundingHeuristic: false
+            ))
         )
 
         XCTAssertEqual(solution.status, .iterationLimit)
@@ -238,6 +240,23 @@ final class SolveTests: XCTestCase {
         XCTAssertNil(report.absoluteGap)
         XCTAssertNil(report.relativeGap)
         XCTAssertFalse(solution.diagnostics.finite)
+    }
+
+    func testBranchAndBoundReportsRoundingHeuristicActivity() throws {
+        let source = """
+        var x >= 0, <= 1 integer;
+        var y >= 0, <= 1 integer;
+        maximize profit: 2 x + y;
+        subject to capacity: x + y <= 1.4;
+        """
+        let solution = try AMPLParser.parse(source).compile().solve(
+            configuration: .branchAndBound(.init(maxNodes: 10, roundingHeuristic: true))
+        )
+        let report = try XCTUnwrap(solution.searchReport)
+        XCTAssertGreaterThan(report.heuristicAttempts, 0)
+        XCTAssertGreaterThan(report.heuristicSuccesses, 0)
+        XCTAssertEqual(solution.objectiveValue, 2, accuracy: 1e-9)
+        XCTAssertTrue(solution.diagnostics.isVerified(tolerance: 1e-8))
     }
 
     func testBranchAndBoundWarmStartSurvivesEarlyNodeLimit() throws {

@@ -636,6 +636,16 @@ final class NonlinearOptimizationTests: XCTestCase {
         XCTAssertLessThanOrEqual(restarted.iterations, result.iterations)
     }
 
+    func testConvexQPAdaptsFromSmallInitialPenalty() throws {
+        let problem = QuadraticProblem(
+            quadratic: [[2]], linear: [-4], constraints: try .empty(columns: 1),
+            rowBounds: [], variableBounds: [.init(lower: 0, upper: 1)])
+        let result = try ConvexQuadraticSolver.solve(
+            problem, options: .init(maxIterations: 2_000, rho: 1e-8))
+        XCTAssertEqual(result.termination, .converged)
+        XCTAssertEqual(result.point[0], 1, accuracy: 1e-5)
+    }
+
     func testConvexQPRejectsIndefiniteHessian() throws {
         let problem = QuadraticProblem(
             quadratic: [[-1]], linear: [0], constraints: try .empty(columns: 1),

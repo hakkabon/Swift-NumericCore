@@ -901,13 +901,14 @@ public struct FfiBranchAndBoundOptions {
     public var nodeSelection: FfiNodeSelection
     public var branchingStrategy: FfiBranchingStrategy
     public var boundPropagation: Bool
+    public var roundingHeuristic: Bool
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
     public init(maxNodes: UInt64, integerTolerance: Double, scaling: Bool,
         /**
          * Empty means no incumbent. Otherwise one value per variable.
-         */initialIncumbent: [Double], absoluteGapTolerance: Double, relativeGapTolerance: Double, nodeSelection: FfiNodeSelection, branchingStrategy: FfiBranchingStrategy, boundPropagation: Bool) {
+         */initialIncumbent: [Double], absoluteGapTolerance: Double, relativeGapTolerance: Double, nodeSelection: FfiNodeSelection, branchingStrategy: FfiBranchingStrategy, boundPropagation: Bool, roundingHeuristic: Bool) {
         self.maxNodes = maxNodes
         self.integerTolerance = integerTolerance
         self.scaling = scaling
@@ -917,6 +918,7 @@ public struct FfiBranchAndBoundOptions {
         self.nodeSelection = nodeSelection
         self.branchingStrategy = branchingStrategy
         self.boundPropagation = boundPropagation
+        self.roundingHeuristic = roundingHeuristic
     }
 }
 
@@ -951,6 +953,9 @@ extension FfiBranchAndBoundOptions: Equatable, Hashable {
         if lhs.boundPropagation != rhs.boundPropagation {
             return false
         }
+        if lhs.roundingHeuristic != rhs.roundingHeuristic {
+            return false
+        }
         return true
     }
 
@@ -964,6 +969,7 @@ extension FfiBranchAndBoundOptions: Equatable, Hashable {
         hasher.combine(nodeSelection)
         hasher.combine(branchingStrategy)
         hasher.combine(boundPropagation)
+        hasher.combine(roundingHeuristic)
     }
 }
 
@@ -980,7 +986,8 @@ public struct FfiConverterTypeFfiBranchAndBoundOptions: FfiConverterRustBuffer {
                 relativeGapTolerance: FfiConverterDouble.read(from: &buf),
                 nodeSelection: FfiConverterTypeFfiNodeSelection.read(from: &buf),
                 branchingStrategy: FfiConverterTypeFfiBranchingStrategy.read(from: &buf),
-                boundPropagation: FfiConverterBool.read(from: &buf)
+                boundPropagation: FfiConverterBool.read(from: &buf),
+                roundingHeuristic: FfiConverterBool.read(from: &buf)
         )
     }
 
@@ -994,6 +1001,7 @@ public struct FfiConverterTypeFfiBranchAndBoundOptions: FfiConverterRustBuffer {
         FfiConverterTypeFfiNodeSelection.write(value.nodeSelection, into: &buf)
         FfiConverterTypeFfiBranchingStrategy.write(value.branchingStrategy, into: &buf)
         FfiConverterBool.write(value.boundPropagation, into: &buf)
+        FfiConverterBool.write(value.roundingHeuristic, into: &buf)
     }
 }
 
@@ -2465,11 +2473,13 @@ public struct FfiMilpSolveResult {
     public var relaxationsSolved: UInt64
     public var boundsTightened: UInt64
     public var incumbentsFound: UInt64
+    public var heuristicAttempts: UInt64
+    public var heuristicSuccesses: UInt64
     public var termination: FfiBranchAndBoundTermination
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
-    public init(solution: FfiSolution, nodesExplored: UInt64, bestBound: Double?, absoluteGap: Double?, relativeGap: Double?, nodesPrunedInfeasible: UInt64, nodesPrunedByBound: UInt64, maximumDepth: UInt64, relaxationsSolved: UInt64, boundsTightened: UInt64, incumbentsFound: UInt64, termination: FfiBranchAndBoundTermination) {
+    public init(solution: FfiSolution, nodesExplored: UInt64, bestBound: Double?, absoluteGap: Double?, relativeGap: Double?, nodesPrunedInfeasible: UInt64, nodesPrunedByBound: UInt64, maximumDepth: UInt64, relaxationsSolved: UInt64, boundsTightened: UInt64, incumbentsFound: UInt64, heuristicAttempts: UInt64, heuristicSuccesses: UInt64, termination: FfiBranchAndBoundTermination) {
         self.solution = solution
         self.nodesExplored = nodesExplored
         self.bestBound = bestBound
@@ -2481,6 +2491,8 @@ public struct FfiMilpSolveResult {
         self.relaxationsSolved = relaxationsSolved
         self.boundsTightened = boundsTightened
         self.incumbentsFound = incumbentsFound
+        self.heuristicAttempts = heuristicAttempts
+        self.heuristicSuccesses = heuristicSuccesses
         self.termination = termination
     }
 }
@@ -2522,6 +2534,12 @@ extension FfiMilpSolveResult: Equatable, Hashable {
         if lhs.incumbentsFound != rhs.incumbentsFound {
             return false
         }
+        if lhs.heuristicAttempts != rhs.heuristicAttempts {
+            return false
+        }
+        if lhs.heuristicSuccesses != rhs.heuristicSuccesses {
+            return false
+        }
         if lhs.termination != rhs.termination {
             return false
         }
@@ -2540,6 +2558,8 @@ extension FfiMilpSolveResult: Equatable, Hashable {
         hasher.combine(relaxationsSolved)
         hasher.combine(boundsTightened)
         hasher.combine(incumbentsFound)
+        hasher.combine(heuristicAttempts)
+        hasher.combine(heuristicSuccesses)
         hasher.combine(termination)
     }
 }
@@ -2560,6 +2580,8 @@ public struct FfiConverterTypeFfiMilpSolveResult: FfiConverterRustBuffer {
                 relaxationsSolved: FfiConverterUInt64.read(from: &buf),
                 boundsTightened: FfiConverterUInt64.read(from: &buf),
                 incumbentsFound: FfiConverterUInt64.read(from: &buf),
+                heuristicAttempts: FfiConverterUInt64.read(from: &buf),
+                heuristicSuccesses: FfiConverterUInt64.read(from: &buf),
                 termination: FfiConverterTypeFfiBranchAndBoundTermination.read(from: &buf)
         )
     }
@@ -2576,6 +2598,8 @@ public struct FfiConverterTypeFfiMilpSolveResult: FfiConverterRustBuffer {
         FfiConverterUInt64.write(value.relaxationsSolved, into: &buf)
         FfiConverterUInt64.write(value.boundsTightened, into: &buf)
         FfiConverterUInt64.write(value.incumbentsFound, into: &buf)
+        FfiConverterUInt64.write(value.heuristicAttempts, into: &buf)
+        FfiConverterUInt64.write(value.heuristicSuccesses, into: &buf)
         FfiConverterTypeFfiBranchAndBoundTermination.write(value.termination, into: &buf)
     }
 }

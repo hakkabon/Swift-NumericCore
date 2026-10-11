@@ -571,12 +571,13 @@ public struct FFIBranchAndBoundOptions: Sendable, Hashable {
     public var nodeSelection: FFINodeSelection
     public var branchingStrategy: FFIBranchingStrategy
     public var boundPropagation: Bool
+    public var roundingHeuristic: Bool
     public init(maxNodes: UInt64 = 10_000, integerTolerance: Double = 1e-6,
                 scaling: Bool = true, initialIncumbent: [Double]? = nil,
                 absoluteGapTolerance: Double = 0, relativeGapTolerance: Double = 0,
                 nodeSelection: FFINodeSelection = .bestBound,
                 branchingStrategy: FFIBranchingStrategy = .pseudoCost,
-                boundPropagation: Bool = true) {
+                boundPropagation: Bool = true, roundingHeuristic: Bool = true) {
         self.maxNodes = maxNodes
         self.integerTolerance = integerTolerance
         self.scaling = scaling
@@ -586,6 +587,7 @@ public struct FFIBranchAndBoundOptions: Sendable, Hashable {
         self.nodeSelection = nodeSelection
         self.branchingStrategy = branchingStrategy
         self.boundPropagation = boundPropagation
+        self.roundingHeuristic = roundingHeuristic
     }
 }
 
@@ -607,6 +609,8 @@ public struct FFIMILPSolveReport: Sendable, Hashable {
     public let relaxationsSolved: UInt64
     public let boundsTightened: UInt64
     public let incumbentsFound: UInt64
+    public let heuristicAttempts: UInt64
+    public let heuristicSuccesses: UInt64
     public let termination: FFIBranchAndBoundTermination
 }
 
@@ -697,7 +701,8 @@ extension FFIKernels {
                     relativeGapTolerance: options.relativeGapTolerance,
                     nodeSelection: options.nodeSelection == .depthFirst ? .depthFirst : .bestBound,
                     branchingStrategy: options.branchingStrategy == .mostFractional ? .mostFractional : .pseudoCost,
-                    boundPropagation: options.boundPropagation
+                    boundPropagation: options.boundPropagation,
+                    roundingHeuristic: options.roundingHeuristic
                 )
             )
             return FFIMILPSolveReport(
@@ -712,6 +717,8 @@ extension FFIKernels {
                 relaxationsSolved: result.relaxationsSolved,
                 boundsTightened: result.boundsTightened,
                 incumbentsFound: result.incumbentsFound,
+                heuristicAttempts: result.heuristicAttempts,
+                heuristicSuccesses: result.heuristicSuccesses,
                 termination: makeTermination(result.termination)
             )
         } catch { throw Self.translate(error) }

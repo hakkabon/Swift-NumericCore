@@ -151,13 +151,8 @@ public enum ConvexQuadraticSolver {
             var row = [Double](repeating: 0, count: n); row[column] = 1; combined.append(row)
         }
         let bounds = problem.rowBounds + problem.variableBounds
-        var system = problem.quadratic
-        for i in 0..<n { for j in 0..<n {
-            var sum = 0.0
-            for row in combined { sum += row[i] * row[j] }
-            system[i][j] += options.rho * sum
-        }}
-        guard let factor = qpCholesky(system) else {
+        var rho = options.rho
+        guard var factor = qpFactorSystem(problem, combined, rho) else {
             return makeResult(problem, [Double](repeating: 0, count: n),
                               [Double](repeating: 0, count: p), 0, .numericalFailure,
                               .infinity, .infinity)
@@ -170,7 +165,7 @@ public enum ConvexQuadraticSolver {
                 throw NonlinearOptimizationError.invalidConfiguration("QP warm start dimensions or values are invalid")
             }
             point = warmStart.primal
-            scaledDual = (warmStart.rowDual + warmStart.variableDual).map { $0 / options.rho }
+            scaledDual = (warmStart.rowDual + warmStart.variableDual).map { $0 / rho }
         } else {
             point = [Double](repeating: 0, count: n)
             scaledDual = [Double](repeating: 0, count: p)
@@ -183,7 +178,7 @@ public enum ConvexQuadraticSolver {
             for column in 0..<n {
                 var sum = 0.0
                 for row in 0..<p { sum += combined[row][column] * (projected[row] - scaledDual[row]) }
-                rhs[column] = -problem.linear[column] + options.rho * sum
+                rhs[column] = -problem.linear[column] + rho * sum
             }
             point = qpSolveCholesky(factor, rhs)
             guard point.allSatisfy(\.isFinite) else {
@@ -196,10 +191,10 @@ public enum ConvexQuadraticSolver {
             for index in 0..<p { scaledDual[index] += product[index] - projected[index] }
             primalResidual = qpInfinity(zip(product, projected).map(-))
             let change = zip(projected, oldProjected).map(-)
-            dualResidual = options.rho * qpInfinity(qpTransposeMatvec(combined, change))
+            dualResidual = rho * qpInfinity(qpTransposeMatvec(combined, change))
             let epsilonPrimal = options.absoluteTolerance
                 + options.relativeTolerance * max(qpInfinity(product), qpInfinity(projected))
-            let dual = scaledDual.map { options.rho * $0 }
+            let dual = scaledDual.map { rho * $0 }
             let qx = qpMatvec(problem.quadratic, point)
             let ctl = qpTransposeMatvec(combined, dual)
             let epsilonDual = options.absoluteTolerance
@@ -213,8 +208,23 @@ public enum ConvexQuadraticSolver {
                 return makeResult(problem, point, dual, iteration, .converged,
                                   primalResidual, dualResidual)
             }
+            if iteration.isMultiple(of: 25) {
+                let nextRho: Double
+                if primalResidual > 10 * dualResidual { nextRho = min(rho * 2, 1e8) }
+                else if dualResidual > 10 * primalResidual { nextRho = max(rho * 0.5, 1e-8) }
+                else { nextRho = rho }
+                if nextRho != rho {
+                    let scale = rho / nextRho
+                    scaledDual = scaledDual.map { $0 * scale }; rho = nextRho
+                    guard let nextFactor = qpFactorSystem(problem, combined, rho) else {
+                        return makeResult(problem, point, [Double](repeating: 0, count: p),
+                                          iteration, .numericalFailure, .infinity, .infinity)
+                    }
+                    factor = nextFactor
+                }
+            }
         }
-        return makeResult(problem, point, scaledDual.map { options.rho * $0 },
+        return makeResult(problem, point, scaledDual.map { rho * $0 },
                           options.maxIterations, .iterationLimit, primalResidual, dualResidual)
     }
 
@@ -226,6 +236,17 @@ public enum ConvexQuadraticSolver {
             throw NonlinearOptimizationError.invalidConfiguration("invalid convex QP options")
         }
     }
+}
+
+private func qpFactorSystem(_ problem: QuadraticProblem, _ combined: [[Double]], _ rho: Double)
+    -> [[Double]]? {
+    var system = problem.quadratic
+    for i in system.indices { for j in system.indices {
+        var sum = 0.0
+        for row in combined { sum += row[i] * row[j] }
+        system[i][j] += rho * sum
+    }}
+    return qpCholesky(system)
 }
 
 private func makeResult(_ problem: QuadraticProblem, _ point: [Double], _ dual: [Double],

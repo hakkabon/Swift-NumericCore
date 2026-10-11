@@ -150,7 +150,10 @@ Swift-NumericCore/
   `solve_milp_branch_and_bound` — a complete path from AMPL source text
   to a solved LP *or* MILP. MILP search includes scaling, incumbent warm starts,
   singleton-row bound propagation, learned pseudo-cost branching, configurable
-  node/gap policies, and a complete search certificate. Nonlinear models compile to the shared graph and
+  node/gap policies, validated rounding incumbents with activity metrics, and a
+  complete search certificate. Revised simplex periodically reconstructs its
+  basis inverse, while Swift and Rust QP paths share residual-balanced ADMM
+  penalties. Nonlinear models compile to the shared graph and
   solve through bounded L-BFGS, SQP, augmented Lagrangian, or mixed-integer
   nonlinear search on either backend.
   Not yet built on the `Grammar`/`Lexer`/
