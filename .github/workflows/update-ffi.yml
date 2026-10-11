@@ -2,15 +2,13 @@ name: Update Rust FFI
 
 # Keeps Swift-NumericCore's NumericCoreFFI binaryTarget pointed at the
 # latest Rust-NumericCore release: refreshes Package.swift's `url:`/
-# `checksum:` (via scripts/set_ffi_binary_target.py) and
-# Sources/NCBindings/Generated/*.swift, then opens a PR.
+# `checksum:` (via scripts/set_ffi_binary_target.py), refreshes
+# Sources/NCBindings/Generated/*.swift, records the synchronized release
+# in `.ffi-version`, then opens a PR.
 #
-# Supersedes the local-path/vendored-Frameworks approach from ADR 0009
-# — see ADR 0010. The first successful run of this workflow after this
-# change performs the one-time flip: Package.swift's NumericCoreFFI
-# target moves from a local `path:` to a remote `url:`/`checksum:`, and
-# the now-redundant Frameworks/ directory is removed from the repo.
-# Every run after that is just a checksum/tag/bindings refresh.
+# Supersedes the local-path/vendored-Frameworks approach from ADR 0009;
+# see ADR 0010. Each run synchronizes the remote checksum, generated binding,
+# and independent provenance marker as one reviewed change.
 #
 # Triggers, in order of preference:
 #   1. repository_dispatch `rust-release` — sent by Rust-NumericCore's
@@ -18,8 +16,8 @@ name: Update Rust FFI
 #   2. weekly schedule — polls Rust-NumericCore's `latest` release, so a
 #      missed dispatch still converges within a week.
 #   3. manual workflow_dispatch with an explicit `rust_tag` — use this
-#      right after Rust-NumericCore's very first tagged release, to
-#      perform the initial flip without waiting on the schedule.
+#      to retry a compatibility check or recover immediately from a missed
+#      dispatch without waiting on the schedule.
 
 on:
   repository_dispatch:
@@ -36,6 +34,10 @@ on:
 permissions:
   contents: write
   pull-requests: write
+
+concurrency:
+  group: update-rust-ffi
+  cancel-in-progress: false
 
 env:
   RUST_REPO: hakkabon/Rust-NumericCore
@@ -62,23 +64,20 @@ jobs:
           fi
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
 
-          # Best-effort extraction of the currently-pinned tag from
-          # Package.swift's existing binaryTarget block, so the "skip if
-          # already up to date" check below works without a separate
-          # tracking file. Empty on the very first run (local `path:`
-          # form has no "download/" substring to match) - correctly
-          # treated as "needs update" in that case.
-          CURRENT=$(grep -A2 'name: "NumericCoreFFI"' Package.swift \
-            | grep -oE 'download/[^/]+' | sed 's#download/##' || true)
+          # Package.swift may be pre-pinned while a phase is being prepared,
+          # so its URL is not proof that the generated bindings were synced.
+          # `.ffi-version` is written only by this workflow together with the
+          # downloaded binding and checksum.
+          CURRENT=$(cat .ffi-version 2>/dev/null || true)
           echo "current=${CURRENT}" >> "$GITHUB_OUTPUT"
-          echo "Resolved tag: ${TAG}; currently pinned: ${CURRENT:-<none - local path>}"
+          echo "Resolved tag: ${TAG}; synchronized FFI: ${CURRENT:-<none>}"
 
       - name: Skip if already up to date
         id: check
         run: |
           if [ "${{ steps.tag.outputs.current }}" = "${{ steps.tag.outputs.tag }}" ]; then
             echo "up_to_date=true" >> "$GITHUB_OUTPUT"
-            echo "Already pinned to ${{ steps.tag.outputs.tag }} - nothing to do."
+            echo "FFI assets already synchronized to ${{ steps.tag.outputs.tag }} - nothing to do."
           else
             echo "up_to_date=false" >> "$GITHUB_OUTPUT"
           fi
@@ -125,20 +124,20 @@ jobs:
             "${{ steps.tag.outputs.tag }}" \
             "${{ steps.checksum.outputs.checksum }}"
 
-      - name: Refresh bindings + remove obsolete Frameworks/
+      - name: Refresh bindings and provenance
         if: steps.check.outputs.up_to_date == 'false'
         run: |
           find Sources/NCBindings/Generated -name "*.swift" -delete
           cp /tmp/ffi-update/nc_ffi.swift Sources/NCBindings/Generated/
-          git rm -r --ignore-unmatch --quiet Frameworks/ || true
+          printf '%s\n' "${{ steps.tag.outputs.tag }}" > .ffi-version
 
       - name: Verify sparse-statistics bridge ABI
         if: steps.check.outputs.up_to_date == 'false'
         run: |
           # Fail before opening a binary-target update PR if a Rust release
           # accidentally omits or renames the sparse-statistics contract.
-          # The hand-written facade is deliberately merged after this sync PR:
-          # it must never compile against the previous framework ABI.
+          # The hand-written facade and generated binding must never compile
+          # against different framework ABIs.
           BINDINGS=Sources/NCBindings/Generated/nc_ffi.swift
           grep -q 'solveSparseWeightedLeastSquares' "${BINDINGS}"
           grep -q 'solveSparsePenalizedWeightedLeastSquares' "${BINDINGS}"
@@ -149,7 +148,9 @@ jobs:
           grep -q 'case incompleteCholesky' "${BINDINGS}"
 
       - name: Build + test
+        id: validation
         if: steps.check.outputs.up_to_date == 'false'
+        continue-on-error: true
         run: |
           swift build
           swift test
@@ -168,14 +169,22 @@ jobs:
             - `Package.swift`'s `NumericCoreFFI` binary target now points at
               this release's checksummed asset (ADR 0010).
             - Refreshed `Sources/NCBindings/Generated/nc_ffi.swift`.
-            - If this was the first run since the remote-binaryTarget
-              switch, `Frameworks/` was removed - it's no longer needed.
-            - `swift build` + `swift test` passed on the update runner.
+            - Recorded the synchronized Rust release in `.ffi-version`.
+            - Compatibility validation outcome: `${{ steps.validation.outcome }}`.
 
             If the UniFFI interface changed (new/renamed functions or
             types), `Sources/NCBindings/FFIBridge.swift` may need a
-            follow-up - it is the only hand-written file that names
-            generated symbols directly.
+            companion source update. The PR is created even when validation
+            fails so that such an update cannot suppress the FFI sync itself.
+            After the companion Swift commit reaches the base branch, rerun
+            this workflow to update and revalidate the same PR.
           add-paths: |
+            .ffi-version
             Package.swift
             Sources/NCBindings/Generated/
+
+      - name: Enforce validation after PR creation
+        if: steps.check.outputs.up_to_date == 'false' && steps.validation.outcome == 'failure'
+        run: |
+          echo "::error::The FFI update PR was created, but the current Swift base is not compatible with the new UniFFI surface. Push the companion Swift update, then rerun this workflow."
+          exit 1

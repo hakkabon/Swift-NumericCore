@@ -48,9 +48,18 @@ Two changes, together:
      checksum step rather than silently propagating a stale value),
      rewrites `Package.swift`'s binary target via
      `scripts/set_ffi_binary_target.py`, refreshes
-     `Sources/NCBindings/Generated/*.swift`, runs `swift build` +
-     `swift test`, and opens a PR — never pushes directly to a
-     protected branch.
+     `Sources/NCBindings/Generated/*.swift`, records the synchronized tag in
+     `.ffi-version`, runs `swift build` + `swift test`, and opens a PR — never
+     pushes directly to a protected branch. The provenance file, rather than
+     the possibly pre-pinned manifest URL, determines whether a release has
+     actually been synchronized.
+
+The updater always creates or updates the FFI PR before enforcing its build
+result. UniFFI record changes can make a newly generated initializer
+incompatible with the hand-written bridge on the current remote Swift branch.
+In that case the workflow ends failed, but the PR remains available instead of
+being suppressed. Push the companion Swift source commit and rerun the updater;
+it updates and revalidates the same `ffi/update-<tag>` PR.
 
 The very first run of the updated `update-ffi.yml` (once
 `Rust-NumericCore` has a tagged release) performs the one-time flip:
@@ -79,6 +88,11 @@ than a special one-shot migration script.
   rather than failing the release), and `update-ffi.yml`'s weekly poll
   still converges within a week — no release is ever silently missed
   forever, just delayed.
+- GitHub Actions cannot consume an unpushed local Swift commit. For an FFI
+  change that also alters `FFIBridge.swift`, either push that companion commit
+  before expecting green validation, or let the updater create its initially
+  failing PR, push the Swift commit, and rerun the updater. A failed validation
+  no longer prevents the synchronization PR from being created.
 - `scripts/set_ffi_binary_target.py`'s block-replace is a regex over
   `Package.swift`'s exact current formatting, not a general Swift
   parser. It's been verified against the real file (both the
