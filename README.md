@@ -153,7 +153,9 @@ Swift-NumericCore/
   node/gap policies, validated rounding incumbents with activity metrics, and a
   complete search certificate. Revised simplex periodically reconstructs its
   basis inverse, while Swift and Rust QP paths share residual-balanced ADMM
-  penalties. Nonlinear models compile to the shared graph and
+  penalties. A structured numerical validation program adds scale-aware
+  metrics, backward-error checks, deterministic perturbations, and audited
+  LP/QP/MILP/nonlinear reference cases. Nonlinear models compile to the shared graph and
   solve through bounded L-BFGS, SQP, augmented Lagrangian, or mixed-integer
   nonlinear search on either backend.
   Not yet built on the `Grammar`/`Lexer`/

@@ -1,0 +1,22 @@
+name: Numerical validation
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: numerical-validation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  swift-validation:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run complete validation suite
+        run: swift test
