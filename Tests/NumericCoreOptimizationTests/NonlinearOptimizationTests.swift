@@ -2,6 +2,57 @@ import XCTest
 @testable import NumericCoreOptimization
 
 final class NonlinearOptimizationTests: XCTestCase {
+    func testSpatialBranchAndBoundGloballySolvesConcaveQuadratic() throws {
+        let expression = NonlinearExpression(nodes: [
+            .parameter(0), .pow(0, 2), .negate(1)
+        ], output: 2)
+        let model = try NonlinearModel.objective(
+            parameterCount: 1, bounds: [.init(lower: -2, upper: 1)],
+            expression: expression)
+        let problem = try SpatialBranchAndBoundProblem(model: model)
+        let result = try SpatialBranchAndBoundSolver.minimize(problem: problem)
+        XCTAssertEqual(result.point[0], -2, accuracy: 1e-6)
+        XCTAssertEqual(result.objective, -4, accuracy: 1e-6)
+        XCTAssertEqual(result.globalLowerBound!, -4, accuracy: 1e-6)
+        XCTAssertTrue(result.globalOptimalityCertified)
+    }
+
+    func testSpatialBranchAndBoundRejectsIncompleteRelaxation() throws {
+        let expression = NonlinearExpression(nodes: [.parameter(0), .sin(0)], output: 1)
+        let model = try NonlinearModel.objective(
+            parameterCount: 1, bounds: [.init(lower: -1, upper: 1)],
+            expression: expression)
+        XCTAssertThrowsError(try SpatialBranchAndBoundProblem(model: model))
+    }
+
+    func testSpatialBranchAndBoundHonorsConstraintGraph() throws {
+        let objective = NonlinearExpression(nodes: [
+            .parameter(0), .pow(0, 2), .negate(1)
+        ], output: 2)
+        let constraint = NonlinearExpression(nodes: [.parameter(0)], output: 0)
+        let model = try NonlinearModel.objective(
+            parameterCount: 1, bounds: [.init(lower: -2, upper: 2)], expression: objective)
+        let problem = try SpatialBranchAndBoundProblem(
+            model: model,
+            constraints: [.init(expression: constraint, bound: .init(lower: -1))])
+        let result = try SpatialBranchAndBoundSolver.minimize(problem: problem)
+        XCTAssertEqual(result.point[0], 2, accuracy: 1e-6)
+        XCTAssertTrue(result.globalOptimalityCertified)
+    }
+
+    func testSpatialCancellationNeverClaimsGlobalOptimality() throws {
+        let expression = NonlinearExpression(nodes: [
+            .parameter(0), .pow(0, 2), .negate(1)
+        ], output: 2)
+        let model = try NonlinearModel.objective(
+            parameterCount: 1, bounds: [.init(lower: -2, upper: 1)], expression: expression)
+        let problem = try SpatialBranchAndBoundProblem(model: model)
+        let result = try SpatialBranchAndBoundSolver.minimize(
+            problem: problem, observer: { _ in false })
+        XCTAssertEqual(result.termination, .cancelled)
+        XCTAssertFalse(result.globalOptimalityCertified)
+    }
+
     func testConvexityAnalysisAndGlobalGraphRelaxations() throws {
         let square = NonlinearExpression(nodes: [
             .parameter(0), .constant(2.4), .subtract(0, 1), .pow(2, 2)
