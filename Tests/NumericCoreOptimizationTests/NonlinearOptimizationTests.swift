@@ -2,6 +2,38 @@ import XCTest
 @testable import NumericCoreOptimization
 
 final class NonlinearOptimizationTests: XCTestCase {
+    func testGlobalMINLPCertifiesIntegerNonconvexOptimum() throws {
+        let expression = NonlinearExpression(nodes: [
+            .parameter(0), .pow(0, 2), .negate(1)
+        ], output: 2)
+        let model = try NonlinearModel.objective(
+            parameterCount: 1, bounds: [.init(lower: -2, upper: 1)], expression: expression)
+        let problem = try GlobalMINLPProblem(model: model, isInteger: [true])
+        let result = try GlobalMixedIntegerNonlinearSolver.minimize(problem: problem)
+        XCTAssertEqual(result.point[0], -2)
+        XCTAssertEqual(result.objective, -4, accuracy: 1e-8)
+        XCTAssertTrue(result.globalOptimalityCertified)
+    }
+
+    func testGlobalMINLPBranchesOnFractionalIntegerRelaxation() throws {
+        let sum = NonlinearExpression(nodes: [
+            .parameter(0), .parameter(1), .add(0, 1)
+        ], output: 2)
+        let expression = NonlinearExpression(nodes: [
+            .parameter(0), .parameter(1), .add(0, 1), .negate(2)
+        ], output: 3)
+        let model = try NonlinearModel.objective(
+            parameterCount: 2, bounds: [.init(lower: 0, upper: 2), .init(lower: 0, upper: 2)],
+            expression: expression)
+        let problem = try GlobalMINLPProblem(
+            model: model, constraints: [.init(expression: sum, bound: .init(upper: 1.5))],
+            isInteger: [true, true])
+        let result = try GlobalMixedIntegerNonlinearSolver.minimize(problem: problem)
+        XCTAssertEqual(result.objective, -1, accuracy: 1e-8)
+        XCTAssertGreaterThan(result.integerBranches, 0)
+        XCTAssertTrue(result.globalOptimalityCertified)
+    }
+
     func testNonlinearPropagationTightensSquareAndDetectsInfeasibility() throws {
         let square = NonlinearExpression(nodes: [.parameter(0), .pow(0, 2)], output: 1)
         let model = try NonlinearModel.objective(

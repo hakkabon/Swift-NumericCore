@@ -217,7 +217,7 @@ private struct SpatialNode {
 }
 private struct SpatialIncumbent { var point: [Double]; var objective: Double }
 
-private func spatialCompileRelaxation(
+func spatialCompileRelaxation(
     _ problem: SpatialBranchAndBoundProblem, _ bounds: [ParameterBound]
 ) throws -> FFIProblem {
     guard let objectiveExpression = problem.model.objective else {

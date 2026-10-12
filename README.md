@@ -145,6 +145,9 @@ Swift-NumericCore/
   bounded factorable nonlinear programs and fails closed for incomplete graph
   relaxations. Forward/backward nonlinear propagation tightens node boxes from
   constraint ranges and incumbent objective cutoffs before each LP relaxation.
+  `GlobalMixedIntegerNonlinearSolver` combines those relaxations with
+  integrality-aware branching and integer-fixed nonlinear polishing to certify
+  bounded factorable MINLPs.
 - `NumericCoreAMPL` — `Model` (variables/params/constraints/objective,
   including the `integer` qualifier), a hand-rolled lexer/parser for
   the grammar in `docs/design/ampl-grammar.md`
