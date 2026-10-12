@@ -139,6 +139,11 @@ Swift-NumericCore/
   curvature, and a sparse KKT contract support second-order constrained work;
   SQP can opt into exact Lagrangian Hessians. Matrix-free nonlinear least
   squares applies damped Gauss–Newton systems through `Jv`/`Jᵀv` Krylov products.
+  Conservative interval/convexity analysis produces affine graph relaxations,
+  and `SpatialBranchAndBoundSolver` solves them through the LP seam while local
+  L-BFGS-B or SQP supplies incumbents. It reports certified global gaps for
+  bounded factorable nonlinear programs and fails closed for incomplete graph
+  relaxations.
 - `NumericCoreAMPL` — `Model` (variables/params/constraints/objective,
   including the `integer` qualifier), a hand-rolled lexer/parser for
   the grammar in `docs/design/ampl-grammar.md`
