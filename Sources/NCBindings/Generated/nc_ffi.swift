@@ -1630,6 +1630,326 @@ public func FfiConverterTypeFfiFeasibilityRestorationResult_lower(_ value: FfiFe
     return FfiConverterTypeFfiFeasibilityRestorationResult.lower(value)
 }
 
+public struct FfiGlobalMinlpOptions {
+    public var maxNodes: UInt64
+    public var minimumWidth: Double
+    public var integerTolerance: Double
+    public var feasibilityTolerance: Double
+    public var absoluteGapTolerance: Double
+    public var relativeGapTolerance: Double
+    public var simplexIterations: UInt64
+    public var propagationPasses: UInt64
+    public var propagationTolerance: Double
+    public var enableRoundingHeuristic: Bool
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(maxNodes: UInt64, minimumWidth: Double, integerTolerance: Double, feasibilityTolerance: Double, absoluteGapTolerance: Double, relativeGapTolerance: Double, simplexIterations: UInt64, propagationPasses: UInt64, propagationTolerance: Double, enableRoundingHeuristic: Bool) {
+        self.maxNodes = maxNodes
+        self.minimumWidth = minimumWidth
+        self.integerTolerance = integerTolerance
+        self.feasibilityTolerance = feasibilityTolerance
+        self.absoluteGapTolerance = absoluteGapTolerance
+        self.relativeGapTolerance = relativeGapTolerance
+        self.simplexIterations = simplexIterations
+        self.propagationPasses = propagationPasses
+        self.propagationTolerance = propagationTolerance
+        self.enableRoundingHeuristic = enableRoundingHeuristic
+    }
+}
+
+extension FfiGlobalMinlpOptions: Equatable, Hashable {
+    public static func == (lhs: FfiGlobalMinlpOptions, rhs: FfiGlobalMinlpOptions) -> Bool {
+        if lhs.maxNodes != rhs.maxNodes {
+            return false
+        }
+        if lhs.minimumWidth != rhs.minimumWidth {
+            return false
+        }
+        if lhs.integerTolerance != rhs.integerTolerance {
+            return false
+        }
+        if lhs.feasibilityTolerance != rhs.feasibilityTolerance {
+            return false
+        }
+        if lhs.absoluteGapTolerance != rhs.absoluteGapTolerance {
+            return false
+        }
+        if lhs.relativeGapTolerance != rhs.relativeGapTolerance {
+            return false
+        }
+        if lhs.simplexIterations != rhs.simplexIterations {
+            return false
+        }
+        if lhs.propagationPasses != rhs.propagationPasses {
+            return false
+        }
+        if lhs.propagationTolerance != rhs.propagationTolerance {
+            return false
+        }
+        if lhs.enableRoundingHeuristic != rhs.enableRoundingHeuristic {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(maxNodes)
+        hasher.combine(minimumWidth)
+        hasher.combine(integerTolerance)
+        hasher.combine(feasibilityTolerance)
+        hasher.combine(absoluteGapTolerance)
+        hasher.combine(relativeGapTolerance)
+        hasher.combine(simplexIterations)
+        hasher.combine(propagationPasses)
+        hasher.combine(propagationTolerance)
+        hasher.combine(enableRoundingHeuristic)
+    }
+}
+
+public struct FfiConverterTypeFfiGlobalMinlpOptions: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiGlobalMinlpOptions {
+        return
+            try FfiGlobalMinlpOptions(
+                maxNodes: FfiConverterUInt64.read(from: &buf),
+                minimumWidth: FfiConverterDouble.read(from: &buf),
+                integerTolerance: FfiConverterDouble.read(from: &buf),
+                feasibilityTolerance: FfiConverterDouble.read(from: &buf),
+                absoluteGapTolerance: FfiConverterDouble.read(from: &buf),
+                relativeGapTolerance: FfiConverterDouble.read(from: &buf),
+                simplexIterations: FfiConverterUInt64.read(from: &buf),
+                propagationPasses: FfiConverterUInt64.read(from: &buf),
+                propagationTolerance: FfiConverterDouble.read(from: &buf),
+                enableRoundingHeuristic: FfiConverterBool.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: FfiGlobalMinlpOptions, into buf: inout [UInt8]) {
+        FfiConverterUInt64.write(value.maxNodes, into: &buf)
+        FfiConverterDouble.write(value.minimumWidth, into: &buf)
+        FfiConverterDouble.write(value.integerTolerance, into: &buf)
+        FfiConverterDouble.write(value.feasibilityTolerance, into: &buf)
+        FfiConverterDouble.write(value.absoluteGapTolerance, into: &buf)
+        FfiConverterDouble.write(value.relativeGapTolerance, into: &buf)
+        FfiConverterUInt64.write(value.simplexIterations, into: &buf)
+        FfiConverterUInt64.write(value.propagationPasses, into: &buf)
+        FfiConverterDouble.write(value.propagationTolerance, into: &buf)
+        FfiConverterBool.write(value.enableRoundingHeuristic, into: &buf)
+    }
+}
+
+public func FfiConverterTypeFfiGlobalMinlpOptions_lift(_ buf: RustBuffer) throws -> FfiGlobalMinlpOptions {
+    return try FfiConverterTypeFfiGlobalMinlpOptions.lift(buf)
+}
+
+public func FfiConverterTypeFfiGlobalMinlpOptions_lower(_ value: FfiGlobalMinlpOptions) -> RustBuffer {
+    return FfiConverterTypeFfiGlobalMinlpOptions.lower(value)
+}
+
+public struct FfiGlobalMinlpResult {
+    public var point: [Double]
+    public var objective: Double
+    public var globalLowerBound: Double?
+    public var absoluteGap: Double?
+    public var relativeGap: Double?
+    public var nodesExplored: UInt64
+    public var relaxationsSolved: UInt64
+    public var nodesPrunedByBound: UInt64
+    public var nodesPrunedInfeasible: UInt64
+    public var nodesPrunedByPropagation: UInt64
+    public var propagationPasses: UInt64
+    public var boundsTightened: UInt64
+    public var integerBranches: UInt64
+    public var spatialBranches: UInt64
+    public var localSolves: UInt64
+    public var heuristicAttempts: UInt64
+    public var heuristicSuccesses: UInt64
+    public var incumbentsFound: UInt64
+    public var maximumDepth: UInt64
+    public var globalOptimalityCertified: Bool
+    public var termination: FfiGlobalMinlpTermination
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(point: [Double], objective: Double, globalLowerBound: Double?, absoluteGap: Double?, relativeGap: Double?, nodesExplored: UInt64, relaxationsSolved: UInt64, nodesPrunedByBound: UInt64, nodesPrunedInfeasible: UInt64, nodesPrunedByPropagation: UInt64, propagationPasses: UInt64, boundsTightened: UInt64, integerBranches: UInt64, spatialBranches: UInt64, localSolves: UInt64, heuristicAttempts: UInt64, heuristicSuccesses: UInt64, incumbentsFound: UInt64, maximumDepth: UInt64, globalOptimalityCertified: Bool, termination: FfiGlobalMinlpTermination) {
+        self.point = point
+        self.objective = objective
+        self.globalLowerBound = globalLowerBound
+        self.absoluteGap = absoluteGap
+        self.relativeGap = relativeGap
+        self.nodesExplored = nodesExplored
+        self.relaxationsSolved = relaxationsSolved
+        self.nodesPrunedByBound = nodesPrunedByBound
+        self.nodesPrunedInfeasible = nodesPrunedInfeasible
+        self.nodesPrunedByPropagation = nodesPrunedByPropagation
+        self.propagationPasses = propagationPasses
+        self.boundsTightened = boundsTightened
+        self.integerBranches = integerBranches
+        self.spatialBranches = spatialBranches
+        self.localSolves = localSolves
+        self.heuristicAttempts = heuristicAttempts
+        self.heuristicSuccesses = heuristicSuccesses
+        self.incumbentsFound = incumbentsFound
+        self.maximumDepth = maximumDepth
+        self.globalOptimalityCertified = globalOptimalityCertified
+        self.termination = termination
+    }
+}
+
+extension FfiGlobalMinlpResult: Equatable, Hashable {
+    public static func == (lhs: FfiGlobalMinlpResult, rhs: FfiGlobalMinlpResult) -> Bool {
+        if lhs.point != rhs.point {
+            return false
+        }
+        if lhs.objective != rhs.objective {
+            return false
+        }
+        if lhs.globalLowerBound != rhs.globalLowerBound {
+            return false
+        }
+        if lhs.absoluteGap != rhs.absoluteGap {
+            return false
+        }
+        if lhs.relativeGap != rhs.relativeGap {
+            return false
+        }
+        if lhs.nodesExplored != rhs.nodesExplored {
+            return false
+        }
+        if lhs.relaxationsSolved != rhs.relaxationsSolved {
+            return false
+        }
+        if lhs.nodesPrunedByBound != rhs.nodesPrunedByBound {
+            return false
+        }
+        if lhs.nodesPrunedInfeasible != rhs.nodesPrunedInfeasible {
+            return false
+        }
+        if lhs.nodesPrunedByPropagation != rhs.nodesPrunedByPropagation {
+            return false
+        }
+        if lhs.propagationPasses != rhs.propagationPasses {
+            return false
+        }
+        if lhs.boundsTightened != rhs.boundsTightened {
+            return false
+        }
+        if lhs.integerBranches != rhs.integerBranches {
+            return false
+        }
+        if lhs.spatialBranches != rhs.spatialBranches {
+            return false
+        }
+        if lhs.localSolves != rhs.localSolves {
+            return false
+        }
+        if lhs.heuristicAttempts != rhs.heuristicAttempts {
+            return false
+        }
+        if lhs.heuristicSuccesses != rhs.heuristicSuccesses {
+            return false
+        }
+        if lhs.incumbentsFound != rhs.incumbentsFound {
+            return false
+        }
+        if lhs.maximumDepth != rhs.maximumDepth {
+            return false
+        }
+        if lhs.globalOptimalityCertified != rhs.globalOptimalityCertified {
+            return false
+        }
+        if lhs.termination != rhs.termination {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(point)
+        hasher.combine(objective)
+        hasher.combine(globalLowerBound)
+        hasher.combine(absoluteGap)
+        hasher.combine(relativeGap)
+        hasher.combine(nodesExplored)
+        hasher.combine(relaxationsSolved)
+        hasher.combine(nodesPrunedByBound)
+        hasher.combine(nodesPrunedInfeasible)
+        hasher.combine(nodesPrunedByPropagation)
+        hasher.combine(propagationPasses)
+        hasher.combine(boundsTightened)
+        hasher.combine(integerBranches)
+        hasher.combine(spatialBranches)
+        hasher.combine(localSolves)
+        hasher.combine(heuristicAttempts)
+        hasher.combine(heuristicSuccesses)
+        hasher.combine(incumbentsFound)
+        hasher.combine(maximumDepth)
+        hasher.combine(globalOptimalityCertified)
+        hasher.combine(termination)
+    }
+}
+
+public struct FfiConverterTypeFfiGlobalMinlpResult: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiGlobalMinlpResult {
+        return
+            try FfiGlobalMinlpResult(
+                point: FfiConverterSequenceDouble.read(from: &buf),
+                objective: FfiConverterDouble.read(from: &buf),
+                globalLowerBound: FfiConverterOptionDouble.read(from: &buf),
+                absoluteGap: FfiConverterOptionDouble.read(from: &buf),
+                relativeGap: FfiConverterOptionDouble.read(from: &buf),
+                nodesExplored: FfiConverterUInt64.read(from: &buf),
+                relaxationsSolved: FfiConverterUInt64.read(from: &buf),
+                nodesPrunedByBound: FfiConverterUInt64.read(from: &buf),
+                nodesPrunedInfeasible: FfiConverterUInt64.read(from: &buf),
+                nodesPrunedByPropagation: FfiConverterUInt64.read(from: &buf),
+                propagationPasses: FfiConverterUInt64.read(from: &buf),
+                boundsTightened: FfiConverterUInt64.read(from: &buf),
+                integerBranches: FfiConverterUInt64.read(from: &buf),
+                spatialBranches: FfiConverterUInt64.read(from: &buf),
+                localSolves: FfiConverterUInt64.read(from: &buf),
+                heuristicAttempts: FfiConverterUInt64.read(from: &buf),
+                heuristicSuccesses: FfiConverterUInt64.read(from: &buf),
+                incumbentsFound: FfiConverterUInt64.read(from: &buf),
+                maximumDepth: FfiConverterUInt64.read(from: &buf),
+                globalOptimalityCertified: FfiConverterBool.read(from: &buf),
+                termination: FfiConverterTypeFfiGlobalMinlpTermination.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: FfiGlobalMinlpResult, into buf: inout [UInt8]) {
+        FfiConverterSequenceDouble.write(value.point, into: &buf)
+        FfiConverterDouble.write(value.objective, into: &buf)
+        FfiConverterOptionDouble.write(value.globalLowerBound, into: &buf)
+        FfiConverterOptionDouble.write(value.absoluteGap, into: &buf)
+        FfiConverterOptionDouble.write(value.relativeGap, into: &buf)
+        FfiConverterUInt64.write(value.nodesExplored, into: &buf)
+        FfiConverterUInt64.write(value.relaxationsSolved, into: &buf)
+        FfiConverterUInt64.write(value.nodesPrunedByBound, into: &buf)
+        FfiConverterUInt64.write(value.nodesPrunedInfeasible, into: &buf)
+        FfiConverterUInt64.write(value.nodesPrunedByPropagation, into: &buf)
+        FfiConverterUInt64.write(value.propagationPasses, into: &buf)
+        FfiConverterUInt64.write(value.boundsTightened, into: &buf)
+        FfiConverterUInt64.write(value.integerBranches, into: &buf)
+        FfiConverterUInt64.write(value.spatialBranches, into: &buf)
+        FfiConverterUInt64.write(value.localSolves, into: &buf)
+        FfiConverterUInt64.write(value.heuristicAttempts, into: &buf)
+        FfiConverterUInt64.write(value.heuristicSuccesses, into: &buf)
+        FfiConverterUInt64.write(value.incumbentsFound, into: &buf)
+        FfiConverterUInt64.write(value.maximumDepth, into: &buf)
+        FfiConverterBool.write(value.globalOptimalityCertified, into: &buf)
+        FfiConverterTypeFfiGlobalMinlpTermination.write(value.termination, into: &buf)
+    }
+}
+
+public func FfiConverterTypeFfiGlobalMinlpResult_lift(_ buf: RustBuffer) throws -> FfiGlobalMinlpResult {
+    return try FfiConverterTypeFfiGlobalMinlpResult.lift(buf)
+}
+
+public func FfiConverterTypeFfiGlobalMinlpResult_lower(_ value: FfiGlobalMinlpResult) -> RustBuffer {
+    return FfiConverterTypeFfiGlobalMinlpResult.lower(value)
+}
+
 public struct FfiInteriorPointOptions {
     public var maxIterations: UInt64
     public var tolerance: Double
@@ -3541,6 +3861,126 @@ public func FfiConverterTypeFfiNonlinearNode_lower(_ value: FfiNonlinearNode) ->
     return FfiConverterTypeFfiNonlinearNode.lower(value)
 }
 
+public struct FfiNonlinearPropagationOptions {
+    public var maxPasses: UInt64
+    public var tolerance: Double
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(maxPasses: UInt64, tolerance: Double) {
+        self.maxPasses = maxPasses
+        self.tolerance = tolerance
+    }
+}
+
+extension FfiNonlinearPropagationOptions: Equatable, Hashable {
+    public static func == (lhs: FfiNonlinearPropagationOptions, rhs: FfiNonlinearPropagationOptions) -> Bool {
+        if lhs.maxPasses != rhs.maxPasses {
+            return false
+        }
+        if lhs.tolerance != rhs.tolerance {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(maxPasses)
+        hasher.combine(tolerance)
+    }
+}
+
+public struct FfiConverterTypeFfiNonlinearPropagationOptions: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiNonlinearPropagationOptions {
+        return
+            try FfiNonlinearPropagationOptions(
+                maxPasses: FfiConverterUInt64.read(from: &buf),
+                tolerance: FfiConverterDouble.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: FfiNonlinearPropagationOptions, into buf: inout [UInt8]) {
+        FfiConverterUInt64.write(value.maxPasses, into: &buf)
+        FfiConverterDouble.write(value.tolerance, into: &buf)
+    }
+}
+
+public func FfiConverterTypeFfiNonlinearPropagationOptions_lift(_ buf: RustBuffer) throws -> FfiNonlinearPropagationOptions {
+    return try FfiConverterTypeFfiNonlinearPropagationOptions.lift(buf)
+}
+
+public func FfiConverterTypeFfiNonlinearPropagationOptions_lower(_ value: FfiNonlinearPropagationOptions) -> RustBuffer {
+    return FfiConverterTypeFfiNonlinearPropagationOptions.lower(value)
+}
+
+public struct FfiNonlinearPropagationResult {
+    public var bounds: [FfiBound]
+    public var passes: UInt64
+    public var boundsTightened: UInt64
+    public var infeasible: Bool
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(bounds: [FfiBound], passes: UInt64, boundsTightened: UInt64, infeasible: Bool) {
+        self.bounds = bounds
+        self.passes = passes
+        self.boundsTightened = boundsTightened
+        self.infeasible = infeasible
+    }
+}
+
+extension FfiNonlinearPropagationResult: Equatable, Hashable {
+    public static func == (lhs: FfiNonlinearPropagationResult, rhs: FfiNonlinearPropagationResult) -> Bool {
+        if lhs.bounds != rhs.bounds {
+            return false
+        }
+        if lhs.passes != rhs.passes {
+            return false
+        }
+        if lhs.boundsTightened != rhs.boundsTightened {
+            return false
+        }
+        if lhs.infeasible != rhs.infeasible {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(bounds)
+        hasher.combine(passes)
+        hasher.combine(boundsTightened)
+        hasher.combine(infeasible)
+    }
+}
+
+public struct FfiConverterTypeFfiNonlinearPropagationResult: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiNonlinearPropagationResult {
+        return
+            try FfiNonlinearPropagationResult(
+                bounds: FfiConverterSequenceTypeFfiBound.read(from: &buf),
+                passes: FfiConverterUInt64.read(from: &buf),
+                boundsTightened: FfiConverterUInt64.read(from: &buf),
+                infeasible: FfiConverterBool.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: FfiNonlinearPropagationResult, into buf: inout [UInt8]) {
+        FfiConverterSequenceTypeFfiBound.write(value.bounds, into: &buf)
+        FfiConverterUInt64.write(value.passes, into: &buf)
+        FfiConverterUInt64.write(value.boundsTightened, into: &buf)
+        FfiConverterBool.write(value.infeasible, into: &buf)
+    }
+}
+
+public func FfiConverterTypeFfiNonlinearPropagationResult_lift(_ buf: RustBuffer) throws -> FfiNonlinearPropagationResult {
+    return try FfiConverterTypeFfiNonlinearPropagationResult.lift(buf)
+}
+
+public func FfiConverterTypeFfiNonlinearPropagationResult_lower(_ value: FfiNonlinearPropagationResult) -> RustBuffer {
+    return FfiConverterTypeFfiNonlinearPropagationResult.lower(value)
+}
+
 /**
  * Mirrors `nc_optimize::Problem`, with the constraint matrix crossing
  * as `FfiCsrMatrixF64` (already established above) rather than a
@@ -4518,16 +4958,20 @@ public struct FfiSpatialBranchAndBoundOptions {
     public var relativeGapTolerance: Double
     public var feasibilityTolerance: Double
     public var simplexIterations: UInt64
+    public var propagationPasses: UInt64
+    public var propagationTolerance: Double
 
     /// Default memberwise initializers are never public by default, so we
     /// declare one manually.
-    public init(maxNodes: UInt64, minimumWidth: Double, absoluteGapTolerance: Double, relativeGapTolerance: Double, feasibilityTolerance: Double, simplexIterations: UInt64) {
+    public init(maxNodes: UInt64, minimumWidth: Double, absoluteGapTolerance: Double, relativeGapTolerance: Double, feasibilityTolerance: Double, simplexIterations: UInt64, propagationPasses: UInt64, propagationTolerance: Double) {
         self.maxNodes = maxNodes
         self.minimumWidth = minimumWidth
         self.absoluteGapTolerance = absoluteGapTolerance
         self.relativeGapTolerance = relativeGapTolerance
         self.feasibilityTolerance = feasibilityTolerance
         self.simplexIterations = simplexIterations
+        self.propagationPasses = propagationPasses
+        self.propagationTolerance = propagationTolerance
     }
 }
 
@@ -4551,6 +4995,12 @@ extension FfiSpatialBranchAndBoundOptions: Equatable, Hashable {
         if lhs.simplexIterations != rhs.simplexIterations {
             return false
         }
+        if lhs.propagationPasses != rhs.propagationPasses {
+            return false
+        }
+        if lhs.propagationTolerance != rhs.propagationTolerance {
+            return false
+        }
         return true
     }
 
@@ -4561,6 +5011,8 @@ extension FfiSpatialBranchAndBoundOptions: Equatable, Hashable {
         hasher.combine(relativeGapTolerance)
         hasher.combine(feasibilityTolerance)
         hasher.combine(simplexIterations)
+        hasher.combine(propagationPasses)
+        hasher.combine(propagationTolerance)
     }
 }
 
@@ -4573,7 +5025,9 @@ public struct FfiConverterTypeFfiSpatialBranchAndBoundOptions: FfiConverterRustB
                 absoluteGapTolerance: FfiConverterDouble.read(from: &buf),
                 relativeGapTolerance: FfiConverterDouble.read(from: &buf),
                 feasibilityTolerance: FfiConverterDouble.read(from: &buf),
-                simplexIterations: FfiConverterUInt64.read(from: &buf)
+                simplexIterations: FfiConverterUInt64.read(from: &buf),
+                propagationPasses: FfiConverterUInt64.read(from: &buf),
+                propagationTolerance: FfiConverterDouble.read(from: &buf)
             )
     }
 
@@ -4584,6 +5038,8 @@ public struct FfiConverterTypeFfiSpatialBranchAndBoundOptions: FfiConverterRustB
         FfiConverterDouble.write(value.relativeGapTolerance, into: &buf)
         FfiConverterDouble.write(value.feasibilityTolerance, into: &buf)
         FfiConverterUInt64.write(value.simplexIterations, into: &buf)
+        FfiConverterUInt64.write(value.propagationPasses, into: &buf)
+        FfiConverterDouble.write(value.propagationTolerance, into: &buf)
     }
 }
 
@@ -4605,6 +5061,9 @@ public struct FfiSpatialBranchAndBoundResult {
     public var relaxationsSolved: UInt64
     public var nodesPrunedByBound: UInt64
     public var nodesPrunedInfeasible: UInt64
+    public var nodesPrunedByPropagation: UInt64
+    public var propagationPasses: UInt64
+    public var boundsTightened: UInt64
     public var localSolves: UInt64
     public var incumbentsFound: UInt64
     public var maximumDepth: UInt64
@@ -4613,7 +5072,7 @@ public struct FfiSpatialBranchAndBoundResult {
 
     /// Default memberwise initializers are never public by default, so we
     /// declare one manually.
-    public init(point: [Double], objective: Double, globalLowerBound: Double?, absoluteGap: Double?, relativeGap: Double?, nodesExplored: UInt64, relaxationsSolved: UInt64, nodesPrunedByBound: UInt64, nodesPrunedInfeasible: UInt64, localSolves: UInt64, incumbentsFound: UInt64, maximumDepth: UInt64, globalOptimalityCertified: Bool, termination: FfiSpatialTermination) {
+    public init(point: [Double], objective: Double, globalLowerBound: Double?, absoluteGap: Double?, relativeGap: Double?, nodesExplored: UInt64, relaxationsSolved: UInt64, nodesPrunedByBound: UInt64, nodesPrunedInfeasible: UInt64, nodesPrunedByPropagation: UInt64, propagationPasses: UInt64, boundsTightened: UInt64, localSolves: UInt64, incumbentsFound: UInt64, maximumDepth: UInt64, globalOptimalityCertified: Bool, termination: FfiSpatialTermination) {
         self.point = point
         self.objective = objective
         self.globalLowerBound = globalLowerBound
@@ -4623,6 +5082,9 @@ public struct FfiSpatialBranchAndBoundResult {
         self.relaxationsSolved = relaxationsSolved
         self.nodesPrunedByBound = nodesPrunedByBound
         self.nodesPrunedInfeasible = nodesPrunedInfeasible
+        self.nodesPrunedByPropagation = nodesPrunedByPropagation
+        self.propagationPasses = propagationPasses
+        self.boundsTightened = boundsTightened
         self.localSolves = localSolves
         self.incumbentsFound = incumbentsFound
         self.maximumDepth = maximumDepth
@@ -4660,6 +5122,15 @@ extension FfiSpatialBranchAndBoundResult: Equatable, Hashable {
         if lhs.nodesPrunedInfeasible != rhs.nodesPrunedInfeasible {
             return false
         }
+        if lhs.nodesPrunedByPropagation != rhs.nodesPrunedByPropagation {
+            return false
+        }
+        if lhs.propagationPasses != rhs.propagationPasses {
+            return false
+        }
+        if lhs.boundsTightened != rhs.boundsTightened {
+            return false
+        }
         if lhs.localSolves != rhs.localSolves {
             return false
         }
@@ -4688,6 +5159,9 @@ extension FfiSpatialBranchAndBoundResult: Equatable, Hashable {
         hasher.combine(relaxationsSolved)
         hasher.combine(nodesPrunedByBound)
         hasher.combine(nodesPrunedInfeasible)
+        hasher.combine(nodesPrunedByPropagation)
+        hasher.combine(propagationPasses)
+        hasher.combine(boundsTightened)
         hasher.combine(localSolves)
         hasher.combine(incumbentsFound)
         hasher.combine(maximumDepth)
@@ -4709,6 +5183,9 @@ public struct FfiConverterTypeFfiSpatialBranchAndBoundResult: FfiConverterRustBu
                 relaxationsSolved: FfiConverterUInt64.read(from: &buf),
                 nodesPrunedByBound: FfiConverterUInt64.read(from: &buf),
                 nodesPrunedInfeasible: FfiConverterUInt64.read(from: &buf),
+                nodesPrunedByPropagation: FfiConverterUInt64.read(from: &buf),
+                propagationPasses: FfiConverterUInt64.read(from: &buf),
+                boundsTightened: FfiConverterUInt64.read(from: &buf),
                 localSolves: FfiConverterUInt64.read(from: &buf),
                 incumbentsFound: FfiConverterUInt64.read(from: &buf),
                 maximumDepth: FfiConverterUInt64.read(from: &buf),
@@ -4727,6 +5204,9 @@ public struct FfiConverterTypeFfiSpatialBranchAndBoundResult: FfiConverterRustBu
         FfiConverterUInt64.write(value.relaxationsSolved, into: &buf)
         FfiConverterUInt64.write(value.nodesPrunedByBound, into: &buf)
         FfiConverterUInt64.write(value.nodesPrunedInfeasible, into: &buf)
+        FfiConverterUInt64.write(value.nodesPrunedByPropagation, into: &buf)
+        FfiConverterUInt64.write(value.propagationPasses, into: &buf)
+        FfiConverterUInt64.write(value.boundsTightened, into: &buf)
         FfiConverterUInt64.write(value.localSolves, into: &buf)
         FfiConverterUInt64.write(value.incumbentsFound, into: &buf)
         FfiConverterUInt64.write(value.maximumDepth, into: &buf)
@@ -5363,6 +5843,79 @@ public func FfiConverterTypeFfiFeasibilityRestorationTermination_lower(_ value: 
 }
 
 extension FfiFeasibilityRestorationTermination: Equatable, Hashable {}
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+
+public enum FfiGlobalMinlpTermination {
+    case globalGap
+    case searchExhausted
+    case spatialResolution
+    case nodeLimit
+    case infeasible
+    case relaxationFailure
+    case cancelled
+}
+
+public struct FfiConverterTypeFfiGlobalMinlpTermination: FfiConverterRustBuffer {
+    typealias SwiftType = FfiGlobalMinlpTermination
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiGlobalMinlpTermination {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        case 1: return .globalGap
+
+        case 2: return .searchExhausted
+
+        case 3: return .spatialResolution
+
+        case 4: return .nodeLimit
+
+        case 5: return .infeasible
+
+        case 6: return .relaxationFailure
+
+        case 7: return .cancelled
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: FfiGlobalMinlpTermination, into buf: inout [UInt8]) {
+        switch value {
+        case .globalGap:
+            writeInt(&buf, Int32(1))
+
+        case .searchExhausted:
+            writeInt(&buf, Int32(2))
+
+        case .spatialResolution:
+            writeInt(&buf, Int32(3))
+
+        case .nodeLimit:
+            writeInt(&buf, Int32(4))
+
+        case .infeasible:
+            writeInt(&buf, Int32(5))
+
+        case .relaxationFailure:
+            writeInt(&buf, Int32(6))
+
+        case .cancelled:
+            writeInt(&buf, Int32(7))
+        }
+    }
+}
+
+public func FfiConverterTypeFfiGlobalMinlpTermination_lift(_ buf: RustBuffer) throws -> FfiGlobalMinlpTermination {
+    return try FfiConverterTypeFfiGlobalMinlpTermination.lift(buf)
+}
+
+public func FfiConverterTypeFfiGlobalMinlpTermination_lower(_ value: FfiGlobalMinlpTermination) -> RustBuffer {
+    return FfiConverterTypeFfiGlobalMinlpTermination.lower(value)
+}
+
+extension FfiGlobalMinlpTermination: Equatable, Hashable {}
 
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
@@ -6789,6 +7342,17 @@ public func solveConstrainedNonlinear(modelValue: FfiNonlinearModel, constraints
     })
 }
 
+public func solveGlobalMinlp(modelValue: FfiNonlinearModel, constraints: [FfiNonlinearConstraint], isInteger: [Bool], options: FfiGlobalMinlpOptions) throws -> FfiGlobalMinlpResult {
+    return try FfiConverterTypeFfiGlobalMinlpResult.lift(rustCallWithError(FfiConverterTypeFfiError.lift) {
+        uniffi_nc_ffi_fn_func_solve_global_minlp(
+            FfiConverterTypeFfiNonlinearModel.lower(modelValue),
+            FfiConverterSequenceTypeFfiNonlinearConstraint.lower(constraints),
+            FfiConverterSequenceBool.lower(isInteger),
+            FfiConverterTypeFfiGlobalMinlpOptions.lower(options), $0
+        )
+    })
+}
+
 /**
  * Solves `problem` via `nc_optimize::InteriorPointSolver` (default
  * configuration). See that solver's module docs for its two scope
@@ -7104,6 +7668,17 @@ public func spmvF64(matrix: FfiCsrMatrixF64, x: [Double]) throws -> [Double] {
     })
 }
 
+public func tightenNonlinearBounds(modelValue: FfiNonlinearModel, constraints: [FfiNonlinearConstraint], objectiveCutoff: Double?, options: FfiNonlinearPropagationOptions) throws -> FfiNonlinearPropagationResult {
+    return try FfiConverterTypeFfiNonlinearPropagationResult.lift(rustCallWithError(FfiConverterTypeFfiError.lift) {
+        uniffi_nc_ffi_fn_func_tighten_nonlinear_bounds(
+            FfiConverterTypeFfiNonlinearModel.lower(modelValue),
+            FfiConverterSequenceTypeFfiNonlinearConstraint.lower(constraints),
+            FfiConverterOptionDouble.lower(objectiveCutoff),
+            FfiConverterTypeFfiNonlinearPropagationOptions.lower(options), $0
+        )
+    })
+}
+
 public func transposeCsrF64(matrix: FfiCsrMatrixF64) throws -> FfiCsrMatrixF64 {
     return try FfiConverterTypeFfiCsrMatrixF64.lift(rustCallWithError(FfiConverterTypeFfiError.lift) {
         uniffi_nc_ffi_fn_func_transpose_csr_f64(
@@ -7185,6 +7760,9 @@ private var initializationResult: InitializationResult {
     if uniffi_nc_ffi_checksum_func_solve_constrained_nonlinear() != 26438 {
         return InitializationResult.apiChecksumMismatch
     }
+    if uniffi_nc_ffi_checksum_func_solve_global_minlp() != 19059 {
+        return InitializationResult.apiChecksumMismatch
+    }
     if uniffi_nc_ffi_checksum_func_solve_lp_interior_point() != 56241 {
         return InitializationResult.apiChecksumMismatch
     }
@@ -7258,6 +7836,9 @@ private var initializationResult: InitializationResult {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_nc_ffi_checksum_func_spmv_f64() != 5376 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_nc_ffi_checksum_func_tighten_nonlinear_bounds() != 16523 {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_nc_ffi_checksum_func_transpose_csr_f64() != 60497 {
