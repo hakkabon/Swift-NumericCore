@@ -4511,6 +4511,238 @@ public func FfiConverterTypeFfiSparseStatisticalSolveResult_lower(_ value: FfiSp
     return FfiConverterTypeFfiSparseStatisticalSolveResult.lower(value)
 }
 
+public struct FfiSpatialBranchAndBoundOptions {
+    public var maxNodes: UInt64
+    public var minimumWidth: Double
+    public var absoluteGapTolerance: Double
+    public var relativeGapTolerance: Double
+    public var feasibilityTolerance: Double
+    public var simplexIterations: UInt64
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(maxNodes: UInt64, minimumWidth: Double, absoluteGapTolerance: Double, relativeGapTolerance: Double, feasibilityTolerance: Double, simplexIterations: UInt64) {
+        self.maxNodes = maxNodes
+        self.minimumWidth = minimumWidth
+        self.absoluteGapTolerance = absoluteGapTolerance
+        self.relativeGapTolerance = relativeGapTolerance
+        self.feasibilityTolerance = feasibilityTolerance
+        self.simplexIterations = simplexIterations
+    }
+}
+
+extension FfiSpatialBranchAndBoundOptions: Equatable, Hashable {
+    public static func == (lhs: FfiSpatialBranchAndBoundOptions, rhs: FfiSpatialBranchAndBoundOptions) -> Bool {
+        if lhs.maxNodes != rhs.maxNodes {
+            return false
+        }
+        if lhs.minimumWidth != rhs.minimumWidth {
+            return false
+        }
+        if lhs.absoluteGapTolerance != rhs.absoluteGapTolerance {
+            return false
+        }
+        if lhs.relativeGapTolerance != rhs.relativeGapTolerance {
+            return false
+        }
+        if lhs.feasibilityTolerance != rhs.feasibilityTolerance {
+            return false
+        }
+        if lhs.simplexIterations != rhs.simplexIterations {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(maxNodes)
+        hasher.combine(minimumWidth)
+        hasher.combine(absoluteGapTolerance)
+        hasher.combine(relativeGapTolerance)
+        hasher.combine(feasibilityTolerance)
+        hasher.combine(simplexIterations)
+    }
+}
+
+public struct FfiConverterTypeFfiSpatialBranchAndBoundOptions: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiSpatialBranchAndBoundOptions {
+        return
+            try FfiSpatialBranchAndBoundOptions(
+                maxNodes: FfiConverterUInt64.read(from: &buf),
+                minimumWidth: FfiConverterDouble.read(from: &buf),
+                absoluteGapTolerance: FfiConverterDouble.read(from: &buf),
+                relativeGapTolerance: FfiConverterDouble.read(from: &buf),
+                feasibilityTolerance: FfiConverterDouble.read(from: &buf),
+                simplexIterations: FfiConverterUInt64.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: FfiSpatialBranchAndBoundOptions, into buf: inout [UInt8]) {
+        FfiConverterUInt64.write(value.maxNodes, into: &buf)
+        FfiConverterDouble.write(value.minimumWidth, into: &buf)
+        FfiConverterDouble.write(value.absoluteGapTolerance, into: &buf)
+        FfiConverterDouble.write(value.relativeGapTolerance, into: &buf)
+        FfiConverterDouble.write(value.feasibilityTolerance, into: &buf)
+        FfiConverterUInt64.write(value.simplexIterations, into: &buf)
+    }
+}
+
+public func FfiConverterTypeFfiSpatialBranchAndBoundOptions_lift(_ buf: RustBuffer) throws -> FfiSpatialBranchAndBoundOptions {
+    return try FfiConverterTypeFfiSpatialBranchAndBoundOptions.lift(buf)
+}
+
+public func FfiConverterTypeFfiSpatialBranchAndBoundOptions_lower(_ value: FfiSpatialBranchAndBoundOptions) -> RustBuffer {
+    return FfiConverterTypeFfiSpatialBranchAndBoundOptions.lower(value)
+}
+
+public struct FfiSpatialBranchAndBoundResult {
+    public var point: [Double]
+    public var objective: Double
+    public var globalLowerBound: Double?
+    public var absoluteGap: Double?
+    public var relativeGap: Double?
+    public var nodesExplored: UInt64
+    public var relaxationsSolved: UInt64
+    public var nodesPrunedByBound: UInt64
+    public var nodesPrunedInfeasible: UInt64
+    public var localSolves: UInt64
+    public var incumbentsFound: UInt64
+    public var maximumDepth: UInt64
+    public var globalOptimalityCertified: Bool
+    public var termination: FfiSpatialTermination
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(point: [Double], objective: Double, globalLowerBound: Double?, absoluteGap: Double?, relativeGap: Double?, nodesExplored: UInt64, relaxationsSolved: UInt64, nodesPrunedByBound: UInt64, nodesPrunedInfeasible: UInt64, localSolves: UInt64, incumbentsFound: UInt64, maximumDepth: UInt64, globalOptimalityCertified: Bool, termination: FfiSpatialTermination) {
+        self.point = point
+        self.objective = objective
+        self.globalLowerBound = globalLowerBound
+        self.absoluteGap = absoluteGap
+        self.relativeGap = relativeGap
+        self.nodesExplored = nodesExplored
+        self.relaxationsSolved = relaxationsSolved
+        self.nodesPrunedByBound = nodesPrunedByBound
+        self.nodesPrunedInfeasible = nodesPrunedInfeasible
+        self.localSolves = localSolves
+        self.incumbentsFound = incumbentsFound
+        self.maximumDepth = maximumDepth
+        self.globalOptimalityCertified = globalOptimalityCertified
+        self.termination = termination
+    }
+}
+
+extension FfiSpatialBranchAndBoundResult: Equatable, Hashable {
+    public static func == (lhs: FfiSpatialBranchAndBoundResult, rhs: FfiSpatialBranchAndBoundResult) -> Bool {
+        if lhs.point != rhs.point {
+            return false
+        }
+        if lhs.objective != rhs.objective {
+            return false
+        }
+        if lhs.globalLowerBound != rhs.globalLowerBound {
+            return false
+        }
+        if lhs.absoluteGap != rhs.absoluteGap {
+            return false
+        }
+        if lhs.relativeGap != rhs.relativeGap {
+            return false
+        }
+        if lhs.nodesExplored != rhs.nodesExplored {
+            return false
+        }
+        if lhs.relaxationsSolved != rhs.relaxationsSolved {
+            return false
+        }
+        if lhs.nodesPrunedByBound != rhs.nodesPrunedByBound {
+            return false
+        }
+        if lhs.nodesPrunedInfeasible != rhs.nodesPrunedInfeasible {
+            return false
+        }
+        if lhs.localSolves != rhs.localSolves {
+            return false
+        }
+        if lhs.incumbentsFound != rhs.incumbentsFound {
+            return false
+        }
+        if lhs.maximumDepth != rhs.maximumDepth {
+            return false
+        }
+        if lhs.globalOptimalityCertified != rhs.globalOptimalityCertified {
+            return false
+        }
+        if lhs.termination != rhs.termination {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(point)
+        hasher.combine(objective)
+        hasher.combine(globalLowerBound)
+        hasher.combine(absoluteGap)
+        hasher.combine(relativeGap)
+        hasher.combine(nodesExplored)
+        hasher.combine(relaxationsSolved)
+        hasher.combine(nodesPrunedByBound)
+        hasher.combine(nodesPrunedInfeasible)
+        hasher.combine(localSolves)
+        hasher.combine(incumbentsFound)
+        hasher.combine(maximumDepth)
+        hasher.combine(globalOptimalityCertified)
+        hasher.combine(termination)
+    }
+}
+
+public struct FfiConverterTypeFfiSpatialBranchAndBoundResult: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiSpatialBranchAndBoundResult {
+        return
+            try FfiSpatialBranchAndBoundResult(
+                point: FfiConverterSequenceDouble.read(from: &buf),
+                objective: FfiConverterDouble.read(from: &buf),
+                globalLowerBound: FfiConverterOptionDouble.read(from: &buf),
+                absoluteGap: FfiConverterOptionDouble.read(from: &buf),
+                relativeGap: FfiConverterOptionDouble.read(from: &buf),
+                nodesExplored: FfiConverterUInt64.read(from: &buf),
+                relaxationsSolved: FfiConverterUInt64.read(from: &buf),
+                nodesPrunedByBound: FfiConverterUInt64.read(from: &buf),
+                nodesPrunedInfeasible: FfiConverterUInt64.read(from: &buf),
+                localSolves: FfiConverterUInt64.read(from: &buf),
+                incumbentsFound: FfiConverterUInt64.read(from: &buf),
+                maximumDepth: FfiConverterUInt64.read(from: &buf),
+                globalOptimalityCertified: FfiConverterBool.read(from: &buf),
+                termination: FfiConverterTypeFfiSpatialTermination.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: FfiSpatialBranchAndBoundResult, into buf: inout [UInt8]) {
+        FfiConverterSequenceDouble.write(value.point, into: &buf)
+        FfiConverterDouble.write(value.objective, into: &buf)
+        FfiConverterOptionDouble.write(value.globalLowerBound, into: &buf)
+        FfiConverterOptionDouble.write(value.absoluteGap, into: &buf)
+        FfiConverterOptionDouble.write(value.relativeGap, into: &buf)
+        FfiConverterUInt64.write(value.nodesExplored, into: &buf)
+        FfiConverterUInt64.write(value.relaxationsSolved, into: &buf)
+        FfiConverterUInt64.write(value.nodesPrunedByBound, into: &buf)
+        FfiConverterUInt64.write(value.nodesPrunedInfeasible, into: &buf)
+        FfiConverterUInt64.write(value.localSolves, into: &buf)
+        FfiConverterUInt64.write(value.incumbentsFound, into: &buf)
+        FfiConverterUInt64.write(value.maximumDepth, into: &buf)
+        FfiConverterBool.write(value.globalOptimalityCertified, into: &buf)
+        FfiConverterTypeFfiSpatialTermination.write(value.termination, into: &buf)
+    }
+}
+
+public func FfiConverterTypeFfiSpatialBranchAndBoundResult_lift(_ buf: RustBuffer) throws -> FfiSpatialBranchAndBoundResult {
+    return try FfiConverterTypeFfiSpatialBranchAndBoundResult.lift(buf)
+}
+
+public func FfiConverterTypeFfiSpatialBranchAndBoundResult_lower(_ value: FfiSpatialBranchAndBoundResult) -> RustBuffer {
+    return FfiConverterTypeFfiSpatialBranchAndBoundResult.lower(value)
+}
+
 public struct FfiSqpOptions {
     public var maxIterations: UInt64
     public var feasibilityTolerance: Double
@@ -5843,6 +6075,79 @@ extension FfiSparseStatisticalPreconditioner: Equatable, Hashable {}
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
 
+public enum FfiSpatialTermination {
+    case globalGap
+    case searchExhausted
+    case spatialResolution
+    case nodeLimit
+    case infeasible
+    case relaxationFailure
+    case cancelled
+}
+
+public struct FfiConverterTypeFfiSpatialTermination: FfiConverterRustBuffer {
+    typealias SwiftType = FfiSpatialTermination
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiSpatialTermination {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        case 1: return .globalGap
+
+        case 2: return .searchExhausted
+
+        case 3: return .spatialResolution
+
+        case 4: return .nodeLimit
+
+        case 5: return .infeasible
+
+        case 6: return .relaxationFailure
+
+        case 7: return .cancelled
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: FfiSpatialTermination, into buf: inout [UInt8]) {
+        switch value {
+        case .globalGap:
+            writeInt(&buf, Int32(1))
+
+        case .searchExhausted:
+            writeInt(&buf, Int32(2))
+
+        case .spatialResolution:
+            writeInt(&buf, Int32(3))
+
+        case .nodeLimit:
+            writeInt(&buf, Int32(4))
+
+        case .infeasible:
+            writeInt(&buf, Int32(5))
+
+        case .relaxationFailure:
+            writeInt(&buf, Int32(6))
+
+        case .cancelled:
+            writeInt(&buf, Int32(7))
+        }
+    }
+}
+
+public func FfiConverterTypeFfiSpatialTermination_lift(_ buf: RustBuffer) throws -> FfiSpatialTermination {
+    return try FfiConverterTypeFfiSpatialTermination.lift(buf)
+}
+
+public func FfiConverterTypeFfiSpatialTermination_lower(_ value: FfiSpatialTermination) -> RustBuffer {
+    return FfiConverterTypeFfiSpatialTermination.lower(value)
+}
+
+extension FfiSpatialTermination: Equatable, Hashable {}
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+
 public enum FfiSqpCurvature {
     case bfgs
     case exactLagrangian
@@ -6757,6 +7062,16 @@ public func solveSparseWeightedLeastSquaresWithOptions(design: FfiCsrMatrixF64, 
     })
 }
 
+public func solveSpatialBranchAndBound(modelValue: FfiNonlinearModel, constraints: [FfiNonlinearConstraint], options: FfiSpatialBranchAndBoundOptions) throws -> FfiSpatialBranchAndBoundResult {
+    return try FfiConverterTypeFfiSpatialBranchAndBoundResult.lift(rustCallWithError(FfiConverterTypeFfiError.lift) {
+        uniffi_nc_ffi_fn_func_solve_spatial_branch_and_bound(
+            FfiConverterTypeFfiNonlinearModel.lower(modelValue),
+            FfiConverterSequenceTypeFfiNonlinearConstraint.lower(constraints),
+            FfiConverterTypeFfiSpatialBranchAndBoundOptions.lower(options), $0
+        )
+    })
+}
+
 public func solveSqp(modelValue: FfiNonlinearModel, constraints: [FfiNonlinearConstraint], initial: [Double], options: FfiSqpOptions) throws -> FfiSqpResult {
     return try FfiConverterTypeFfiSqpResult.lift(rustCallWithError(FfiConverterTypeFfiError.lift) {
         uniffi_nc_ffi_fn_func_solve_sqp(
@@ -6931,6 +7246,9 @@ private var initializationResult: InitializationResult {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_nc_ffi_checksum_func_solve_sparse_weighted_least_squares_with_options() != 20382 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_nc_ffi_checksum_func_solve_spatial_branch_and_bound() != 60914 {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_nc_ffi_checksum_func_solve_sqp() != 28992 {
