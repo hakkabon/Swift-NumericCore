@@ -143,7 +143,8 @@ Swift-NumericCore/
   and `SpatialBranchAndBoundSolver` solves them through the LP seam while local
   L-BFGS-B or SQP supplies incumbents. It reports certified global gaps for
   bounded factorable nonlinear programs and fails closed for incomplete graph
-  relaxations.
+  relaxations. Forward/backward nonlinear propagation tightens node boxes from
+  constraint ranges and incumbent objective cutoffs before each LP relaxation.
 - `NumericCoreAMPL` — `Model` (variables/params/constraints/objective,
   including the `integer` qualifier), a hand-rolled lexer/parser for
   the grammar in `docs/design/ampl-grammar.md`

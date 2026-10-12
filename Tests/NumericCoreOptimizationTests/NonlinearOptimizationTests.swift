@@ -2,6 +2,38 @@ import XCTest
 @testable import NumericCoreOptimization
 
 final class NonlinearOptimizationTests: XCTestCase {
+    func testNonlinearPropagationTightensSquareAndDetectsInfeasibility() throws {
+        let square = NonlinearExpression(nodes: [.parameter(0), .pow(0, 2)], output: 1)
+        let model = try NonlinearModel.objective(
+            parameterCount: 1, bounds: [.init(lower: -10, upper: 10)], expression: square)
+        let tightened = try propagateNonlinearBounds(
+            model: model,
+            constraints: [.init(expression: square, bound: .init(upper: 4))],
+            bounds: model.bounds)
+        XCTAssertEqual(tightened.bounds[0], .init(lower: -2, upper: 2))
+        XCTAssertEqual(tightened.boundsTightened, 2)
+        XCTAssertFalse(tightened.infeasible)
+
+        let impossible = try propagateNonlinearBounds(
+            model: model,
+            constraints: [.init(expression: square, bound: .init(upper: -1))],
+            bounds: model.bounds)
+        XCTAssertTrue(impossible.infeasible)
+    }
+
+    func testSpatialPropagationPrunesBeforeRelaxation() throws {
+        let square = NonlinearExpression(nodes: [.parameter(0), .pow(0, 2)], output: 1)
+        let model = try NonlinearModel.objective(
+            parameterCount: 1, bounds: [.init(lower: -10, upper: 10)], expression: square)
+        let problem = try SpatialBranchAndBoundProblem(
+            model: model,
+            constraints: [.init(expression: square, bound: .init(upper: -1))])
+        let result = try SpatialBranchAndBoundSolver.minimize(problem: problem)
+        XCTAssertEqual(result.termination, .infeasible)
+        XCTAssertEqual(result.relaxationsSolved, 0)
+        XCTAssertEqual(result.nodesPrunedByPropagation, 1)
+    }
+
     func testSpatialBranchAndBoundGloballySolvesConcaveQuadratic() throws {
         let expression = NonlinearExpression(nodes: [
             .parameter(0), .pow(0, 2), .negate(1)

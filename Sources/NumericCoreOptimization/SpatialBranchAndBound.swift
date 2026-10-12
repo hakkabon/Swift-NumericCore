@@ -13,6 +13,8 @@ public struct SpatialBranchAndBoundOptions: Sendable, Hashable {
     public var relativeGapTolerance: Double
     public var feasibilityTolerance: Double
     public var simplexIterations: Int
+    public var propagationPasses: Int
+    public var propagationTolerance: Double
     public var localOptions: LBFGSOptions
     public var sqpOptions: SQPOptions
 
@@ -21,12 +23,16 @@ public struct SpatialBranchAndBoundOptions: Sendable, Hashable {
                 relativeGapTolerance: Double = 1e-6,
                 feasibilityTolerance: Double = 1e-7,
                 simplexIterations: Int = 10_000,
+                propagationPasses: Int = 8,
+                propagationTolerance: Double = 1e-10,
                 localOptions: LBFGSOptions = .init(), sqpOptions: SQPOptions = .init()) {
         self.maxNodes = maxNodes; self.minimumWidth = minimumWidth
         self.absoluteGapTolerance = absoluteGapTolerance
         self.relativeGapTolerance = relativeGapTolerance
         self.feasibilityTolerance = feasibilityTolerance
         self.simplexIterations = simplexIterations
+        self.propagationPasses = propagationPasses
+        self.propagationTolerance = propagationTolerance
         self.localOptions = localOptions; self.sqpOptions = sqpOptions
     }
 }
@@ -71,6 +77,9 @@ public struct SpatialBranchAndBoundResult: Sendable, Hashable {
     public let relaxationsSolved: Int
     public let nodesPrunedByBound: Int
     public let nodesPrunedInfeasible: Int
+    public let nodesPrunedByPropagation: Int
+    public let propagationPasses: Int
+    public let boundsTightened: Int
     public let localSolves: Int
     public let incumbentsFound: Int
     public let maximumDepth: Int
@@ -99,6 +108,7 @@ public enum SpatialBranchAndBoundSolver {
         var incumbent: SpatialIncumbent?
         var unresolvedBound = Double.infinity
         var explored = 0, solved = 0, prunedBound = 0, prunedInfeasible = 0
+        var prunedPropagation = 0, propagationPasses = 0, boundsTightened = 0
         var localSolves = 0, incumbents = 0, maximumDepth = 0
         var relaxationFailures = 0
         var cancelled = false, gapReached = false
@@ -107,8 +117,19 @@ public enum SpatialBranchAndBoundSolver {
             let nodeIndex = nodes.indices.min {
                 nodes[$0].inheritedBound < nodes[$1].inheritedBound
             }!
-            let node = nodes.remove(at: nodeIndex)
+            var node = nodes.remove(at: nodeIndex)
             explored += 1; maximumDepth = max(maximumDepth, node.depth)
+            let propagation = try propagateNonlinearBounds(
+                model: problem.model, constraints: problem.constraints, bounds: node.bounds,
+                objectiveCutoff: incumbent.map { $0.objective - options.absoluteGapTolerance },
+                options: .init(maxPasses: options.propagationPasses,
+                               tolerance: options.propagationTolerance))
+            propagationPasses += propagation.passes
+            boundsTightened += propagation.boundsTightened
+            if propagation.infeasible {
+                prunedInfeasible += 1; prunedPropagation += 1; continue
+            }
+            node.bounds = propagation.bounds
             let lp = try spatialCompileRelaxation(problem, node.bounds)
             let solution = try FFIKernels.solveLPSimplex(lp, options: .init(
                 maxIterations: UInt64(options.simplexIterations),
@@ -182,7 +203,10 @@ public enum SpatialBranchAndBoundSolver {
                      globalLowerBound: lowerBound, absoluteGap: gap, relativeGap: relative,
                      nodesExplored: explored, relaxationsSolved: solved,
                      nodesPrunedByBound: prunedBound,
-                     nodesPrunedInfeasible: prunedInfeasible, localSolves: localSolves,
+                     nodesPrunedInfeasible: prunedInfeasible,
+                     nodesPrunedByPropagation: prunedPropagation,
+                     propagationPasses: propagationPasses,
+                     boundsTightened: boundsTightened, localSolves: localSolves,
                      incumbentsFound: incumbents, maximumDepth: maximumDepth,
                      globalOptimalityCertified: certified, termination: termination)
     }
@@ -300,6 +324,8 @@ private func spatialGlobalBound(_ nodes: [SpatialNode], _ unresolved: Double) ->
 
 private func spatialValidate(_ options: SpatialBranchAndBoundOptions) throws {
     guard options.maxNodes > 0, options.simplexIterations > 0,
+          options.propagationPasses > 0,
+          options.propagationTolerance.isFinite, options.propagationTolerance >= 0,
           options.minimumWidth.isFinite, options.minimumWidth > 0,
           options.absoluteGapTolerance.isFinite, options.absoluteGapTolerance >= 0,
           options.relativeGapTolerance.isFinite, options.relativeGapTolerance >= 0,
