@@ -2,6 +2,39 @@ import XCTest
 @testable import NumericCoreOptimization
 
 final class NonlinearOptimizationTests: XCTestCase {
+    func testConvexityAnalysisAndGlobalGraphRelaxations() throws {
+        let square = NonlinearExpression(nodes: [
+            .parameter(0), .constant(2.4), .subtract(0, 1), .pow(2, 2)
+        ], output: 3)
+        let bounds = [ParameterBound(lower: 0, upper: 4)]
+        let analysis = try square.analyze(bounds: bounds)
+        XCTAssertEqual(analysis.outputAnalysis.convexity, .convex)
+        XCTAssertEqual(analysis.outputAnalysis.interval.lower, 0)
+        XCTAssertEqual(analysis.outputAnalysis.interval.upper, 5.76, accuracy: 1e-12)
+        let relaxation = try square.globalRelaxation(bounds: bounds)
+        XCTAssertTrue(relaxation.complete)
+        XCTAssertGreaterThanOrEqual(relaxation.rows.count, 4)
+
+        let bilinear = NonlinearExpression(nodes: [
+            .parameter(0), .parameter(1), .multiply(0, 1)
+        ], output: 2)
+        let bilinearRelaxation = try bilinear.globalRelaxation(bounds: [
+            .init(lower: -1, upper: 2), .init(lower: 3, upper: 5)
+        ])
+        XCTAssertTrue(bilinearRelaxation.complete)
+        XCTAssertEqual(bilinearRelaxation.rows.count, 4)
+        XCTAssertEqual(bilinearRelaxation.analysis.outputAnalysis.convexity, .unknown)
+        XCTAssertEqual(bilinearRelaxation.analysis.outputAnalysis.interval.lower, -5)
+        XCTAssertEqual(bilinearRelaxation.analysis.outputAnalysis.interval.upper, 10)
+
+        let model = try NonlinearModel.objective(
+            parameterCount: 1, bounds: bounds, expression: square)
+        let certificate = try model.convexityCertificate()
+        XCTAssertTrue(certificate.globallyConvex)
+        XCTAssertTrue(certificate.finiteParameterBox)
+        XCTAssertTrue(certificate.relaxationComplete)
+    }
+
     func testExactSecondOrderDerivativesConformAcrossBackends() throws {
         let expression = NonlinearExpression(nodes: [
             .parameter(0), .parameter(1), .multiply(0, 1), .pow(0, 2), .add(2, 3)
@@ -127,8 +160,8 @@ final class NonlinearOptimizationTests: XCTestCase {
             XCTAssertEqual(result.point, [2])
             XCTAssertEqual(result.objective, 0.16, accuracy: 1e-8)
             XCTAssertGreaterThanOrEqual(result.nodesExplored, 3)
-            XCTAssertFalse(result.globalOptimalityCertified)
         }
+        XCTAssertTrue(swift.globalOptimalityCertified)
     }
 
     func testMixedIntegerNonlinearSupportsConstrainedRelaxationStrategies() throws {

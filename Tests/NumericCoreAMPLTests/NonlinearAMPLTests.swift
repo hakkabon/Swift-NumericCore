@@ -81,8 +81,10 @@ final class NonlinearAMPLTests: XCTestCase {
             XCTAssertEqual(result.variableValuesByName["x"]!, 2, accuracy: 1e-8)
             XCTAssertEqual(result.objectiveValue, 0.16, accuracy: 1e-8)
             XCTAssertGreaterThanOrEqual(result.nodesExplored, 3)
-            XCTAssertFalse(result.globalOptimalityCertified)
         }
+        let certified = try problem.solve(
+            initial: [1], configuration: .automatic(backend: .swift))
+        XCTAssertTrue(certified.globalOptimalityCertified)
     }
 
     func testLinearCompilerRejectsNonlinearModelRatherThanDroppingTerms() throws {

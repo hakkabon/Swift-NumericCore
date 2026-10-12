@@ -113,6 +113,8 @@ public enum MixedIntegerNonlinearSolver {
               initial.allSatisfy(\.isFinite) else {
             throw NonlinearOptimizationError.invalidInitialPoint
         }
+        let convexityCertificate = try problem.model.convexityCertificate(
+            constraints: problem.constraints)
         var nodes = [MINLPNode(bounds: problem.model.bounds,
                                start: minlpClamp(initial, problem.model.bounds), depth: 0,
                                localBound: nil)]
@@ -148,7 +150,7 @@ public enum MixedIntegerNonlinearSolver {
                                incumbentObjective: incumbent?.objective)) == false {
                 return minlpResult(incumbent, explored, solved, pruned, maximumDepth,
                                    incumbents, heuristicAttempts, heuristicSuccesses,
-                                   warmAccepted, bestRelaxation, .cancelled)
+                                   warmAccepted, bestRelaxation, false, .cancelled)
             }
             if relaxation.violation > options.feasibilityTolerance { pruned += 1; continue }
             if options.enableRoundingHeuristic,
@@ -200,9 +202,11 @@ public enum MixedIntegerNonlinearSolver {
             termination = solved == 0 && failures > 0 ? .relaxationFailure : .infeasible
         } else if localGapReached { termination = .localGapLimit
         } else { termination = nodes.isEmpty ? .searchExhausted : .nodeLimit }
+        let globallyCertified = termination == .searchExhausted && failures == 0
+            && incumbent != nil && convexityCertificate.globallyConvex
         return minlpResult(incumbent, explored, solved, pruned, maximumDepth,
                            incumbents, heuristicAttempts, heuristicSuccesses,
-                           warmAccepted, bestRelaxation, termination)
+                           warmAccepted, bestRelaxation, globallyCertified, termination)
     }
 }
 
@@ -327,6 +331,7 @@ private func minlpResult(
     _ incumbent: MINLPRelaxation?, _ nodes: Int, _ relaxations: Int, _ pruned: Int,
     _ depth: Int, _ incumbents: Int, _ heuristicAttempts: Int,
     _ heuristicSuccesses: Int, _ warmIncumbentAccepted: Bool, _ best: Double?,
+    _ globallyCertified: Bool,
     _ termination: MixedIntegerNonlinearTermination
 ) -> MixedIntegerNonlinearResult {
     let gap = incumbent.flatMap { value in best.map { max(0, value.objective - $0) } }
@@ -342,7 +347,7 @@ private func minlpResult(
                  warmIncumbentAccepted: warmIncumbentAccepted,
                  bestRelaxationObjective: best,
                  absoluteGap: gap, relativeGap: relative,
-                 globalOptimalityCertified: false, termination: termination)
+                 globalOptimalityCertified: globallyCertified, termination: termination)
 }
 
 private func minlpClamp(_ point: [Double], _ bounds: [ParameterBound]) -> [Double] {
