@@ -22,6 +22,53 @@ final class NonlinearOptimizationTests: XCTestCase {
         XCTAssertEqual(result.point[1], -1, accuracy: 1e-4)
         XCTAssertLessThan(result.objective, 1e-8)
     }
+
+    func testNelderMeadSolvesBoundedRosenbrockWithoutDerivatives() throws {
+        let result = try NelderMead.minimize(
+            initial: [-1.2, 1],
+            bounds: [.init(lower: -2, upper: 2), .init(lower: -1, upper: 3)]
+        ) { x in
+            100 * pow(x[1] - x[0] * x[0], 2) + pow(1 - x[0], 2)
+        }
+        XCTAssertEqual(result.termination, .converged)
+        XCTAssertEqual(result.point[0], 1, accuracy: 1e-4)
+        XCTAssertEqual(result.point[1], 1, accuracy: 1e-4)
+        XCTAssertLessThan(result.objective, 1e-9)
+        XCTAssertGreaterThan(result.evaluations, 2)
+    }
+
+    func testCoordinatePatternSearchHandlesNonsmoothBoundedObjective() throws {
+        let result = try CoordinatePatternSearch.minimize(
+            initial: [-3, 4],
+            bounds: [.init(lower: -1, upper: 3), .init(lower: -2, upper: 2)]
+        ) { x in
+            abs(x[0] - 0.75) + 2 * abs(x[1] + 0.5)
+        }
+        XCTAssertEqual(result.termination, .converged)
+        XCTAssertEqual(result.point[0], 0.75, accuracy: 1e-6)
+        XCTAssertEqual(result.point[1], -0.5, accuracy: 1e-6)
+        XCTAssertLessThan(result.objective, 1e-6)
+        XCTAssertGreaterThan(result.successfulPolls, 0)
+    }
+
+    func testDerivativeFreeEvaluationLimitAndCancellationAreExplicit() throws {
+        let limited = try CoordinatePatternSearch.minimize(
+            initial: [5], options: .init(maxEvaluations: 2)
+        ) { x in x[0] * x[0] }
+        XCTAssertEqual(limited.termination, .evaluationLimit)
+        XCTAssertEqual(limited.evaluations, 2)
+
+        let cancelled = try NelderMead.minimize(initial: [2], observer: { _ in false }) {
+            $0[0] * $0[0]
+        }
+        XCTAssertEqual(cancelled.termination, .cancelled)
+    }
+
+    func testDerivativeFreeMethodsRejectNonfiniteValuesAndInvalidBounds() throws {
+        XCTAssertThrowsError(try NelderMead.minimize(initial: [0]) { _ in .nan })
+        XCTAssertThrowsError(try CoordinatePatternSearch.minimize(
+            initial: [0], bounds: [.init(lower: 2, upper: 1)]) { _ in 0 })
+    }
     func testLinearPresolveFixesTightensRemovesAndRestores() throws {
         let problem = try SparseLinearProblem(
             objective: [2, 1], rows: 2, columns: 2,

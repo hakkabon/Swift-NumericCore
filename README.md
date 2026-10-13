@@ -159,7 +159,10 @@ Swift-NumericCore/
   MILP search strengthens binary knapsacks with cover cuts, propagates bounds
   through general rows, and repairs rounded incumbents with fixed-integer LPs.
   Advanced unconstrained methods include matrix-free Steihaug trust-region
-  Newton-CG and Powell's derivative-free direction-set method.
+  Newton-CG and Powell's derivative-free direction-set method. The broader
+  derivative-free layer adds bound-aware Nelder-Mead and deterministic
+  coordinate pattern search, with explicit evaluation budgets, cancellation,
+  convergence geometry, and finite-value validation.
 - `NumericCoreAMPL` — `Model` (variables/params/constraints/objective,
   including the `integer` qualifier), a hand-rolled lexer/parser for
   the grammar in `docs/design/ampl-grammar.md`
