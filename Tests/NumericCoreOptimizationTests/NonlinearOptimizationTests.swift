@@ -2,6 +2,26 @@ import XCTest
 @testable import NumericCoreOptimization
 
 final class NonlinearOptimizationTests: XCTestCase {
+    func testTrustRegionNewtonCGSolvesMatrixFreeQuadratic() throws {
+        let result = try TrustRegionNewtonCG.minimize(initial: [8, -5], objective: { x in
+            (0.5 * (4 * x[0] * x[0] + x[1] * x[1]) - 8 * x[0] + 3 * x[1],
+             [4 * x[0] - 8, x[1] + 3])
+        }, hessianProduct: { _, vector in [4 * vector[0], vector[1]] })
+        XCTAssertEqual(result.termination, .convergedGradient)
+        XCTAssertEqual(result.point[0], 2, accuracy: 1e-7)
+        XCTAssertEqual(result.point[1], -3, accuracy: 1e-7)
+        XCTAssertGreaterThan(result.hessianProducts, 0)
+    }
+
+    func testPowellDirectionSetSolvesRotatedDerivativeFreeQuadratic() throws {
+        let result = try PowellDirectionSet.minimize(initial: [6, -5]) { x in
+            let a = x[0] + x[1] - 1, b = 2 * x[0] - x[1] - 5
+            return a * a + b * b
+        }
+        XCTAssertEqual(result.point[0], 2, accuracy: 1e-4)
+        XCTAssertEqual(result.point[1], -1, accuracy: 1e-4)
+        XCTAssertLessThan(result.objective, 1e-8)
+    }
     func testLinearPresolveFixesTightensRemovesAndRestores() throws {
         let problem = try SparseLinearProblem(
             objective: [2, 1], rows: 2, columns: 2,

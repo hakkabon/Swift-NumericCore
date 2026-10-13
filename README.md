@@ -158,6 +158,8 @@ Swift-NumericCore/
   `swift run -c release NumericCoreBenchmarks` for opt-in JSON timing evidence.
   MILP search strengthens binary knapsacks with cover cuts, propagates bounds
   through general rows, and repairs rounded incumbents with fixed-integer LPs.
+  Advanced unconstrained methods include matrix-free Steihaug trust-region
+  Newton-CG and Powell's derivative-free direction-set method.
 - `NumericCoreAMPL` — `Model` (variables/params/constraints/objective,
   including the `integer` qualifier), a hand-rolled lexer/parser for
   the grammar in `docs/design/ampl-grammar.md`

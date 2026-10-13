@@ -246,8 +246,9 @@ final class SolveTests: XCTestCase {
         let source = """
         var x >= 0, <= 1 integer;
         var y >= 0, <= 1 integer;
+        var z >= 0, <= 0;
         maximize profit: 2 x + y;
-        subject to capacity: x + y <= 1.4;
+        subject to capacity: x + y + z <= 1.4;
         """
         let solution = try AMPLParser.parse(source).compile().solve(
             configuration: .branchAndBound(.init(maxNodes: 10, roundingHeuristic: true))
