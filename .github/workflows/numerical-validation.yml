@@ -1,7 +1,14 @@
 name: Numerical validation
 
 on:
-  pull_request:
+  # FFI update pull requests are opened by github-actions[bot].  A regular
+  # pull_request workflow for an Actions-authored PR can be held for approval
+  # (and GITHUB_TOKEN recursion prevention can suppress it altogether).
+  # pull_request_target starts from the trusted base-branch workflow instead.
+  # The job below is restricted to branches in this repository before it ever
+  # checks out or executes the proposed merge commit.
+  pull_request_target:
+    types: [opened, synchronize, reopened, ready_for_review]
   push:
     branches: [main]
   workflow_dispatch:
@@ -10,13 +17,28 @@ permissions:
   contents: read
 
 concurrency:
-  group: numerical-validation-${{ github.ref }}
+  group: numerical-validation-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
   swift-validation:
+    if: >-
+      github.event_name != 'pull_request_target' ||
+      github.event.pull_request.head.repo.full_name == github.repository
     runs-on: macos-14
     steps:
-      - uses: actions/checkout@v4
+      - name: Check out pull-request merge
+        if: github.event_name == 'pull_request_target'
+        uses: actions/checkout@v5
+        with:
+          ref: refs/pull/${{ github.event.pull_request.number }}/merge
+          persist-credentials: false
+
+      - name: Check out repository
+        if: github.event_name != 'pull_request_target'
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
       - name: Run complete validation suite
         run: swift test
