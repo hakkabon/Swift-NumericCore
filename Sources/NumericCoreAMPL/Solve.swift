@@ -79,7 +79,10 @@ public struct BranchAndBoundSolveOptions: Sendable, Hashable {
     public var relativeGapTolerance: Double
     public var nodeSelection: MILPNodeSelection
     public var branchingStrategy: MILPBranchingStrategy
+    /// Enables iterative implied-bound propagation over every linear row.
     public var boundPropagation: Bool
+    /// Rounds integer variables and repairs remaining continuous variables by
+    /// solving the resulting fixed-integer LP.
     public var roundingHeuristic: Bool
     public init(maxNodes: UInt64 = 10_000, integerTolerance: Double = 1e-6,
                 scaling: Bool = true, initialIncumbent: [Double]? = nil,

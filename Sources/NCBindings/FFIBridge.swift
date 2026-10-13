@@ -570,7 +570,9 @@ public struct FFIBranchAndBoundOptions: Sendable, Hashable {
     public var relativeGapTolerance: Double
     public var nodeSelection: FFINodeSelection
     public var branchingStrategy: FFIBranchingStrategy
+    /// Enables iterative implied-bound propagation over general linear rows.
     public var boundPropagation: Bool
+    /// Enables integer rounding followed by a continuous LP repair solve.
     public var roundingHeuristic: Bool
     public init(maxNodes: UInt64 = 10_000, integerTolerance: Double = 1e-6,
                 scaling: Bool = true, initialIncumbent: [Double]? = nil,
