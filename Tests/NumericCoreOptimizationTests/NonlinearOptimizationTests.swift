@@ -2,6 +2,42 @@ import XCTest
 @testable import NumericCoreOptimization
 
 final class NonlinearOptimizationTests: XCTestCase {
+    func testSparseLPWorkspaceAppliesRowsAndColumns() throws {
+        let problem = try SparseLinearProblem(
+            objective: [1, 2], rows: 2, columns: 2,
+            rowPointers: [0, 1, 3], columnIndices: [0, 0, 1], values: [3, 4, 5],
+            rowBounds: [.free, .free], variableBounds: [.free, .free])
+        let workspace = try SparseLinearWorkspace(problem: problem)
+        XCTAssertEqual(try workspace.rowActivity([2, 1]), [6, 13])
+        XCTAssertEqual(try workspace.transposeProduct([1, 2]), [11, 10])
+        XCTAssertEqual(workspace.nonzeros, 3)
+
+        let bounded = try SparseLinearProblem(
+            objective: [-1], rows: 0, columns: 1, rowPointers: [0],
+            columnIndices: [], values: [], rowBounds: [],
+            variableBounds: [.init(lower: 0, upper: 2)])
+        let solution = try SparseLinearSolver.solveSimplex(bounded)
+        XCTAssertEqual(solution.status, .optimal)
+        XCTAssertEqual(solution.variableValues, [2])
+    }
+
+    func testSparseQPMatchesDenseProductionSolver() throws {
+        let quadratic = try SparseSymmetricMatrix(
+            dimension: 2, rowPointers: [0, 1, 3],
+            columnIndices: [0, 0, 1], values: [2, 0.5, 2])
+        let constraints = try QuadraticConstraintMatrix(
+            rows: 1, columns: 2, rowPointers: [0, 2],
+            columnIndices: [0, 1], values: [1, 1])
+        let problem = SparseQuadraticProblem(
+            quadratic: quadratic, linear: [-2, -4], constraints: constraints,
+            rowBounds: [.init(lower: 1)],
+            variableBounds: [.init(lower: 0), .init(lower: 0)])
+        let result = try ConvexQuadraticSolver.solve(problem)
+        XCTAssertEqual(result.termination, .converged)
+        XCTAssertEqual(result.objective, try problem.objective(at: result.point), accuracy: 1e-10)
+        XCTAssertEqual(quadratic.nonzeros, 3)
+    }
+
     func testGlobalMINLPCertifiesIntegerNonconvexOptimum() throws {
         let expression = NonlinearExpression(nodes: [
             .parameter(0), .pow(0, 2), .negate(1)
