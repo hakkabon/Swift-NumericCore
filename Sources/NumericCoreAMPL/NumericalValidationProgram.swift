@@ -82,6 +82,53 @@ public enum NumericCoreValidationProgram {
                   reference: swift.objective, tolerance: tolerance),
         ])
 
-        return ValidationReport(cases: [lpCase, qpCase, milpCase, nonlinearCase])
+        let sparseProblem = try SparseLinearProblem(
+            objective: [2, 1], rows: 2, columns: 2,
+            rowPointers: [0, 2, 3], columnIndices: [0, 1, 1], values: [1, 1, 1],
+            rowBounds: [.init(lower: 3, upper: 3), .init(upper: 10)],
+            variableBounds: [.init(lower: 1, upper: 1), .init(lower: 0, upper: 10)])
+        let presolved = try LinearModelPresolver.presolve(sparseProblem)
+        let restored = try presolved.restorePoint([])
+        let presolveCase = ValidationCase(name: "presolve and postsolve equivalence", metrics: [
+            .init(name: "restored x", observed: restored[0], reference: 1,
+                  tolerance: tolerance),
+            .init(name: "restored y", observed: restored[1], reference: 2,
+                  tolerance: tolerance),
+            .init(name: "restored objective", observed: presolved.restoreObjective(0),
+                  reference: 4, tolerance: tolerance),
+            .init(name: "fixed variables", observed: Double(presolved.report.fixedVariables),
+                  reference: 2, tolerance: .init(absolute: 0, relative: 0)),
+        ])
+
+        let workspaceProblem = try SparseLinearProblem(
+            objective: [0, 0, 0], rows: 3, columns: 3,
+            rowPointers: [0, 2, 4, 6], columnIndices: [0, 2, 0, 1, 1, 2],
+            values: [1e-8, 2, -3, 4e8, 5, -6],
+            rowBounds: [.free, .free, .free], variableBounds: [.free, .free, .free])
+        let workspace = try SparseLinearWorkspace(problem: workspaceProblem)
+        let activity = try workspace.rowActivity([2, -1, 3])
+        let transpose = try workspace.transposeProduct([1, -2, 0.5])
+        let sparseCase = ValidationCase(name: "sparse operator scale coverage", metrics: [
+            .init(name: "scaled row 0", observed: activity[0], reference: 6.00000002,
+                  tolerance: tolerance),
+            .init(name: "scaled row 1", observed: activity[1], reference: -400000006,
+                  tolerance: tolerance),
+            .init(name: "transpose column 0", observed: transpose[0],
+                  reference: 6.00000001, tolerance: tolerance),
+            .init(name: "transpose column 2", observed: transpose[2], reference: -1,
+                  tolerance: tolerance),
+        ])
+
+        let perturbed = NumericalValidation.perturb([1, -2, 3], seed: 42,
+                                                     relativeMagnitude: 1e-6)
+        let perturbationCase = ValidationCase(name: "deterministic perturbation reproducibility", metrics:
+            zip(perturbed, NumericalValidation.perturb([1, -2, 3], seed: 42,
+                                                        relativeMagnitude: 1e-6)).enumerated().map {
+                .init(name: "perturbation \($0.offset)", observed: $0.element.0,
+                      reference: $0.element.1, tolerance: .init(absolute: 0, relative: 0))
+            })
+
+        return ValidationReport(cases: [lpCase, qpCase, milpCase, nonlinearCase,
+                                        presolveCase, sparseCase, perturbationCase])
     }
 }
