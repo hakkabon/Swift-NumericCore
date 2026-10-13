@@ -2,6 +2,27 @@ import XCTest
 @testable import NumericCoreOptimization
 
 final class NonlinearOptimizationTests: XCTestCase {
+    func testLinearPresolveFixesTightensRemovesAndRestores() throws {
+        let problem = try SparseLinearProblem(
+            objective: [2, 1], rows: 2, columns: 2,
+            rowPointers: [0, 2, 3], columnIndices: [0, 1, 1], values: [1, 1, 1],
+            rowBounds: [.init(lower: 3, upper: 3), .init(upper: 10)],
+            variableBounds: [.fixed(1), .init(lower: 0, upper: 10)])
+        let result = try LinearModelPresolver.presolve(problem)
+        XCTAssertEqual(result.status, .solved)
+        XCTAssertEqual(try result.restorePoint([]), [1, 2])
+        XCTAssertEqual(result.restoreObjective(0), 4)
+        XCTAssertEqual(result.report.fixedVariables, 2)
+    }
+
+    func testLinearPresolveProvesRowInfeasible() throws {
+        let problem = try SparseLinearProblem(
+            objective: [1], rows: 1, columns: 1, rowPointers: [0, 1],
+            columnIndices: [0], values: [1], rowBounds: [.init(lower: 2)],
+            variableBounds: [.init(lower: 0, upper: 1)])
+        XCTAssertEqual(try LinearModelPresolver.presolve(problem).status, .infeasible)
+    }
+
     func testSparseLPWorkspaceAppliesRowsAndColumns() throws {
         let problem = try SparseLinearProblem(
             objective: [1, 2], rows: 2, columns: 2,

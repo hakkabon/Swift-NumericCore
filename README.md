@@ -150,7 +150,9 @@ Swift-NumericCore/
   bounded factorable MINLPs.
   Sparse LP/QP infrastructure provides validated CSR LP models, reusable
   row/column workspaces, and lower-triangular symmetric sparse Hessians with
-  production-solver adapters.
+  production-solver adapters. A reversible sparse LP/MILP presolver now proves
+  interval infeasibility, removes redundant rows, propagates singleton bounds,
+  eliminates fixed variables, and reconstructs primal points and objectives.
 - `NumericCoreAMPL` — `Model` (variables/params/constraints/objective,
   including the `integer` qualifier), a hand-rolled lexer/parser for
   the grammar in `docs/design/ampl-grammar.md`
