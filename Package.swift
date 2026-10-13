@@ -19,6 +19,7 @@ let package = Package(
         .library(name: "NumericCoreGraph", targets: ["NumericCoreGraph"]),
         .library(name: "NumericCoreAMPL", targets: ["NumericCoreAMPL"]),
         .library(name: "NumericCoreOptimization", targets: ["NumericCoreOptimization"]),
+        .executable(name: "NumericCoreBenchmarks", targets: ["NumericCoreBenchmarks"]),
     ],
     dependencies: [
         // Uncomment once the Grammar/Lexer/Parser packages are ready to be
@@ -115,6 +116,11 @@ let package = Package(
         .testTarget(
             name: "NumericCoreOptimizationTests",
             dependencies: ["NumericCoreOptimization"]
+        ),
+        .executableTarget(
+            name: "NumericCoreBenchmarks",
+            dependencies: ["NumericCoreOptimization"],
+            path: "Benchmarks/NumericCoreBenchmarks"
         ),
     ]
 )
