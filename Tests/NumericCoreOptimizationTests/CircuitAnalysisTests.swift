@@ -55,4 +55,54 @@ final class CircuitAnalysisTests: XCTestCase {
         XCTAssertGreaterThan(result.nodeVoltages[1], 0)
         XCTAssertLessThan(result.nodeVoltages[1], 1)
     }
+
+    func testControlledSourcesAndLevelOneNMOS() throws {
+        let controlled = try CircuitModel(nodes: [
+            .init(name: "0"), .init(name: "control"), .init(name: "out")
+        ], referenceNode: 0, devices: [
+            .voltageSource(name: "VC", positive: 1, negative: 0,
+                           source: .dc(1), initialCurrent: 0),
+            .voltageControlledCurrentSource(name: "G1", positive: 2, negative: 0,
+                                            controlPositive: 1, controlNegative: 0,
+                                            transconductance: 2),
+            .resistor(name: "R1", positive: 2, negative: 0, resistance: 1),
+            .voltageControlledVoltageSource(name: "E1", positive: 2, negative: 0,
+                                            controlPositive: 1, controlNegative: 0,
+                                            gain: -2, initialCurrent: 0),
+        ])
+        XCTAssertEqual(try controlled.dcOperatingPoint().nodeVoltages[2], -2, accuracy: 1e-12)
+
+        let transistor = try CircuitModel(nodes: [
+            .init(name: "0"), .init(name: "gate"), .init(name: "drain")
+        ], referenceNode: 0, devices: [
+            .voltageSource(name: "VG", positive: 1, negative: 0,
+                           source: .dc(2), initialCurrent: 0),
+            .voltageSource(name: "VD", positive: 2, negative: 0,
+                           source: .dc(2), initialCurrent: 0),
+            .nmosLevel1(name: "M1", drain: 2, gate: 1, source: 0,
+                        transconductance: 1e-3, threshold: 1,
+                        channelLengthModulation: 0),
+        ])
+        let result = try transistor.dcOperatingPoint()
+        XCTAssertEqual(result.branchCurrents["VD"]!, -0.5e-3, accuracy: 1e-12)
+    }
+
+    func testDCContinuationAndPulseBreakpoints() throws {
+        let pulse = CircuitWaveform.pulse(low: 0, high: 1, delay: 1,
+                                          rise: 0.1, fall: 0.1,
+                                          width: 0.5, period: 2)
+        let circuit = try CircuitModel(nodes: nodes, referenceNode: 0, devices: [
+            .diode(name: "D1", anode: 1, cathode: 0,
+                   saturationCurrent: 1e-12, thermalVoltage: 0.026),
+            .currentSource(name: "I1", positive: 0, negative: 1,
+                           source: .transient(dc: 1e-3, waveform: pulse)),
+        ])
+        let result = try circuit.dcOperatingPointContinuation()
+        XCTAssertEqual(result.continuationSteps, 9)
+        XCTAssertLessThan(result.diagnostics.maximumKCLResidual, 1e-8)
+        let points = try circuit.transientBreakpoints(from: 0, to: 5)
+        XCTAssertEqual(points.count, 8)
+        XCTAssertEqual(points.first!, 1, accuracy: 1e-12)
+        XCTAssertEqual(points.last!, 3.7, accuracy: 1e-12)
+    }
 }

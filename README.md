@@ -181,6 +181,9 @@ Swift-NumericCore/
   with reference-node elimination, R/C/L, independent sources and diode stamps,
   DC operating points, transient DAE integration, source waveforms, recovered
   branch currents, and KCL/branch residual diagnostics.
+  Nonlinear circuit depth includes VCCS/VCVS controlled sources, an analytic
+  level-1 NMOS model, source-stepped/gmin DC continuation, and pulse-transition
+  breakpoints for discontinuity-aware transient scheduling.
 - `NumericCoreAMPL` — `Model` (variables/params/constraints/objective,
   including the `integer` qualifier), a hand-rolled lexer/parser for
   the grammar in `docs/design/ampl-grammar.md`
