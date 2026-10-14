@@ -93,7 +93,10 @@ Swift-NumericCore/
   `Float`. `SparseLinearSolver` adds pivoted sparse LU, checked sparse
   Cholesky, and configurable CG/BiCGSTAB/restarted-GMRES solves with Jacobi,
   ILU(0), or incomplete-Cholesky preconditioning and explicit residual
-  diagnostics.
+  diagnostics. Reusable `SparseLUFactorization` and symmetric-indefinite
+  `SparseLDLTFactorization` separate symbolic analysis from numerical
+  refactorization, support minimum-degree ordering, multiple right-hand sides,
+  iterative refinement, pivot/fill diagnostics, and KKT inertia.
 - `NumericCoreGraph` — adjacency-matrix construction from an edge list.
 - `NumericCoreMPS` — empty scaffold (`capabilities = []`).
 - `NumericCoreOptimization` — closure-based smooth unconstrained L-BFGS with
