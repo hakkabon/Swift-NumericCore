@@ -166,6 +166,10 @@ Swift-NumericCore/
   derivative-free layer adds bound-aware Nelder-Mead and deterministic
   coordinate pattern search, with explicit evaluation budgets, cancellation,
   convergence geometry, and finite-value validation.
+  Model-based derivative-free optimization adds bound-aware quadratic
+  interpolation models, trust-region acceptance/radius control, one-sided
+  boundary geometry, and model-quality diagnostics without claiming full
+  BOBYQA compatibility.
   First-class square nonlinear equation systems now solve `F(x) = 0` directly
   through damped Newton or matrix-free Newton-GMRES, with scaling, Jacobian
   reuse, natural-parameter continuation, and pseudo-transient continuation.
