@@ -170,6 +170,9 @@ Swift-NumericCore/
   interpolation models, trust-region acceptance/radius control, one-sided
   boundary geometry, and model-quality diagnostics without claiming full
   BOBYQA compatibility.
+  Constrained derivative-free optimization jointly models value-only
+  objectives, equalities, and inequalities, combining affine trust-region
+  models with adaptive exact-penalty feasibility restoration.
   First-class square nonlinear equation systems now solve `F(x) = 0` directly
   through damped Newton or matrix-free Newton-GMRES, with scaling, Jacobian
   reuse, natural-parameter continuation, and pseudo-transient continuation.
