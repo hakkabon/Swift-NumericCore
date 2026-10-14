@@ -177,6 +177,10 @@ Swift-NumericCore/
   typed unknowns and parameters, oriented ports, portable constitutive graphs,
   exact sparse residual/Jacobian stamping, parameter sensitivities, and a
   direct residual-form DAE adapter for circuit and finite-element front ends.
+  `CircuitModel` now supplies the first such front end: modified nodal analysis
+  with reference-node elimination, R/C/L, independent sources and diode stamps,
+  DC operating points, transient DAE integration, source waveforms, recovered
+  branch currents, and KCL/branch residual diagnostics.
 - `NumericCoreAMPL` — `Model` (variables/params/constraints/objective,
   including the `integer` qualifier), a hand-rolled lexer/parser for
   the grammar in `docs/design/ampl-grammar.md`
