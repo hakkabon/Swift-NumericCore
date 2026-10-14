@@ -169,6 +169,10 @@ Swift-NumericCore/
   First-class square nonlinear equation systems now solve `F(x) = 0` directly
   through damped Newton or matrix-free Newton-GMRES, with scaling, Jacobian
   reuse, natural-parameter continuation, and pseudo-transient continuation.
+  `TimeIntegrator` adds adaptive Dormand-Prince ODE integration, cubic Hermite
+  dense output, directional events, and adaptive backward-Euler integration
+  for residual-form index-1 DAEs and singular mass matrices, with explicit
+  error, rejection, evaluation, and Newton diagnostics.
 - `NumericCoreAMPL` — `Model` (variables/params/constraints/objective,
   including the `integer` qualifier), a hand-rolled lexer/parser for
   the grammar in `docs/design/ampl-grammar.md`
