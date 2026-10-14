@@ -173,6 +173,10 @@ Swift-NumericCore/
   dense output, directional events, and adaptive backward-Euler integration
   for residual-form index-1 DAEs and singular mass matrices, with explicit
   error, rejection, evaluation, and Newton diagnostics.
+  `EngineeringModel` supplies the shared component layer above those solvers:
+  typed unknowns and parameters, oriented ports, portable constitutive graphs,
+  exact sparse residual/Jacobian stamping, parameter sensitivities, and a
+  direct residual-form DAE adapter for circuit and finite-element front ends.
 - `NumericCoreAMPL` — `Model` (variables/params/constraints/objective,
   including the `integer` qualifier), a hand-rolled lexer/parser for
   the grammar in `docs/design/ampl-grammar.md`

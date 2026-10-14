@@ -100,7 +100,7 @@ let package = Package(
 
         .target(
             name: "NumericCoreOptimization",
-            dependencies: ["NumericCore", "NCBindings"]
+            dependencies: ["NumericCore", "NumericCoreSparse", "NCBindings"]
         ),
 
         .testTarget(
