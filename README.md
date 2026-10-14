@@ -187,6 +187,9 @@ Swift-NumericCore/
   Small-signal AC sweeps linearize the nonlinear MNA system at a DC operating
   point and solve its real block complex form. Bounded circuit optimization can
   fit weighted AC magnitude targets through model-builder closures and L-BFGS-B.
+  The FEM foundation adds sparse static assembly, exact prescribed-value
+  elimination, reaction recovery, thermal triangles, and planar trusses with
+  element stress/force and global energy/residual diagnostics.
 - `NumericCoreAMPL` — `Model` (variables/params/constraints/objective,
   including the `integer` qualifier), a hand-rolled lexer/parser for
   the grammar in `docs/design/ampl-grammar.md`
