@@ -2,6 +2,76 @@ import XCTest
 @testable import NumericCoreOptimization
 
 final class NonlinearOptimizationTests: XCTestCase {
+    func testDampedNewtonSolvesNonlinearEquationSystem() throws {
+        let result = try NonlinearSystemSolver.solve(initial: [1.5, 0.5]) { x in
+            .init(residuals: [x[0] * x[0] + x[1] * x[1] - 5, x[0] - x[1] - 1],
+                  jacobian: [[2 * x[0], 2 * x[1]], [1, -1]])
+        }
+        XCTAssertEqual(result.termination, .convergedResidual)
+        XCTAssertEqual(result.point[0], 2, accuracy: 1e-8)
+        XCTAssertEqual(result.point[1], 1, accuracy: 1e-8)
+        XCTAssertLessThan(result.residualNorm, 1e-9)
+    }
+
+    func testMatrixFreeNewtonKrylovSolvesSameSystem() throws {
+        let result = try NonlinearSystemSolver.solveMatrixFree(
+            initial: [1.5, 0.5], residual: { x in
+                [x[0] * x[0] + x[1] * x[1] - 5, x[0] - x[1] - 1]
+            }, jacobianProduct: { x, v in
+                [2 * x[0] * v[0] + 2 * x[1] * v[1], v[0] - v[1]]
+            })
+        XCTAssertEqual(result.termination, .convergedResidual)
+        XCTAssertEqual(result.point[0], 2, accuracy: 1e-8)
+        XCTAssertEqual(result.point[1], 1, accuracy: 1e-8)
+        XCTAssertGreaterThan(result.linearIterations, 0)
+    }
+
+    func testEquationGraphAndAdaptiveContinuation() throws {
+        let squareMinusTwo = NonlinearExpression(nodes: [
+            .parameter(0), .pow(0, 2), .constant(2), .subtract(1, 2)
+        ], output: 3)
+        let model = try NonlinearEquationModel(parameterCount: 1, equations: [squareMinusTwo])
+        let root = try NonlinearSystemSolver.solve(model: model, initial: [1])
+        XCTAssertEqual(root.point[0], sqrt(2), accuracy: 1e-8)
+
+        let continuation = try NonlinearSystemSolver.continueSolution(
+            initial: [1], from: 1, to: 4,
+            options: .init(initialStep: 0.2, maximumStep: 0.75)
+        ) { parameter, x in
+            .init(residuals: [x[0] * x[0] - parameter], jacobian: [[2 * x[0]]])
+        }
+        XCTAssertTrue(continuation.reachedTarget)
+        XCTAssertEqual(continuation.point[0], 2, accuracy: 1e-8)
+        XCTAssertFalse(continuation.stages.isEmpty)
+    }
+
+    func testEquationSolverReportsSingularityReuseAndCancellation() throws {
+        let singular = try NonlinearSystemSolver.solve(initial: [0]) { x in
+            .init(residuals: [x[0] * x[0] + 1], jacobian: [[2 * x[0]]])
+        }
+        XCTAssertEqual(singular.termination, .singularJacobian)
+
+        let reused = try NonlinearSystemSolver.solve(
+            initial: [1], options: .init(jacobianReuseIterations: 2)
+        ) { x in .init(residuals: [x[0] * x[0] - 2], jacobian: [[2 * x[0]]]) }
+        XCTAssertGreaterThan(reused.reusedJacobians, 0)
+        XCTAssertLessThan(reused.residualNorm, 1e-9)
+
+        let cancelled = try NonlinearSystemSolver.solve(
+            initial: [1], observer: { _ in false }
+        ) { x in .init(residuals: [x[0] * x[0] - 2], jacobian: [[2 * x[0]]]) }
+        XCTAssertEqual(cancelled.termination, .cancelled)
+    }
+
+    func testPseudoTransientContinuationEscapesSingularInitialJacobian() throws {
+        let result = try NonlinearSystemSolver.solvePseudoTransient(initial: [0]) { x in
+            .init(residuals: [x[0] * x[0] * x[0] - 1],
+                  jacobian: [[3 * x[0] * x[0]]])
+        }
+        XCTAssertEqual(result.termination, .convergedResidual)
+        XCTAssertEqual(result.point[0], 1, accuracy: 1e-7)
+    }
+
     func testTrustRegionNewtonCGSolvesMatrixFreeQuadratic() throws {
         let result = try TrustRegionNewtonCG.minimize(initial: [8, -5], objective: { x in
             (0.5 * (4 * x[0] * x[0] + x[1] * x[1]) - 8 * x[0] + 3 * x[1],

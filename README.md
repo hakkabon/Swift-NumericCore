@@ -163,6 +163,9 @@ Swift-NumericCore/
   derivative-free layer adds bound-aware Nelder-Mead and deterministic
   coordinate pattern search, with explicit evaluation budgets, cancellation,
   convergence geometry, and finite-value validation.
+  First-class square nonlinear equation systems now solve `F(x) = 0` directly
+  through damped Newton or matrix-free Newton-GMRES, with scaling, Jacobian
+  reuse, natural-parameter continuation, and pseudo-transient continuation.
 - `NumericCoreAMPL` — `Model` (variables/params/constraints/objective,
   including the `integer` qualifier), a hand-rolled lexer/parser for
   the grammar in `docs/design/ampl-grammar.md`
