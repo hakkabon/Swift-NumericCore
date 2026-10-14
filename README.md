@@ -190,6 +190,9 @@ Swift-NumericCore/
   The FEM foundation adds sparse static assembly, exact prescribed-value
   elimination, reaction recovery, thermal triangles, and planar trusses with
   element stress/force and global energy/residual diagnostics.
+  Structural dynamics extends the truss formulation with consistent mass
+  assembly, mass-normalized modal analysis, Rayleigh damping, and stable
+  average-acceleration Newmark integration with energy/equilibrium diagnostics.
 - `NumericCoreAMPL` — `Model` (variables/params/constraints/objective,
   including the `integer` qualifier), a hand-rolled lexer/parser for
   the grammar in `docs/design/ampl-grammar.md`

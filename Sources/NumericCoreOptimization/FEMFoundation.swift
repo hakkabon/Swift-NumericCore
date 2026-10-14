@@ -92,8 +92,10 @@ public struct ThermalFEMModel: Sendable, Hashable {
 public struct TrussMaterial: Sendable, Hashable {
     public let youngModulus: Double
     public let area: Double
-    public init(youngModulus: Double, area: Double) {
-        self.youngModulus = youngModulus; self.area = area
+    /// Mass density per unit volume. Static analysis permits zero; dynamics requires positive density.
+    public let density: Double
+    public init(youngModulus: Double, area: Double, density: Double = 0) {
+        self.youngModulus = youngModulus; self.area = area; self.density = density
     }
 }
 
@@ -153,11 +155,11 @@ public struct TrussFEMModel: Sendable, Hashable {
         return .init(staticResult: staticResult, elements: elementResults)
     }
 
-    private func validate() throws {
+    func validate() throws {
         try femValidateCommon(dofs: 2*nodes.count, constraints: constraints, loads: loads)
         guard nodes.count >= 2, !materials.isEmpty, !elements.isEmpty,
               nodes.allSatisfy({ $0.x.isFinite && $0.y.isFinite }),
-              materials.allSatisfy({ $0.youngModulus.isFinite && $0.youngModulus > 0 && $0.area.isFinite && $0.area > 0 }),
+              materials.allSatisfy({ $0.youngModulus.isFinite && $0.youngModulus > 0 && $0.area.isFinite && $0.area > 0 && $0.density.isFinite && $0.density >= 0 }),
               elements.allSatisfy({ $0.nodes.count == 2 && materials.indices.contains($0.material) && $0.nodes.allSatisfy(nodes.indices.contains) && $0.nodes[0] != $0.nodes[1] })
         else { throw femInvalid("invalid truss FEM model") }
         var used = Set<[Int]>()
@@ -242,7 +244,7 @@ private func femTriangleGeometry(_ nodes: [FEMNode2D]) throws
             [nodes[2].x-nodes[1].x, nodes[0].x-nodes[2].x, nodes[1].x-nodes[0].x])
 }
 
-private func femTrussGeometry(_ first: FEMNode2D, _ second: FEMNode2D) throws
+func femTrussGeometry(_ first: FEMNode2D, _ second: FEMNode2D) throws
     -> (length: Double, cosine: Double, sine: Double) {
     let dx = second.x-first.x, dy = second.y-first.y, length = hypot(dx, dy)
     guard length.isFinite, length > 1e-14 else { throw femInvalid("zero-length truss element") }
