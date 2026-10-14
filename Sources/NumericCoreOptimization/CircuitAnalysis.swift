@@ -101,7 +101,7 @@ public enum CircuitDevice: Sendable, Hashable {
                     transconductance: Double, threshold: Double,
                     channelLengthModulation: Double)
 
-    fileprivate var name: String {
+    public var name: String {
         switch self {
         case .resistor(let name, _, _, _), .capacitor(let name, _, _, _),
              .inductor(let name, _, _, _, _), .currentSource(let name, _, _, _),
@@ -204,6 +204,14 @@ public struct CircuitModel: Sendable, Hashable {
     }
 
     public var unknownCount: Int { unknownNames.count }
+    public func nodeUnknownIndex(_ node: Int) throws -> Int? {
+        guard nodeUnknowns.indices.contains(node) else { throw circuitInvalid("node is out of range") }
+        return nodeUnknowns[node]
+    }
+    public func branchUnknownIndex(_ device: Int) throws -> Int? {
+        guard branchUnknowns.indices.contains(device) else { throw circuitInvalid("device is out of range") }
+        return branchUnknowns[device]
+    }
     public var initialState: [Double] {
         var result = [Double](repeating: 0, count: unknownCount)
         for node in nodes.indices { if let index = nodeUnknowns[node] { result[index] = nodes[node].initialVoltage } }

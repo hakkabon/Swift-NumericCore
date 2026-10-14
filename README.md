@@ -184,6 +184,9 @@ Swift-NumericCore/
   Nonlinear circuit depth includes VCCS/VCVS controlled sources, an analytic
   level-1 NMOS model, source-stepped/gmin DC continuation, and pulse-transition
   breakpoints for discontinuity-aware transient scheduling.
+  Small-signal AC sweeps linearize the nonlinear MNA system at a DC operating
+  point and solve its real block complex form. Bounded circuit optimization can
+  fit weighted AC magnitude targets through model-builder closures and L-BFGS-B.
 - `NumericCoreAMPL` — `Model` (variables/params/constraints/objective,
   including the `integer` qualifier), a hand-rolled lexer/parser for
   the grammar in `docs/design/ampl-grammar.md`
