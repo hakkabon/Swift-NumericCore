@@ -217,8 +217,11 @@ Swift-NumericCore/
   penalties. The production LP/MILP facade now composes reversible presolve,
   automatic solver selection, postsolve reconstruction, and independent
   original-model certification; converged convex QPs can be active-set polished
-  through a pivoted KKT solve. A structured numerical validation program adds scale-aware
-  metrics, backward-error checks, deterministic perturbations, and audited
+  through a pivoted KKT solve. Constrained nonlinear solutions support
+  equilibrated active-set KKT analysis and implicit first-order sensitivities to
+  objective-gradient, constraint-bound, and variable-bound perturbations. A
+  structured numerical validation program adds scale-aware metrics,
+  backward-error checks, deterministic perturbations, and audited
   LP/QP/MILP/nonlinear reference cases. Nonlinear models compile to the shared graph and
   solve through bounded L-BFGS, SQP, augmented Lagrangian, or mixed-integer
   nonlinear search on either backend.
