@@ -42,3 +42,10 @@ jobs:
 
       - name: Run complete validation suite
         run: swift test
+      - name: Produce reproducible standard-tier evidence
+        run: swift run -c release NumericCoreValidation standard > numerical-validation.json
+      - name: Upload numerical evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: swift-numerical-validation
+          path: numerical-validation.json

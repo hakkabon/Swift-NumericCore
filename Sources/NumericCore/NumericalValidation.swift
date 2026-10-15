@@ -1,5 +1,15 @@
+import Foundation
+
 /// Mixed absolute/relative acceptance rule shared by validation suites.
-public struct ValidationTolerance: Sendable, Hashable {
+public enum ValidationTier: String, Sendable, Hashable, Codable, CaseIterable, Comparable {
+    case smoke, standard, extended
+
+    public static func < (lhs: Self, rhs: Self) -> Bool {
+        Self.allCases.firstIndex(of: lhs)! < Self.allCases.firstIndex(of: rhs)!
+    }
+}
+
+public struct ValidationTolerance: Sendable, Hashable, Codable {
     public var absolute: Double
     public var relative: Double
 
@@ -18,7 +28,7 @@ public struct ValidationTolerance: Sendable, Hashable {
     }
 }
 
-public struct ValidationMetric: Sendable, Hashable {
+public struct ValidationMetric: Sendable, Hashable, Codable {
     public let name: String
     public let observed: Double
     public let reference: Double
@@ -40,7 +50,7 @@ public struct ValidationMetric: Sendable, Hashable {
     }
 }
 
-public struct ValidationProvenance: Sendable, Hashable {
+public struct ValidationProvenance: Sendable, Hashable, Codable {
     public let collection: String
     public let problem: String
     public let citation: String
@@ -51,21 +61,41 @@ public struct ValidationProvenance: Sendable, Hashable {
     }
 }
 
-public struct ValidationCase: Sendable, Hashable {
+public struct ValidationCase: Sendable, Hashable, Codable {
+    public let id: String
+    public let family: String
+    public let tier: ValidationTier
     public let name: String
     public let metrics: [ValidationMetric]
     public let provenance: ValidationProvenance?
     public var passed: Bool { !metrics.isEmpty && metrics.allSatisfy(\.passed) }
 
-    public init(name: String, metrics: [ValidationMetric],
+    public init(id: String? = nil, family: String = "core", tier: ValidationTier = .smoke,
+                name: String, metrics: [ValidationMetric],
                 provenance: ValidationProvenance? = nil) {
+        self.id = id ?? Self.stableIdentifier(name)
+        self.family = family
+        self.tier = tier
         self.name = name
         self.metrics = metrics
         self.provenance = provenance
     }
+
+    private static func stableIdentifier(_ name: String) -> String {
+        var result = "", needsSeparator = false
+        for scalar in name.lowercased().unicodeScalars {
+            if CharacterSet.alphanumerics.contains(scalar), scalar.isASCII {
+                result.unicodeScalars.append(scalar); needsSeparator = false
+            } else if !needsSeparator, !result.isEmpty {
+                result.append("-"); needsSeparator = true
+            }
+        }
+        while result.last == "-" { result.removeLast() }
+        return result
+    }
 }
 
-public struct ValidationReport: Sendable, Hashable {
+public struct ValidationReport: Sendable, Hashable, Codable {
     public let cases: [ValidationCase]
     public var passed: Bool { !cases.isEmpty && cases.allSatisfy(\.passed) }
     public var failureCount: Int { cases.filter { !$0.passed }.count }
@@ -74,9 +104,109 @@ public struct ValidationReport: Sendable, Hashable {
     }
 
     public init(cases: [ValidationCase]) { self.cases = cases }
+
+    public func filtered(through tier: ValidationTier) -> ValidationReport {
+        .init(cases: cases.filter { $0.tier <= tier })
+    }
+
+    public func snapshot(implementation: String, tier: ValidationTier) -> ValidationSnapshot {
+        .init(implementation: implementation, tier: tier,
+              cases: filtered(through: tier).cases)
+    }
 }
 
-public struct LinearSystemValidation: Sendable, Hashable {
+public struct ValidationManifestEntry: Sendable, Hashable, Codable {
+    public let id: String
+    public let family: String
+    public let tier: ValidationTier
+    public let name: String
+    public let metricNames: [String]
+    public let provenance: ValidationProvenance?
+}
+
+public struct ValidationRegression: Sendable, Hashable, Codable {
+    public let caseID: String
+    public let metric: String?
+    public let message: String
+}
+
+public struct ValidationSnapshot: Sendable, Hashable, Codable {
+    public let schemaVersion: Int
+    public let implementation: String
+    public let tier: ValidationTier
+    public let cases: [ValidationCase]
+
+    public init(implementation: String, tier: ValidationTier, cases: [ValidationCase]) {
+        schemaVersion = 1
+        self.implementation = implementation
+        self.tier = tier
+        self.cases = cases.sorted { $0.id < $1.id }
+    }
+
+    public var manifest: [ValidationManifestEntry] {
+        cases.map { validationCase in
+            .init(id: validationCase.id, family: validationCase.family,
+                  tier: validationCase.tier, name: validationCase.name,
+                  metricNames: validationCase.metrics.map(\.name),
+                  provenance: validationCase.provenance)
+        }
+    }
+
+    public var manifestIssues: [String] {
+        var issues: [String] = []
+        for (index, validationCase) in cases.enumerated() {
+            if validationCase.id.isEmpty {
+                issues.append("case at index \(index) has an empty identifier")
+            }
+            if cases[..<index].contains(where: { $0.id == validationCase.id }) {
+                issues.append("duplicate case identifier: \(validationCase.id)")
+            }
+            if validationCase.family.isEmpty {
+                issues.append("case \(validationCase.id) has an empty family")
+            }
+        }
+        return issues
+    }
+
+    public func jsonData(prettyPrinted: Bool = true) throws -> Data {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = prettyPrinted ? [.prettyPrinted, .sortedKeys] : [.sortedKeys]
+        encoder.nonConformingFloatEncodingStrategy = .convertToString(
+            positiveInfinity: "Infinity", negativeInfinity: "-Infinity", nan: "NaN")
+        return try encoder.encode(self)
+    }
+
+    public func regressions(against baseline: ValidationSnapshot,
+                            normalizedErrorSlack: Double = 0) -> [ValidationRegression] {
+        let slack = normalizedErrorSlack.isFinite && normalizedErrorSlack >= 0
+            ? normalizedErrorSlack : 0
+        var regressions: [ValidationRegression] = []
+        for oldCase in baseline.cases {
+            guard let newCase = cases.first(where: { $0.id == oldCase.id }) else {
+                regressions.append(.init(caseID: oldCase.id, metric: nil,
+                                         message: "case missing from current snapshot"))
+                continue
+            }
+            for oldMetric in oldCase.metrics {
+                guard let newMetric = newCase.metrics.first(where: { $0.name == oldMetric.name }) else {
+                    regressions.append(.init(caseID: oldCase.id, metric: oldMetric.name,
+                                             message: "metric missing from current snapshot"))
+                    continue
+                }
+                if oldMetric.passed && !newMetric.passed {
+                    regressions.append(.init(caseID: oldCase.id, metric: oldMetric.name,
+                                             message: "metric changed from pass to fail"))
+                } else if newMetric.normalizedError > oldMetric.normalizedError + slack {
+                    regressions.append(.init(caseID: oldCase.id, metric: oldMetric.name,
+                                             message: "normalized error exceeded baseline slack"))
+                }
+            }
+        }
+        return regressions
+    }
+}
+
+public struct LinearSystemValidation: Sendable, Hashable, Codable {
     public let finite: Bool
     public let residualInfinityNorm: Double
     public let relativeResidual: Double

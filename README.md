@@ -227,6 +227,10 @@ Swift-NumericCore/
   backends. Nonlinear models compile to the shared graph and
   solve through bounded L-BFGS, SQP, augmented Lagrangian, or mixed-integer
   nonlinear search on either backend.
+  Validation cases now also have stable IDs, numerical families, and cumulative
+  smoke/standard/extended tiers. `NumericCoreValidation` emits deterministic,
+  timestamp-free JSON snapshots with a corpus manifest and regression-comparison
+  semantics; CI uploads the standard-tier snapshot as release evidence.
   Not yet built on the `Grammar`/`Lexer`/
   `Parser` packages originally sketched for this — see `Model.swift`'s
   module docs for why.

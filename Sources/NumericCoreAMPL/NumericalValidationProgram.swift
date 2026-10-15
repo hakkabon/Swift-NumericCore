@@ -17,7 +17,8 @@ public enum NumericCoreValidationProgram {
         let compiledLP = try AMPLParser.parse(lpSource).compile()
         let lp = try compiledLP.solve(configuration: .simplex(.init(scaling: false)))
         let scaledLP = try compiledLP.solve(configuration: .simplex(.init(scaling: true)))
-        let lpCase = ValidationCase(name: "LP reference and scaling invariance", metrics: [
+        let lpCase = ValidationCase(id: "internal.lp.reference", family: "linear-programming",
+                                    name: "LP reference and scaling invariance", metrics: [
             .init(name: "LP objective", observed: lp.objectiveValue,
                   reference: 11, tolerance: tolerance),
             .init(name: "scaled LP objective", observed: scaledLP.objectiveValue,
@@ -32,7 +33,8 @@ public enum NumericCoreValidationProgram {
         let qp = try ConvexQuadraticSolver.solve(
             qpProblem, options: .init(maxIterations: 2_000, rho: 1e-8))
         let qpTolerance = ValidationTolerance(absolute: 2e-6, relative: 1e-7)
-        let qpCase = ValidationCase(name: "convex QP KKT reference", metrics: [
+        let qpCase = ValidationCase(id: "internal.qp.kkt", family: "quadratic-programming",
+                                    name: "convex QP KKT reference", metrics: [
             .init(name: "QP point", observed: qp.point[0], reference: 1,
                   tolerance: qpTolerance),
             .init(name: "QP bound violation", observed: qp.maximumVariableViolation,
@@ -49,7 +51,9 @@ public enum NumericCoreValidationProgram {
         """
         let milp = try AMPLParser.parse(milpSource).compile().solve(
             configuration: .branchAndBound())
-        let milpCase = ValidationCase(name: "MILP enumerated optimum", metrics: [
+        let milpCase = ValidationCase(id: "internal.milp.enumerated",
+                                      family: "mixed-integer-programming",
+                                      name: "MILP enumerated optimum", metrics: [
             .init(name: "MILP objective", observed: milp.objectiveValue,
                   reference: 2, tolerance: tolerance),
             .init(name: "MILP integrality",
@@ -69,7 +73,9 @@ public enum NumericCoreValidationProgram {
             model: model, initial: [8, -8], backend: .swift)
         let rust = try NonlinearModelSolver.minimize(
             model: model, initial: [8, -8], backend: .rust)
-        let nonlinearCase = ValidationCase(name: "nonlinear Swift/Rust conformance", metrics: [
+        let nonlinearCase = ValidationCase(id: "internal.nlp.conformance",
+                                           family: "nonlinear-optimization",
+                                           name: "nonlinear Swift/Rust conformance", metrics: [
             .init(name: "Swift nonlinear x", observed: swift.point[0],
                   reference: 2, tolerance: tolerance),
             .init(name: "Swift nonlinear y", observed: swift.point[1],
@@ -89,7 +95,9 @@ public enum NumericCoreValidationProgram {
             variableBounds: [.init(lower: 1, upper: 1), .init(lower: 0, upper: 10)])
         let presolved = try LinearModelPresolver.presolve(sparseProblem)
         let restored = try presolved.restorePoint([])
-        let presolveCase = ValidationCase(name: "presolve and postsolve equivalence", metrics: [
+        let presolveCase = ValidationCase(id: "internal.presolve.postsolve",
+            family: "model-transformation", tier: .standard,
+            name: "presolve and postsolve equivalence", metrics: [
             .init(name: "restored x", observed: restored[0], reference: 1,
                   tolerance: tolerance),
             .init(name: "restored y", observed: restored[1], reference: 2,
@@ -108,7 +116,9 @@ public enum NumericCoreValidationProgram {
         let workspace = try SparseLinearWorkspace(problem: workspaceProblem)
         let activity = try workspace.rowActivity([2, -1, 3])
         let transpose = try workspace.transposeProduct([1, -2, 0.5])
-        let sparseCase = ValidationCase(name: "sparse operator scale coverage", metrics: [
+        let sparseCase = ValidationCase(id: "internal.sparse.mixed-scale",
+            family: "sparse-linear-algebra", tier: .standard,
+            name: "sparse operator scale coverage", metrics: [
             .init(name: "scaled row 0", observed: activity[0], reference: 6.00000002,
                   tolerance: tolerance),
             .init(name: "scaled row 1", observed: activity[1], reference: -400000006,
@@ -121,7 +131,9 @@ public enum NumericCoreValidationProgram {
 
         let perturbed = NumericalValidation.perturb([1, -2, 3], seed: 42,
                                                      relativeMagnitude: 1e-6)
-        let perturbationCase = ValidationCase(name: "deterministic perturbation reproducibility", metrics:
+        let perturbationCase = ValidationCase(id: "internal.reproducibility.perturbation",
+            family: "validation-infrastructure", tier: .standard,
+            name: "deterministic perturbation reproducibility", metrics:
             zip(perturbed, NumericalValidation.perturb([1, -2, 3], seed: 42,
                                                         relativeMagnitude: 1e-6)).enumerated().map {
                 .init(name: "perturbation \($0.offset)", observed: $0.element.0,

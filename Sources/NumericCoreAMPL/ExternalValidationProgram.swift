@@ -32,7 +32,8 @@ public enum ExternalValidationProgram {
         let rssTolerance = ValidationTolerance(absolute: 2e-5, relative: 2e-5)
         let swiftRSS = swift.residuals.reduce(0) { $0 + $1 * $1 }
         let rustRSS = rust.residuals.reduce(0) { $0 + $1 * $1 }
-        return .init(name: "NIST StRD Misra1a nonlinear regression", metrics: [
+        return .init(id: "nist.strd.misra1a", family: "nonlinear-least-squares",
+            tier: .standard, name: "NIST StRD Misra1a nonlinear regression", metrics: [
             .init(name: "Swift Misra1a b1", observed: swift.point[0],
                   reference: 2.3894212918e2, tolerance: parameterTolerance),
             .init(name: "Swift Misra1a b2", observed: swift.point[1],
@@ -98,7 +99,8 @@ public enum ExternalValidationProgram {
             .init(name: "Rust HS71 feasibility", observed: rust.maximumViolation,
                   reference: 0, tolerance: .init(absolute: 2e-5, relative: 0)),
         ]
-        return .init(name: "CUTEst HS71 constrained nonlinear program", metrics: metrics,
+        return .init(id: "cutest.hs71", family: "constrained-nonlinear", tier: .standard,
+            name: "CUTEst HS71 constrained nonlinear program", metrics: metrics,
             provenance: .init(collection: "CUTEst SIF problem set", problem: "HS71",
                 citation: "Hock and Schittkowski (1981), Test Examples for Nonlinear Programming Codes, problem 71",
                 sourceURL: "https://github.com/ralna/SIF/blob/master/HS71.SIF"))
