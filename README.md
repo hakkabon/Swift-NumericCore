@@ -249,6 +249,10 @@ Swift-NumericCore/
   singular-mass index-1 systems, directional and terminal event location, and
   validated hard step stops. Circuit transients automatically honor source
   waveform breakpoints instead of stepping across discontinuities.
+  Continuum FEM now adds constant-strain triangular plane-stress and
+  plane-strain elasticity, consistent body forces, sparse constrained assembly,
+  and recovery of strain, full stress, principal/von-Mises measures, reactions,
+  and element-versus-global energy diagnostics.
   Not yet built on the `Grammar`/`Lexer`/
   `Parser` packages originally sketched for this — see `Model.swift`'s
   module docs for why.

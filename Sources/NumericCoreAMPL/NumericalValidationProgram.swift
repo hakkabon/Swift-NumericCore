@@ -225,6 +225,29 @@ public enum NumericCoreValidationProgram {
                       reference: 1, tolerance: .init(absolute: 0, relative: 0)),
             ])
 
+        let continuum = try ContinuumFEMModel(
+            nodes: [.init(x: 0, y: 0), .init(x: 1, y: 0), .init(x: 0, y: 1)],
+            materials: [.init(youngModulus: 200, poissonRatio: 0.3)],
+            elements: [.init(nodes: [0, 1, 2], material: 0)],
+            constraints: [.init(dof: 0, value: 0), .init(dof: 1, value: 0),
+                          .init(dof: 3, value: 0), .init(dof: 4, value: 0)],
+            loads: [.init(dof: 2, value: 5)]).solve()
+        let continuumCase = ValidationCase(id: "internal.fem.continuum-patch",
+            family: "finite-element-analysis", tier: .standard,
+            name: "continuum plane-stress patch test", metrics: [
+                .init(name: "continuum axial displacement",
+                      observed: continuum.staticResult.values[2], reference: 0.05,
+                      tolerance: tolerance),
+                .init(name: "continuum Poisson displacement",
+                      observed: continuum.staticResult.values[5], reference: -0.015,
+                      tolerance: tolerance),
+                .init(name: "continuum axial stress", observed: continuum.elements[0].stress[0],
+                      reference: 10, tolerance: tolerance),
+                .init(name: "continuum energy mismatch",
+                      observed: continuum.maximumElementEnergyMismatch, reference: 0,
+                      tolerance: .init(absolute: 1e-12, relative: 0)),
+            ])
+
         let perturbed = NumericalValidation.perturb([1, -2, 3], seed: 42,
                                                      relativeMagnitude: 1e-6)
         let perturbationCase = ValidationCase(id: "internal.reproducibility.perturbation",
@@ -237,7 +260,8 @@ public enum NumericCoreValidationProgram {
             })
 
         var cases = [lpCase, qpCase, certificateCase, milpCase, nonlinearCase,
-                     presolveCase, sparseCase, kktCase, spiceCase, daeCase, perturbationCase]
+                     presolveCase, sparseCase, kktCase, spiceCase, daeCase,
+                     continuumCase, perturbationCase]
         cases += try ExternalValidationProgram.run()
         return ValidationReport(cases: cases)
     }

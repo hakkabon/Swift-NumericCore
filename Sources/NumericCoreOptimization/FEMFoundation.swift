@@ -185,7 +185,7 @@ public struct TrussStaticResult {
     public let elements: [TrussElementResult]
 }
 
-private func femSolveConstrained(_ stiffness: SparseMatrix<Double>, _ rhs: [Double],
+func femSolveConstrained(_ stiffness: SparseMatrix<Double>, _ rhs: [Double],
                                  _ constraints: [FEMConstraint]) throws -> FEMStaticResult {
     let prescribed = Dictionary(uniqueKeysWithValues: constraints.map { ($0.dof, $0.value) })
     let free = rhs.indices.filter { prescribed[$0] == nil }
@@ -221,7 +221,7 @@ private func femSolveConstrained(_ stiffness: SparseMatrix<Double>, _ rhs: [Doub
                  reducedRelativeResidual: report.relativeResidual, stiffness: stiffness)
 }
 
-private func femValidateCommon(dofs: Int, constraints: [FEMConstraint],
+func femValidateCommon(dofs: Int, constraints: [FEMConstraint],
                                loads: [FEMNodalLoad]) throws {
     guard !constraints.isEmpty, Set(constraints.map(\.dof)).count == constraints.count,
           constraints.allSatisfy({ (0..<dofs).contains($0.dof) && $0.value.isFinite }),
@@ -229,12 +229,12 @@ private func femValidateCommon(dofs: Int, constraints: [FEMConstraint],
     else { throw femInvalid("invalid FEM boundary conditions or loads") }
 }
 
-private func femAddLoads(_ rhs: inout [Double], _ loads: [FEMNodalLoad]) throws {
+func femAddLoads(_ rhs: inout [Double], _ loads: [FEMNodalLoad]) throws {
     for load in loads { rhs[load.dof] += load.value }
     guard rhs.allSatisfy(\.isFinite) else { throw femInvalid("non-finite assembled FEM load") }
 }
 
-private func femTriangleGeometry(_ nodes: [FEMNode2D]) throws
+func femTriangleGeometry(_ nodes: [FEMNode2D]) throws
     -> (area: Double, b: [Double], c: [Double]) {
     let twiceArea = (nodes[1].x-nodes[0].x)*(nodes[2].y-nodes[0].y)
         - (nodes[2].x-nodes[0].x)*(nodes[1].y-nodes[0].y)
@@ -251,6 +251,6 @@ func femTrussGeometry(_ first: FEMNode2D, _ second: FEMNode2D) throws
     return (length, dx/length, dy/length)
 }
 
-private func femInvalid(_ message: String) -> NonlinearOptimizationError {
+func femInvalid(_ message: String) -> NonlinearOptimizationError {
     .invalidConfiguration(message)
 }
