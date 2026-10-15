@@ -235,6 +235,11 @@ Swift-NumericCore/
   derivatives lower into reusable symbolic analysis and numeric LDLT
   refactorization with iterative refinement, inertia, fill, and reuse
   diagnostics. The former native dense materialization has been removed.
+  Robust optimization certificates now distinguish solver status from
+  independently recomputed evidence: LP/MILP points receive feasibility and
+  integrality checks (and optimality only with a supplied global gap), while
+  convex QPs receive full primal/KKT/complementarity checks plus active-set
+  rank warnings. Invalid or non-finite evidence fails closed.
   Not yet built on the `Grammar`/`Lexer`/
   `Parser` packages originally sketched for this — see `Model.swift`'s
   module docs for why.

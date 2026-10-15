@@ -42,6 +42,20 @@ public enum NumericCoreValidationProgram {
             .init(name: "QP stationarity", observed: qp.stationarityNorm, reference: 0,
                   tolerance: .init(absolute: 1e-5, relative: 0)),
         ])
+        let qpCertificate = try OptimizationCertifier.certifyConvexQP(
+            problem: qpProblem, result: qp)
+        let certificateCase = ValidationCase(id: "internal.certificate.qp-kkt",
+            family: "optimization-certification", tier: .standard,
+            name: "independent convex QP certificate", metrics: [
+                .init(name: "QP certificate verified", observed: qpCertificate.verified ? 1 : 0,
+                      reference: 1, tolerance: .init(absolute: 0, relative: 0)),
+                .init(name: "QP optimality claim",
+                      observed: qpCertificate.claim == .optimality ? 1 : 0,
+                      reference: 1, tolerance: .init(absolute: 0, relative: 0)),
+                .init(name: "QP certificate failures",
+                      observed: Double(qpCertificate.metrics.filter { !$0.passed }.count),
+                      reference: 0, tolerance: .init(absolute: 0, relative: 0)),
+            ])
 
         let milpSource = """
         var x >= 0, <= 1 integer;
@@ -167,7 +181,7 @@ public enum NumericCoreValidationProgram {
                       reference: $0.element.1, tolerance: .init(absolute: 0, relative: 0))
             })
 
-        var cases = [lpCase, qpCase, milpCase, nonlinearCase,
+        var cases = [lpCase, qpCase, certificateCase, milpCase, nonlinearCase,
                      presolveCase, sparseCase, kktCase, perturbationCase]
         cases += try ExternalValidationProgram.run()
         return ValidationReport(cases: cases)
