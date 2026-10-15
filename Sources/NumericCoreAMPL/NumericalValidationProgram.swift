@@ -170,6 +170,34 @@ public enum NumericCoreValidationProgram {
                       reference: 1, tolerance: .init(absolute: 0, relative: 0)),
             ])
 
+        let netlist = try SpiceNetlist.parse("""
+        validation RC low pass
+        V1 in 0 DC 1 AC 1
+        R1 in out 1k
+        C1 out 0 1u
+        .OP
+        .AC DEC 10 10 10k
+        .END
+        """)
+        let circuitOperatingPoint = try netlist.circuit.dcOperatingPoint()
+        guard case .ac(let acRequest)? = netlist.analyses.last else {
+            throw NonlinearOptimizationError.invalidConfiguration("SPICE validation lost AC request")
+        }
+        let circuitSweep = try netlist.circuit.acAnalysis(
+            operatingState: circuitOperatingPoint.state, frequencies: acRequest.frequencies,
+            excitations: netlist.acExcitations)
+        let spiceCase = ValidationCase(id: "internal.circuit.spice-netlist",
+            family: "circuit-analysis", tier: .standard,
+            name: "SPICE netlist DC and AC integration", metrics: [
+                .init(name: "SPICE DC output", observed: circuitOperatingPoint.nodeVoltages[2],
+                      reference: 1, tolerance: tolerance),
+                .init(name: "SPICE AC point count", observed: Double(circuitSweep.points.count),
+                      reference: 31, tolerance: .init(absolute: 0, relative: 0)),
+                .init(name: "SPICE AC maximum residual",
+                      observed: circuitSweep.points.map(\.residualNorm).max() ?? .infinity,
+                      reference: 0, tolerance: .init(absolute: 1e-9, relative: 0)),
+            ])
+
         let perturbed = NumericalValidation.perturb([1, -2, 3], seed: 42,
                                                      relativeMagnitude: 1e-6)
         let perturbationCase = ValidationCase(id: "internal.reproducibility.perturbation",
@@ -182,7 +210,7 @@ public enum NumericCoreValidationProgram {
             })
 
         var cases = [lpCase, qpCase, certificateCase, milpCase, nonlinearCase,
-                     presolveCase, sparseCase, kktCase, perturbationCase]
+                     presolveCase, sparseCase, kktCase, spiceCase, perturbationCase]
         cases += try ExternalValidationProgram.run()
         return ValidationReport(cases: cases)
     }

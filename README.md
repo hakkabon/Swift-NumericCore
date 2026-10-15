@@ -240,6 +240,11 @@ Swift-NumericCore/
   integrality checks (and optimality only with a supplied global gap), while
   convex QPs receive full primal/KKT/complementarity checks plus active-set
   rank warnings. Invalid or non-finite evidence fails closed.
+  A source-located SPICE netlist compiler now lowers a practical R/C/L,
+  independent/controlled-source, diode, and level-1 NMOS subset into
+  `CircuitModel`, including parameters, initial conditions, transient source
+  waveforms, and DC/transient/AC analysis directives. Parsed RC validation runs
+  through the native DC and AC solvers as part of the standard release corpus.
   Not yet built on the `Grammar`/`Lexer`/
   `Parser` packages originally sketched for this — see `Model.swift`'s
   module docs for why.
