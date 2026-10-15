@@ -248,6 +248,38 @@ public enum NumericCoreValidationProgram {
                       tolerance: .init(absolute: 1e-12, relative: 0)),
             ])
 
+        let sensitivityExpression = NonlinearExpression(nodes: [
+            .parameter(4), .parameter(2), .multiply(0, 1),
+            .parameter(3), .parameter(1), .multiply(3, 4), .add(2, 5),
+            .parameter(5), .subtract(6, 7),
+        ], output: 8)
+        let sensitivityModel = try EngineeringModel(
+            unknowns: [.init(name: "y", unit: "m", role: .algebraic)],
+            parameters: [.init(name: "k", unit: "N/m", value: 4),
+                         .init(name: "C", unit: "N s/m", value: 2),
+                         .init(name: "p", unit: "N", value: 8)],
+            elements: [.init(name: "balance", kind: "scalar",
+                ports: [.init(name: "y", unknown: 0)],
+                equations: [.init(row: 0, expression: sensitivityExpression)])])
+        let sensitivity = try sensitivityModel.sensitivities(
+            time: 0, state: [2], derivative: [0], responses: [
+                .init(name: "displacement", stateGradient: [1],
+                      directParameterGradient: [0, 0, 0]),
+            ])
+        let sensitivityCase = ValidationCase(id: "internal.engineering.adjoint",
+            family: "engineering-sensitivity", tier: .standard,
+            name: "engineering forward and adjoint sensitivity", metrics: [
+                .init(name: "load sensitivity",
+                      observed: sensitivity.responses[0].parameterGradient[2],
+                      reference: 0.25, tolerance: tolerance),
+                .init(name: "stiffness sensitivity",
+                      observed: sensitivity.responses[0].parameterGradient[0],
+                      reference: -0.5, tolerance: tolerance),
+                .init(name: "forward-adjoint mismatch",
+                      observed: sensitivity.responses[0].maximumForwardAdjointMismatch,
+                      reference: 0, tolerance: .init(absolute: 1e-12, relative: 0)),
+            ])
+
         let perturbed = NumericalValidation.perturb([1, -2, 3], seed: 42,
                                                      relativeMagnitude: 1e-6)
         let perturbationCase = ValidationCase(id: "internal.reproducibility.perturbation",
@@ -261,7 +293,7 @@ public enum NumericCoreValidationProgram {
 
         var cases = [lpCase, qpCase, certificateCase, milpCase, nonlinearCase,
                      presolveCase, sparseCase, kktCase, spiceCase, daeCase,
-                     continuumCase, perturbationCase]
+                     continuumCase, sensitivityCase, perturbationCase]
         cases += try ExternalValidationProgram.run()
         return ValidationReport(cases: cases)
     }

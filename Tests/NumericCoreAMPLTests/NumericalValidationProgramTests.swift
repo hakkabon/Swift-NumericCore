@@ -6,20 +6,20 @@ final class NumericalValidationProgramTests: XCTestCase {
     func testProductionReferenceProgramPasses() throws {
         let report = try NumericCoreValidationProgram.run()
         XCTAssertTrue(report.passed, "\(report)")
-        XCTAssertEqual(report.cases.count, 14)
+        XCTAssertEqual(report.cases.count, 15)
         XCTAssertEqual(report.failureCount, 0)
         XCTAssertLessThanOrEqual(report.maximumNormalizedError, 1)
         XCTAssertEqual(report.cases.compactMap(\.provenance).count, 2)
         XCTAssertEqual(report.filtered(through: .smoke).cases.count, 4)
-        XCTAssertEqual(report.filtered(through: .standard).cases.count, 14)
+        XCTAssertEqual(report.filtered(through: .standard).cases.count, 15)
 
         let first = report.snapshot(implementation: "swift", tier: .standard)
         let second = try NumericCoreValidationProgram.run()
             .snapshot(implementation: "swift", tier: .standard)
         XCTAssertEqual(try first.jsonData(), try second.jsonData())
         XCTAssertTrue(second.regressions(against: first).isEmpty)
-        XCTAssertEqual(first.manifest.count, 14)
-        XCTAssertEqual(Set(first.manifest.map(\.id)).count, 14)
+        XCTAssertEqual(first.manifest.count, 15)
+        XCTAssertEqual(Set(first.manifest.map(\.id)).count, 15)
         XCTAssertTrue(first.manifestIssues.isEmpty)
     }
 

@@ -253,6 +253,9 @@ Swift-NumericCore/
   plane-strain elasticity, consistent body forces, sparse constrained assembly,
   and recovery of strain, full stress, principal/von-Mises measures, reactions,
   and element-versus-global energy diagnostics.
+  Engineering operating points now support sparse implicit forward
+  sensitivities and discrete adjoints, including effective DAE tangents,
+  direct response dependence, and forward/adjoint consistency diagnostics.
   Not yet built on the `Grammar`/`Lexer`/
   `Parser` packages originally sketched for this — see `Model.swift`'s
   module docs for why.
