@@ -214,7 +214,10 @@ Swift-NumericCore/
   node/gap policies, validated rounding incumbents with activity metrics, and a
   complete search certificate. Revised simplex periodically reconstructs its
   basis inverse, while Swift and Rust QP paths share residual-balanced ADMM
-  penalties. A structured numerical validation program adds scale-aware
+  penalties. The production LP/MILP facade now composes reversible presolve,
+  automatic solver selection, postsolve reconstruction, and independent
+  original-model certification; converged convex QPs can be active-set polished
+  through a pivoted KKT solve. A structured numerical validation program adds scale-aware
   metrics, backward-error checks, deterministic perturbations, and audited
   LP/QP/MILP/nonlinear reference cases. Nonlinear models compile to the shared graph and
   solve through bounded L-BFGS, SQP, augmented Lagrangian, or mixed-integer

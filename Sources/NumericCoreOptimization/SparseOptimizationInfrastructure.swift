@@ -103,6 +103,13 @@ public enum SparseLinearSolver {
         try problem.validate()
         return try FFIKernels.solveLPInteriorPoint(problem.ffi, options: options)
     }
+    public static func solveMILP(
+        _ problem: SparseLinearProblem,
+        options: FFIBranchAndBoundOptions = .init()
+    ) throws -> FFIMILPSolveReport {
+        try problem.validate()
+        return try FFIKernels.solveMILP(problem.ffi, options: options)
+    }
 }
 
 /// Canonical lower-triangular CSR storage for a symmetric matrix.

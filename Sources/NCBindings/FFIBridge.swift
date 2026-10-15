@@ -529,6 +529,11 @@ public struct FFISolution: Sendable, Hashable {
     public let variableValues: [Double]
     public let objectiveValue: Double
     public let status: FFISolveStatus
+    public init(variableValues: [Double], objectiveValue: Double, status: FFISolveStatus) {
+        self.variableValues = variableValues
+        self.objectiveValue = objectiveValue
+        self.status = status
+    }
 }
 
 public struct FFISimplexOptions: Sendable, Hashable {

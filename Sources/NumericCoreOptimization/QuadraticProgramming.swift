@@ -131,6 +131,66 @@ public struct QuadraticResult: Sendable, Hashable {
     }
 }
 
+/// Result of an equality-constrained active-set refinement of a converged QP point.
+public struct QuadraticPolishResult: Sendable, Hashable {
+    public let point: [Double]
+    public let objective: Double
+    public let attempted: Bool
+    public let accepted: Bool
+    public let activeConstraints: Int
+    public let objectiveImprovement: Double
+    public let maximumRowViolation: Double
+    public let maximumVariableViolation: Double
+}
+
+public enum QuadraticPolisher {
+    public static func polish(_ problem: QuadraticProblem, result: QuadraticResult,
+                              activeTolerance: Double = 1e-6) throws -> QuadraticPolishResult {
+        try problem.validate()
+        guard activeTolerance.isFinite, activeTolerance > 0 else {
+            throw NonlinearOptimizationError.invalidConfiguration("invalid QP polish tolerance")
+        }
+        guard result.termination == .converged, result.point.count == problem.linear.count else {
+            return qpPolishResult(problem, result.point, result.objective, false, false, 0, result.objective)
+        }
+        let matrix = problem.constraints.dense(), activity = qpMatvec(matrix, result.point)
+        var active: [[Double]] = [], targets: [Double] = []
+        for row in matrix.indices {
+            if let lower = problem.rowBounds[row].lower,
+               abs(activity[row] - lower) <= activeTolerance {
+                active.append(matrix[row]); targets.append(lower)
+            } else if let upper = problem.rowBounds[row].upper,
+                      abs(activity[row] - upper) <= activeTolerance {
+                active.append(matrix[row]); targets.append(upper)
+            }
+        }
+        for column in result.point.indices {
+            var target: Double?
+            if let lower = problem.variableBounds[column].lower,
+               abs(result.point[column] - lower) <= activeTolerance { target = lower }
+            else if let upper = problem.variableBounds[column].upper,
+                    abs(result.point[column] - upper) <= activeTolerance { target = upper }
+            if let target {
+                var row = [Double](repeating: 0, count: result.point.count); row[column] = 1
+                active.append(row); targets.append(target)
+            }
+        }
+        guard !active.isEmpty, let candidate = qpSolveKKT(problem, active, targets) else {
+            return qpPolishResult(problem, result.point, result.objective, true, false,
+                                  active.count, result.objective)
+        }
+        let rowViolation = qpMaxViolation(qpMatvec(matrix, candidate), problem.rowBounds)
+        let variableViolation = qpMaxViolation(candidate, problem.variableBounds)
+        let objective = problem.objective(at: candidate)
+        let accepted = candidate.allSatisfy(\.isFinite)
+            && rowViolation <= activeTolerance && variableViolation <= activeTolerance
+            && objective <= result.objective + activeTolerance
+        return qpPolishResult(problem, accepted ? candidate : result.point,
+                              accepted ? objective : result.objective, true, accepted,
+                              active.count, result.objective)
+    }
+}
+
 public struct QuadraticIteration: Sendable, Hashable {
     public let iteration: Int
     public let objective: Double
@@ -247,6 +307,64 @@ private func qpFactorSystem(_ problem: QuadraticProblem, _ combined: [[Double]],
         system[i][j] += rho * sum
     }}
     return qpCholesky(system)
+}
+
+private func qpPolishResult(_ problem: QuadraticProblem, _ point: [Double], _ objective: Double,
+                            _ attempted: Bool, _ accepted: Bool, _ active: Int,
+                            _ originalObjective: Double) -> QuadraticPolishResult {
+    let rowViolation = point.count == problem.linear.count
+        ? qpMaxViolation(qpMatvec(problem.constraints.dense(), point), problem.rowBounds) : .infinity
+    let variableViolation = point.count == problem.linear.count
+        ? qpMaxViolation(point, problem.variableBounds) : .infinity
+    return .init(point: point, objective: objective, attempted: attempted, accepted: accepted,
+                 activeConstraints: active, objectiveImprovement: originalObjective - objective,
+                 maximumRowViolation: rowViolation, maximumVariableViolation: variableViolation)
+}
+
+private func qpSolveKKT(_ problem: QuadraticProblem, _ active: [[Double]], _ targets: [Double])
+    -> [Double]? {
+    let n = problem.linear.count, size = n + active.count
+    var system = [[Double]](repeating: [Double](repeating: 0, count: size), count: size)
+    var rhs = [Double](repeating: 0, count: size)
+    for row in 0..<n {
+        rhs[row] = -problem.linear[row]
+        for column in 0..<n { system[row][column] = problem.quadratic[row][column] }
+    }
+    for row in active.indices {
+        rhs[n + row] = targets[row]
+        for column in 0..<n {
+            system[column][n + row] = active[row][column]
+            system[n + row][column] = active[row][column]
+        }
+    }
+    guard let solution = qpSolvePivoted(system, rhs) else { return nil }
+    return Array(solution.prefix(n))
+}
+
+private func qpSolvePivoted(_ input: [[Double]], _ inputRHS: [Double]) -> [Double]? {
+    var a = input, b = inputRHS; let n = b.count
+    for column in 0..<n {
+        var pivot = column
+        if column + 1 < n {
+            for row in (column + 1)..<n where abs(a[row][column]) > abs(a[pivot][column]) { pivot = row }
+        }
+        guard abs(a[pivot][column]) > 1e-12 else { return nil }
+        if pivot != column { a.swapAt(pivot, column); b.swapAt(pivot, column) }
+        if column + 1 < n {
+            for row in (column + 1)..<n {
+                let scale = a[row][column] / a[column][column]
+                for index in column..<n { a[row][index] -= scale * a[column][index] }
+                b[row] -= scale * b[column]
+            }
+        }
+    }
+    var x = [Double](repeating: 0, count: n)
+    for row in (0..<n).reversed() {
+        var value = b[row]
+        if row + 1 < n { for column in (row + 1)..<n { value -= a[row][column] * x[column] } }
+        x[row] = value / a[row][row]
+    }
+    return x.allSatisfy(\.isFinite) ? x : nil
 }
 
 private func makeResult(_ problem: QuadraticProblem, _ point: [Double], _ dual: [Double],
