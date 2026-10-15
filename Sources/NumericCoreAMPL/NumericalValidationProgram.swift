@@ -1,3 +1,4 @@
+import Foundation
 import NumericCore
 import NumericCoreOptimization
 
@@ -198,6 +199,32 @@ public enum NumericCoreValidationProgram {
                       reference: 0, tolerance: .init(absolute: 1e-9, relative: 0)),
             ])
 
+        let daeSystem: TimeIntegrator.DAESystem = { _, y, yd in
+            DAEEvaluation.massMatrix([[1, 0], [0, 0]],
+                rightHandSide: [-y[0], 1-y[0]-y[1]],
+                rightHandSideJacobian: [[-1, 0], [-1, -1]], derivative: yd)
+        }
+        let daeInitial = try TimeIntegrator.consistentDAEInitialConditions(
+            time: 0, initialState: [1, 0.5], initialDerivative: [0, 0],
+            freeState: [false, true], system: daeSystem)
+        let daeResult = try TimeIntegrator.integrateDAE(from: 0, to: 2,
+            initialState: daeInitial.state, initialDerivative: daeInitial.derivative,
+            options: .init(absoluteTolerance: 1e-5, relativeTolerance: 1e-4,
+                           initialStep: 0.02, maximumStep: 0.05), stopTimes: [0.3],
+            events: [.init(direction: .falling, terminal: true)],
+            eventFunction: { _, y in [y[0]-0.5] }, system: daeSystem)
+        let daeCase = ValidationCase(id: "internal.dae.production",
+            family: "time-integration", tier: .standard,
+            name: "consistent index-1 DAE initialization and event integration", metrics: [
+                .init(name: "DAE initialization residual", observed: daeInitial.residualNorm,
+                      reference: 0, tolerance: .init(absolute: 1e-10, relative: 0)),
+                .init(name: "DAE terminal event time", observed: daeResult.events.first?.time ?? .infinity,
+                      reference: log(2), tolerance: .init(absolute: 3e-3, relative: 0)),
+                .init(name: "DAE hard stop observed",
+                      observed: daeResult.points.contains { abs($0.time-0.3) < 1e-14 } ? 1 : 0,
+                      reference: 1, tolerance: .init(absolute: 0, relative: 0)),
+            ])
+
         let perturbed = NumericalValidation.perturb([1, -2, 3], seed: 42,
                                                      relativeMagnitude: 1e-6)
         let perturbationCase = ValidationCase(id: "internal.reproducibility.perturbation",
@@ -210,7 +237,7 @@ public enum NumericCoreValidationProgram {
             })
 
         var cases = [lpCase, qpCase, certificateCase, milpCase, nonlinearCase,
-                     presolveCase, sparseCase, kktCase, spiceCase, perturbationCase]
+                     presolveCase, sparseCase, kktCase, spiceCase, daeCase, perturbationCase]
         cases += try ExternalValidationProgram.run()
         return ValidationReport(cases: cases)
     }

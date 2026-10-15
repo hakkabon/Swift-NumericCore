@@ -241,7 +241,8 @@ public struct CircuitModel: Sendable, Hashable {
         try TimeIntegrator.integrateDAE(from: start, to: end,
                                         initialState: initialState,
                                         initialDerivative: initialDerivative,
-                                        options: options) { time, state, derivative in
+                                        options: options,
+                                        stopTimes: transientBreakpoints(from: start, to: end)) { time, state, derivative in
             try daeEvaluation(time: time, state: state, derivative: derivative)
         }
     }

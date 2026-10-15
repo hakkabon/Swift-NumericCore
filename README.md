@@ -245,6 +245,10 @@ Swift-NumericCore/
   `CircuitModel`, including parameters, initial conditions, transient source
   waveforms, and DC/transient/AC analysis directives. Parsed RC validation runs
   through the native DC and AC solvers as part of the standard release corpus.
+  The production DAE path now adds Jacobian-based consistent initialization for
+  singular-mass index-1 systems, directional and terminal event location, and
+  validated hard step stops. Circuit transients automatically honor source
+  waveform breakpoints instead of stepping across discontinuities.
   Not yet built on the `Grammar`/`Lexer`/
   `Parser` packages originally sketched for this — see `Model.swift`'s
   module docs for why.

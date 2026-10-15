@@ -110,6 +110,18 @@ public struct DAEEvaluation: Sendable, Hashable {
     }
 }
 
+/// Result of a consistent-initial-condition Newton solve. For every component
+/// the caller selects whether state or derivative may be corrected.
+public struct DAEInitializationResult: Sendable, Hashable {
+    public let state: [Double]
+    public let derivative: [Double]
+    public let iterations: Int
+    public let evaluations: Int
+    public let residualNorm: Double
+    public let stateCorrections: Int
+    public let derivativeCorrections: Int
+}
+
 public enum TimeIntegrator {
     public typealias ODERightHandSide = (_ time: Double, _ state: [Double]) throws -> [Double]
     public typealias EventFunction = (_ time: Double, _ state: [Double]) throws -> [Double]
@@ -173,9 +185,17 @@ public enum TimeIntegrator {
     public static func integrateDAE(
         from start: Double, to end: Double, initialState: [Double],
         initialDerivative: [Double], options: TimeIntegrationOptions = .init(),
+        stopTimes: [Double] = [],
+        events specifications: [TimeEventSpecification] = [],
+        eventFunction: EventFunction? = nil,
         observer: Observer? = nil, system: DAESystem
     ) throws -> TimeIntegrationResult {
         try tiValidate(start, end, initialState, options)
+        guard specifications.isEmpty == (eventFunction == nil) else {
+            throw tiInvalid("event specifications and function must be provided together")
+        }
+        guard stopTimes.allSatisfy({ $0.isFinite && $0 >= min(start, end) && $0 <= max(start, end) })
+        else { throw tiInvalid("invalid DAE stop time") }
         guard initialDerivative.count == initialState.count, initialDerivative.allSatisfy(\.isFinite) else { throw tiInvalid("invalid initial DAE derivative") }
         let initial = try tiDAE(system(start, initialState, initialDerivative), count: initialState.count)
         guard tiInfNorm(initial.residuals) <= max(options.newtonTolerance, options.absoluteTolerance) else { throw tiInvalid("inconsistent initial DAE state and derivative") }
@@ -183,32 +203,107 @@ public enum TimeIntegrator {
         var time = start, state = initialState, derivative = initialDerivative
         var step = direction * min(options.initialStep, options.maximumStep)
         var points = [TimePoint(time: time, state: state, derivative: derivative)]
+        var previousEvents = try tiEvents(eventFunction?(time, state) ?? [], count: specifications.count)
+        var foundEvents: [TimeEvent] = []
+        var stops = stopTimes.sorted(by: direction > 0 ? (<) : (>))
+        stops = stops.reduce(into: []) { result, value in
+            if result.last.map({ abs($0-value) > Double.ulpOfOne * max(abs($0),abs(value),1) }) ?? true {
+                result.append(value)
+            }
+        }
+        var stopIndex = 0
         var accepted = 0, rejected = 0, evaluations = 1, jacobians = 1, newtonTotal = 0
         while !tiReached(time, end, direction) {
-            if accepted >= options.maxSteps { return tiResult(points, [], accepted, rejected, evaluations, jacobians, newtonTotal, .stepLimit) }
+            while stopIndex < stops.count && tiReached(time, stops[stopIndex], direction) {
+                stopIndex += 1
+            }
+            if accepted >= options.maxSteps { return tiResult(points, foundEvents, accepted, rejected, evaluations, jacobians, newtonTotal, .stepLimit) }
             step = direction * min(abs(step), abs(end - time), options.maximumStep)
-            if abs(step) < options.minimumStep || rejected > options.maxRejectedSteps { return tiResult(points, [], accepted, rejected, evaluations, jacobians, newtonTotal, .stepSizeUnderflow) }
+            if stopIndex < stops.count { step = direction * min(abs(step), abs(stops[stopIndex]-time)) }
+            if abs(step) < options.minimumStep || rejected > options.maxRejectedSteps { return tiResult(points, foundEvents, accepted, rejected, evaluations, jacobians, newtonTotal, .stepSizeUnderflow) }
             let full = try tiDAEStep(time, state, derivative, step, options, system)
             let half1 = try tiDAEStep(time, state, derivative, 0.5 * step, options, system)
             let half2 = try tiDAEStep(time + 0.5 * step, half1.state, half1.derivative, 0.5 * step, options, system)
             for item in [full, half1, half2] { evaluations += item.evaluations; jacobians += item.jacobians; newtonTotal += item.iterations }
             guard full.converged, half1.converged, half2.converged else {
                 rejected += 1; step *= 0.5
-                if abs(step) < options.minimumStep { return tiResult(points, [], accepted, rejected, evaluations, jacobians, newtonTotal, .newtonFailure) }
+                if abs(step) < options.minimumStep { return tiResult(points, foundEvents, accepted, rejected, evaluations, jacobians, newtonTotal, .newtonFailure) }
                 continue
             }
             let error = tiScaledError(half2.state, full.state, state, options)
             if error <= 1 {
-                time += step; state = half2.state; derivative = half2.derivative; accepted += 1
-                points.append(.init(time: time, state: state, derivative: derivative))
+                let nextTime = time + step
+                let nextEvents = try tiEvents(eventFunction?(nextTime, half2.state) ?? [],
+                                              count: specifications.count)
+                let nextPoint = TimePoint(time: nextTime, state: half2.state,
+                                          derivative: half2.derivative)
+                let prior = points.last!
+                for index in specifications.indices where tiCrossed(
+                    previousEvents[index], nextEvents[index], specifications[index].direction) {
+                    let located = try tiLocateEvent(prior, nextPoint, index,
+                        previousEvents[index], nextEvents[index], eventFunction!)
+                    foundEvents.append(.init(index: index, time: located.time,
+                        state: located.state, value: located.value,
+                        terminal: specifications[index].terminal))
+                    if specifications[index].terminal {
+                        points.append(.init(time: located.time, state: located.state,
+                            derivative: tiHermiteDerivative(prior, nextPoint, located.time)))
+                        return tiResult(points, foundEvents, accepted + 1, rejected,
+                            evaluations, jacobians, newtonTotal, .terminalEvent)
+                    }
+                }
+                time = nextTime; state = half2.state; derivative = half2.derivative; accepted += 1
+                points.append(nextPoint); previousEvents = nextEvents
                 if observer?(.init(acceptedSteps: accepted, rejectedSteps: rejected, time: time, step: step,
                                    errorNorm: error, newtonIterations: full.iterations + half1.iterations + half2.iterations)) == false {
-                    return tiResult(points, [], accepted, rejected, evaluations, jacobians, newtonTotal, .cancelled)
+                    return tiResult(points, foundEvents, accepted, rejected, evaluations, jacobians, newtonTotal, .cancelled)
                 }
                 step *= tiFactor(error, order: 2)
             } else { rejected += 1; step *= min(tiFactor(error, order: 2), 0.9) }
         }
-        return tiResult(points, [], accepted, rejected, evaluations, jacobians, newtonTotal, .reachedEnd)
+        return tiResult(points, foundEvents, accepted, rejected, evaluations, jacobians, newtonTotal, .reachedEnd)
+    }
+
+    /// Corrects an index-1 DAE initial pair so `F(t,y,yDot) = 0`. A `true`
+    /// entry in `freeState` adjusts the state component; `false` adjusts its
+    /// derivative, forming a square Newton matrix from `F_y` and `F_yDot`.
+    public static func consistentDAEInitialConditions(
+        time: Double, initialState: [Double], initialDerivative: [Double],
+        freeState: [Bool], maxIterations: Int = 12, tolerance: Double = 1e-10,
+        system: DAESystem
+    ) throws -> DAEInitializationResult {
+        let n = initialState.count
+        guard time.isFinite, n > 0, initialDerivative.count == n, freeState.count == n,
+              initialState.allSatisfy(\.isFinite), initialDerivative.allSatisfy(\.isFinite),
+              maxIterations > 0, tolerance.isFinite, tolerance > 0 else {
+            throw tiInvalid("invalid DAE initialization configuration")
+        }
+        var state = initialState, derivative = initialDerivative
+        for iteration in 0..<maxIterations {
+            let evaluation = try tiDAE(system(time, state, derivative), count: n)
+            let residualNorm = tiInfNorm(evaluation.residuals)
+            if residualNorm <= tolerance {
+                return .init(state: state, derivative: derivative, iterations: iteration,
+                    evaluations: iteration + 1, residualNorm: residualNorm,
+                    stateCorrections: freeState.filter { $0 }.count,
+                    derivativeCorrections: freeState.filter { !$0 }.count)
+            }
+            let matrix = (0..<n).map { row in (0..<n).map { column in
+                freeState[column] ? evaluation.jacobianState[row][column]
+                                  : evaluation.jacobianDerivative[row][column]
+            }}
+            guard let delta = tiDenseSolve(matrix, evaluation.residuals.map(-)) else {
+                throw tiInvalid("DAE initialization Jacobian is singular for the selected free variables")
+            }
+            for column in 0..<n {
+                if freeState[column] { state[column] += delta[column] }
+                else { derivative[column] += delta[column] }
+            }
+            guard state.allSatisfy(\.isFinite), derivative.allSatisfy(\.isFinite) else {
+                throw tiInvalid("DAE initialization produced non-finite values")
+            }
+        }
+        throw tiInvalid("DAE consistent initialization did not converge")
     }
 }
 
@@ -244,6 +339,7 @@ private func tiDAEStep(_ time: Double, _ old: [Double], _ oldDerivative: [Double
 
 private func tiLocateEvent(_ left: TimePoint, _ right: TimePoint, _ index: Int, _ leftValue: Double, _ rightValue: Double, _ event: TimeIntegrator.EventFunction) throws -> (time: Double, state: [Double], value: Double) { var a = left.time, b = right.time, lv = leftValue, rv = rightValue; for _ in 0..<50 { let mid = 0.5 * (a + b), state = tiHermite(left, right, mid), values = try event(mid, state); guard index < values.count, values[index].isFinite else { throw tiInvalid("invalid event evaluation") }; let value = values[index]; if value == 0 || abs(b-a) <= 1e-12 * (1 + abs(mid)) { return (mid, state, value) }; if (lv <= 0 && value >= 0) || (lv >= 0 && value <= 0) { b = mid; rv = value } else { a = mid; lv = value } }; let time = 0.5 * (a+b); return (time, tiHermite(left, right, time), 0.5 * (lv+rv)) }
 private func tiHermite(_ a: TimePoint, _ b: TimePoint, _ time: Double) -> [Double] { let h = b.time-a.time; if h == 0 { return a.state }; let s=(time-a.time)/h, h00=2*pow(s,3)-3*pow(s,2)+1, h10=pow(s,3)-2*pow(s,2)+s, h01 = -2*pow(s,3)+3*pow(s,2), h11=pow(s,3)-pow(s,2); return a.state.indices.map { h00*a.state[$0]+h10*h*a.derivative[$0]+h01*b.state[$0]+h11*h*b.derivative[$0] } }
+private func tiHermiteDerivative(_ a: TimePoint, _ b: TimePoint, _ time: Double) -> [Double] { let h=b.time-a.time; if h==0{return a.derivative};let s=(time-a.time)/h,dh00=(6*s*s-6*s)/h,dh10=3*s*s-4*s+1,dh01=(-6*s*s+6*s)/h,dh11=3*s*s-2*s;return a.state.indices.map{dh00*a.state[$0]+dh10*a.derivative[$0]+dh01*b.state[$0]+dh11*b.derivative[$0]} }
 private func tiCrossed(_ a: Double, _ b: Double, _ direction: EventDirection) -> Bool { switch direction { case .any: return (a < 0 && b >= 0)||(a > 0 && b <= 0); case .rising: return a < 0 && b >= 0; case .falling: return a > 0 && b <= 0 } }
 private func tiReached(_ time: Double, _ end: Double, _ direction: Double) -> Bool { direction * (end-time) <= 16 * Double.ulpOfOne * (1+abs(end)) }
 private func tiFactor(_ error: Double, order: Double) -> Double { error == 0 ? 5 : min(5, max(0.2, 0.9 * pow(error, -1/order))) }

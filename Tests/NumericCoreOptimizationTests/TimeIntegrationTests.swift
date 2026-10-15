@@ -39,6 +39,32 @@ final class TimeIntegrationTests: XCTestCase {
         })
     }
 
+    func testInitializesSingularDAEAndLocatesTerminalEvent() throws {
+        let system: TimeIntegrator.DAESystem = { _, y, yd in
+            DAEEvaluation.massMatrix(
+                [[1, 0], [0, 0]], rightHandSide: [-y[0], 1-y[0]-y[1]],
+                rightHandSideJacobian: [[-1, 0], [-1, -1]], derivative: yd)
+        }
+        let initialized = try TimeIntegrator.consistentDAEInitialConditions(
+            time: 0, initialState: [1, 0.5], initialDerivative: [0, 0],
+            freeState: [false, true], maxIterations: 8, tolerance: 1e-12,
+            system: system)
+        XCTAssertEqual(initialized.derivative[0], -1, accuracy: 1e-12)
+        XCTAssertEqual(initialized.state[1], 0, accuracy: 1e-12)
+        let options = TimeIntegrationOptions(absoluteTolerance: 1e-5,
+            relativeTolerance: 1e-4, initialStep: 0.02, maximumStep: 0.05)
+        let result = try TimeIntegrator.integrateDAE(
+            from: 0, to: 2, initialState: initialized.state,
+            initialDerivative: initialized.derivative, options: options,
+            stopTimes: [0.3],
+            events: [.init(direction: .falling, terminal: true)],
+            eventFunction: { _, y in [y[0] - 0.5] }, system: system)
+        XCTAssertEqual(result.termination, .terminalEvent)
+        XCTAssertEqual(result.events[0].time, log(2), accuracy: 3e-3)
+        XCTAssertEqual(result.events[0].state[0], 0.5, accuracy: 1e-8)
+        XCTAssertTrue(result.points.contains { abs($0.time - 0.3) < 1e-14 })
+    }
+
     func testReverseTimeAndCancellationAreExplicit() throws {
         let backward = try TimeIntegrator.integrate(
             from: 1, to: 0, initialState: [exp(1)], rightHandSide: { _, y in [y[0]] })
