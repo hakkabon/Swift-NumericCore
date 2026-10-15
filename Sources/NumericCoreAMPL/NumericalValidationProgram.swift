@@ -129,6 +129,33 @@ public enum NumericCoreValidationProgram {
                   tolerance: tolerance),
         ])
 
+        let kktProblem = SparseKKTProblem(
+            hessian: .init(dimension: 2, rowPointers: [0, 1, 2],
+                           columnIndices: [0, 1], values: [2, 2]),
+            jacobian: .init(rows: 1, columns: 2, rowPointers: [0, 2],
+                            columnIndices: [0, 1], values: [1, 1]),
+            primalRightHandSide: [-2, -4], constraintRightHandSide: [-1])
+        let kktWorkspace = try SparseKKTWorkspace(problem: kktProblem)
+        _ = try kktWorkspace.solve(kktProblem)
+        let updatedKKT = SparseKKTProblem(
+            hessian: .init(dimension: 2, rowPointers: [0, 1, 2],
+                           columnIndices: [0, 1], values: [4, 3]),
+            jacobian: kktProblem.jacobian,
+            primalRightHandSide: [-4, -3], constraintRightHandSide: [-1])
+        let kkt = try kktWorkspace.solve(updatedKKT)
+        let kktCase = ValidationCase(id: "internal.sparse.nonlinear-kkt",
+            family: "sparse-nonlinear", tier: .standard,
+            name: "reusable sparse nonlinear KKT pipeline", metrics: [
+                .init(name: "KKT relative residual", observed: kkt.relativeResidual,
+                      reference: 0, tolerance: .init(absolute: 1e-12, relative: 0)),
+                .init(name: "KKT symbolic analyses", observed: Double(kkt.symbolicAnalyses),
+                      reference: 1, tolerance: .init(absolute: 0, relative: 0)),
+                .init(name: "KKT numeric factorizations", observed: Double(kkt.numericFactorizations),
+                      reference: 2, tolerance: .init(absolute: 0, relative: 0)),
+                .init(name: "KKT negative inertia", observed: Double(kkt.inertia?.negative ?? -1),
+                      reference: 1, tolerance: .init(absolute: 0, relative: 0)),
+            ])
+
         let perturbed = NumericalValidation.perturb([1, -2, 3], seed: 42,
                                                      relativeMagnitude: 1e-6)
         let perturbationCase = ValidationCase(id: "internal.reproducibility.perturbation",
@@ -141,7 +168,7 @@ public enum NumericCoreValidationProgram {
             })
 
         var cases = [lpCase, qpCase, milpCase, nonlinearCase,
-                     presolveCase, sparseCase, perturbationCase]
+                     presolveCase, sparseCase, kktCase, perturbationCase]
         cases += try ExternalValidationProgram.run()
         return ValidationReport(cases: cases)
     }

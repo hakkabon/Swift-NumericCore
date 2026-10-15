@@ -231,6 +231,10 @@ Swift-NumericCore/
   smoke/standard/extended tiers. `NumericCoreValidation` emits deterministic,
   timestamp-free JSON snapshots with a corpus manifest and regression-comparison
   semantics; CI uploads the standard-tier snapshot as release evidence.
+  The sparse nonlinear KKT path now stays sparse end to end: exact graph
+  derivatives lower into reusable symbolic analysis and numeric LDLT
+  refactorization with iterative refinement, inertia, fill, and reuse
+  diagnostics. The former native dense materialization has been removed.
   Not yet built on the `Grammar`/`Lexer`/
   `Parser` packages originally sketched for this — see `Model.swift`'s
   module docs for why.

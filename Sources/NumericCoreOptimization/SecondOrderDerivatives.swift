@@ -1,4 +1,5 @@
 import Foundation
+import NumericCoreSparse
 
 public struct SecondOrderValue: Sendable, Hashable {
     public let value: Double
@@ -11,6 +12,11 @@ public struct SparseHessian: Sendable, Hashable {
     public let rowPointers: [Int]
     public let columnIndices: [Int]
     public let values: [Double]
+
+    public init(dimension: Int, rowPointers: [Int], columnIndices: [Int], values: [Double]) {
+        self.dimension = dimension; self.rowPointers = rowPointers
+        self.columnIndices = columnIndices; self.values = values
+    }
 
     public func multiplying(_ direction: [Double]) throws -> [Double] {
         guard direction.count == dimension else {
@@ -101,6 +107,43 @@ public extension ConstrainedNonlinearProblem {
         return secondMatvec(try lagrangianHessian(
             parameters: parameters, constraintWeights: constraintWeights), direction)
     }
+
+    /// Assemble exact graph derivatives directly into the reusable sparse KKT contract.
+    func linearizeSparseKKT(parameters: [Double], constraintWeights: [Double],
+                            primalRightHandSide: [Double], constraintRightHandSide: [Double],
+                            primalRegularization: Double = 0,
+                            dualRegularization: Double = 0,
+                            zeroTolerance: Double = 0) throws -> SparseKKTProblem {
+        guard primalRightHandSide.count == model.parameterCount,
+              constraintRightHandSide.count == constraints.count,
+              zeroTolerance.isFinite, zeroTolerance >= 0 else {
+            throw NonlinearOptimizationError.invalidConfiguration(
+                "invalid sparse KKT linearization dimensions or tolerance")
+        }
+        let dense = try lagrangianHessian(
+            parameters: parameters, constraintWeights: constraintWeights)
+        var hessianPointers = [0], hessianColumns: [Int] = [], hessianValues: [Double] = []
+        for row in dense {
+            for (column, value) in row.enumerated() where abs(value) > zeroTolerance {
+                hessianColumns.append(column); hessianValues.append(value)
+            }
+            hessianPointers.append(hessianValues.count)
+        }
+        var pointers = [0], columns: [Int] = [], values: [Double] = []
+        for constraint in constraints {
+            let derivative = try constraint.expression.evaluateSparse(parameters: parameters).derivative
+            columns += derivative.indices; values += derivative.values; pointers.append(values.count)
+        }
+        return .init(hessian: .init(dimension: model.parameterCount,
+                                    rowPointers: hessianPointers,
+                                    columnIndices: hessianColumns, values: hessianValues),
+                     jacobian: .init(rows: constraints.count, columns: model.parameterCount,
+                                     rowPointers: pointers, columnIndices: columns, values: values),
+                     primalRightHandSide: primalRightHandSide,
+                     constraintRightHandSide: constraintRightHandSide,
+                     primalRegularization: primalRegularization,
+                     dualRegularization: dualRegularization)
+    }
 }
 
 public struct SparseKKTProblem: Sendable, Hashable {
@@ -128,13 +171,85 @@ public struct SparseKKTResult: Sendable, Hashable {
     public let residualNorm: Double
     public let relativeResidual: Double
     public let factorNonzeros: Int
+    public let symbolicAnalyses: Int
+    public let numericFactorizations: Int
+    public let solves: Int
+    public let symbolicReused: Bool
+    public let inertia: SparseInertia?
+
+    public init(primal: [Double], dual: [Double], residualNorm: Double,
+                relativeResidual: Double, factorNonzeros: Int,
+                symbolicAnalyses: Int = 1, numericFactorizations: Int = 1,
+                solves: Int = 1, symbolicReused: Bool = false,
+                inertia: SparseInertia? = nil) {
+        self.primal = primal; self.dual = dual
+        self.residualNorm = residualNorm; self.relativeResidual = relativeResidual
+        self.factorNonzeros = factorNonzeros
+        self.symbolicAnalyses = symbolicAnalyses
+        self.numericFactorizations = numericFactorizations
+        self.solves = solves; self.symbolicReused = symbolicReused; self.inertia = inertia
+    }
 }
 
-/// Reference KKT solve over sparse inputs. Rust uses sparse LU; the native
-/// Swift reference path uses pivoted dense elimination for conformance and
-/// small problems.
+/// One-shot compatibility entry point over the reusable sparse KKT pipeline.
 public enum SparseKKTSolver {
     public static func solve(_ problem: SparseKKTProblem) throws -> SparseKKTResult {
+        let workspace = try SparseKKTWorkspace(problem: problem)
+        return try workspace.solve(problem)
+    }
+}
+
+/// Reuses symbolic ordering across a sequence of nonlinear KKT systems with
+/// unchanged Hessian/Jacobian structure, while refactorizing numeric values.
+public final class SparseKKTWorkspace {
+    public let symbolicAnalysis: SparseSymbolicAnalysis
+    public private(set) var symbolicAnalysisCount = 1
+    public private(set) var numericFactorizationCount = 0
+    public private(set) var solveCount = 0
+    private let primalDimension: Int
+    private let constraintDimension: Int
+    private let options: SparseNumericOptions
+    private var factorization: SparseLDLTFactorization?
+
+    public init(problem: SparseKKTProblem, ordering: SparseOrdering = .minimumDegree,
+                options: SparseNumericOptions = .init()) throws {
+        let matrix = try Self.assemble(problem)
+        primalDimension = problem.hessian.dimension
+        constraintDimension = problem.jacobian.rows
+        self.options = options
+        symbolicAnalysis = try SparseSymbolicAnalysis(matrix: matrix, ordering: ordering)
+    }
+
+    public func solve(_ problem: SparseKKTProblem) throws -> SparseKKTResult {
+        guard problem.hessian.dimension == primalDimension,
+              problem.jacobian.rows == constraintDimension else {
+            throw NonlinearOptimizationError.invalidConfiguration(
+                "sparse KKT workspace dimensions changed")
+        }
+        let matrix = try Self.assemble(problem)
+        let reused = factorization != nil
+        if let factorization {
+            try factorization.refactor(with: matrix)
+        } else {
+            factorization = try SparseLDLTFactorization(
+                matrix: matrix, analysis: symbolicAnalysis, options: options)
+        }
+        numericFactorizationCount += 1
+        let rhs = problem.primalRightHandSide + problem.constraintRightHandSide
+        let report = try factorization!.solveRefined(rhs)
+        solveCount += 1
+        return .init(primal: Array(report.solution.prefix(primalDimension)),
+                     dual: Array(report.solution.dropFirst(primalDimension)),
+                     residualNorm: report.residualNorm,
+                     relativeResidual: report.relativeResidual,
+                     factorNonzeros: report.diagnostics.factorNonZeroCount,
+                     symbolicAnalyses: symbolicAnalysisCount,
+                     numericFactorizations: numericFactorizationCount,
+                     solves: solveCount, symbolicReused: reused,
+                     inertia: factorization!.inertia)
+    }
+
+    private static func assemble(_ problem: SparseKKTProblem) throws -> SparseMatrix<Double> {
         let n = problem.hessian.dimension, m = problem.jacobian.rows, size = n + m
         guard problem.jacobian.columns == n, problem.primalRightHandSide.count == n,
               problem.constraintRightHandSide.count == m,
@@ -142,29 +257,29 @@ public enum SparseKKTSolver {
               problem.dualRegularization.isFinite, problem.dualRegularization >= 0 else {
             throw NonlinearOptimizationError.invalidConfiguration("invalid sparse KKT problem")
         }
-        var matrix = [[Double]](repeating: [Double](repeating: 0, count: size), count: size)
+        var entries: [SparseEntry<Double>] = []
+        entries.reserveCapacity(problem.hessian.values.count + 2 * problem.jacobian.values.count + size)
         for row in 0..<n {
             for entry in problem.hessian.rowPointers[row]..<problem.hessian.rowPointers[row + 1] {
-                matrix[row][problem.hessian.columnIndices[entry]] += problem.hessian.values[entry]
+                entries.append(.init(row: row, column: problem.hessian.columnIndices[entry],
+                                     value: problem.hessian.values[entry]))
             }
-            matrix[row][row] += problem.primalRegularization
+            if problem.primalRegularization != 0 {
+                entries.append(.init(row: row, column: row, value: problem.primalRegularization))
+            }
         }
         for row in 0..<m {
             for entry in problem.jacobian.rowPointers[row]..<problem.jacobian.rowPointers[row + 1] {
                 let column = problem.jacobian.columnIndices[entry], value = problem.jacobian.values[entry]
-                matrix[n + row][column] += value; matrix[column][n + row] += value
+                entries.append(.init(row: n + row, column: column, value: value))
+                entries.append(.init(row: column, column: n + row, value: value))
             }
-            matrix[n + row][n + row] -= problem.dualRegularization
+            if problem.dualRegularization != 0 {
+                entries.append(.init(row: n + row, column: n + row,
+                                     value: -problem.dualRegularization))
+            }
         }
-        let rhs = problem.primalRightHandSide + problem.constraintRightHandSide
-        let solution = try secondDenseSolve(matrix, rhs)
-        let residual = zip(secondMatvec(matrix, solution), rhs).map(-)
-        let residualNorm = sqrt(residual.reduce(0) { $0 + $1 * $1 })
-        let rhsNorm = sqrt(rhs.reduce(0) { $0 + $1 * $1 })
-        return .init(primal: Array(solution.prefix(n)), dual: Array(solution.dropFirst(n)),
-                     residualNorm: residualNorm,
-                     relativeResidual: residualNorm / max(rhsNorm, 1e-30),
-                     factorNonzeros: matrix.joined().filter { $0 != 0 }.count)
+        return try SparseMatrix(rows: size, cols: size, entries: entries)
     }
 }
 

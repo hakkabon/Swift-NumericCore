@@ -377,6 +377,24 @@ final class NonlinearOptimizationTests: XCTestCase {
             XCTAssertEqual(value.primal[1], -1, accuracy: 1e-12)
             XCTAssertLessThan(value.relativeResidual, 1e-12)
         }
+
+        let workspace = try SparseKKTWorkspace(problem: problem)
+        let first = try workspace.solve(problem)
+        let updated = SparseKKTProblem(
+            hessian: .init(dimension: 2, rowPointers: [0, 1, 2],
+                           columnIndices: [0, 1], values: [4, 3]),
+            jacobian: problem.jacobian,
+            primalRightHandSide: [-4, -3], constraintRightHandSide: [-1])
+        let second = try workspace.solve(updated)
+        XCTAssertFalse(first.symbolicReused)
+        XCTAssertTrue(second.symbolicReused)
+        XCTAssertEqual(second.symbolicAnalyses, 1)
+        XCTAssertEqual(second.numericFactorizations, 2)
+        XCTAssertEqual(second.solves, 2)
+        XCTAssertEqual(second.inertia?.positive, 2)
+        XCTAssertEqual(second.inertia?.negative, 1)
+        XCTAssertEqual(second.inertia?.zero, 0)
+        XCTAssertLessThan(second.relativeResidual, 1e-12)
     }
 
     func testSQPExactLagrangianCurvatureAcrossBackends() throws {
