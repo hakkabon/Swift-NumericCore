@@ -40,14 +40,28 @@ public struct ValidationMetric: Sendable, Hashable {
     }
 }
 
+public struct ValidationProvenance: Sendable, Hashable {
+    public let collection: String
+    public let problem: String
+    public let citation: String
+    public let sourceURL: String
+    public init(collection: String, problem: String, citation: String, sourceURL: String) {
+        self.collection = collection; self.problem = problem
+        self.citation = citation; self.sourceURL = sourceURL
+    }
+}
+
 public struct ValidationCase: Sendable, Hashable {
     public let name: String
     public let metrics: [ValidationMetric]
+    public let provenance: ValidationProvenance?
     public var passed: Bool { !metrics.isEmpty && metrics.allSatisfy(\.passed) }
 
-    public init(name: String, metrics: [ValidationMetric]) {
+    public init(name: String, metrics: [ValidationMetric],
+                provenance: ValidationProvenance? = nil) {
         self.name = name
         self.metrics = metrics
+        self.provenance = provenance
     }
 }
 

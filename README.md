@@ -222,7 +222,9 @@ Swift-NumericCore/
   objective-gradient, constraint-bound, and variable-bound perturbations. A
   structured numerical validation program adds scale-aware metrics,
   backward-error checks, deterministic perturbations, and audited
-  LP/QP/MILP/nonlinear reference cases. Nonlinear models compile to the shared graph and
+  LP/QP/MILP/nonlinear reference cases. External release gates include the
+  provenance-tagged NIST StRD Misra1a and CUTEst HS71 problems on both nonlinear
+  backends. Nonlinear models compile to the shared graph and
   solve through bounded L-BFGS, SQP, augmented Lagrangian, or mixed-integer
   nonlinear search on either backend.
   Not yet built on the `Grammar`/`Lexer`/

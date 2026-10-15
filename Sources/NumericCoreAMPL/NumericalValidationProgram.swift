@@ -128,7 +128,9 @@ public enum NumericCoreValidationProgram {
                       reference: $0.element.1, tolerance: .init(absolute: 0, relative: 0))
             })
 
-        return ValidationReport(cases: [lpCase, qpCase, milpCase, nonlinearCase,
-                                        presolveCase, sparseCase, perturbationCase])
+        var cases = [lpCase, qpCase, milpCase, nonlinearCase,
+                     presolveCase, sparseCase, perturbationCase]
+        cases += try ExternalValidationProgram.run()
+        return ValidationReport(cases: cases)
     }
 }
