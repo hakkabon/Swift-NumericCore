@@ -301,6 +301,50 @@ public enum NumericCoreValidationProgram {
                       reference: 1, tolerance: .init(absolute: 0, relative: 0)),
             ])
 
+        let coupledField = NonlinearExpression(nodes: [
+            .parameter(1), .parameter(5), .parameter(2), .multiply(1, 2),
+            .add(0, 3), .parameter(7), .subtract(4, 5),
+        ], output: 6)
+        let coupledThermal = NonlinearExpression(nodes: [
+            .parameter(2), .parameter(6), .parameter(1), .multiply(1, 2),
+            .subtract(0, 3),
+        ], output: 4)
+        let coupledEngineering = try EngineeringModel(
+            unknowns: [.init(name: "x", unit: "m", role: .algebraic),
+                       .init(name: "T", unit: "K", role: .algebraic)],
+            parameters: [.init(name: "a", unit: "1", value: 0.5),
+                         .init(name: "b", unit: "1", value: 0.4),
+                         .init(name: "p", unit: "N", value: 1)],
+            elements: [.init(name: "coupler", kind: "field-thermal",
+                ports: [.init(name: "field", unknown: 0),
+                        .init(name: "thermal", unknown: 1)],
+                equations: [.init(row: 0, expression: coupledField),
+                            .init(row: 1, expression: coupledThermal)])])
+        let coupledModel = try MultiphysicsModel(
+            engineeringModel: coupledEngineering,
+            disciplines: [.init(name: "field", equationRows: [0]),
+                          .init(name: "thermal", equationRows: [1])])
+        let designResponse = NonlinearExpression(nodes: [
+            .parameter(0), .constant(2), .subtract(0, 1), .pow(2, 2),
+            .constant(0.5), .multiply(3, 4), .parameter(4), .pow(6, 2),
+            .constant(0.05), .multiply(7, 8), .add(5, 9),
+        ], output: 10)
+        let coupledDesign = try MultiphysicsDesignOptimizer.minimize(problem: .init(
+            model: coupledModel, response: designResponse,
+            designVariables: [.init(parameter: 2, bound: .init(lower: 0, upper: 5))]))
+        let multiphysicsCase = ValidationCase(id: "internal.multiphysics.design",
+            family: "multiphysics-design", tier: .standard,
+            name: "coupled steady adjoint design optimization", metrics: [
+                .init(name: "multiphysics optimal design", observed: coupledDesign.design[0],
+                      reference: 2.0979020979, tolerance: tolerance),
+                .init(name: "multiphysics state consistency",
+                      observed: coupledDesign.state[0] - coupledDesign.design[0]/1.2,
+                      reference: 0, tolerance: tolerance),
+                .init(name: "multiphysics design gradient",
+                      observed: coupledDesign.gradient[0], reference: 0,
+                      tolerance: .init(absolute: 1e-6, relative: 0)),
+            ])
+
         let perturbed = NumericalValidation.perturb([1, -2, 3], seed: 42,
                                                      relativeMagnitude: 1e-6)
         let perturbationCase = ValidationCase(id: "internal.reproducibility.perturbation",
@@ -314,7 +358,8 @@ public enum NumericCoreValidationProgram {
 
         var cases = [lpCase, qpCase, certificateCase, milpCase, nonlinearCase,
                      presolveCase, sparseCase, kktCase, spiceCase, daeCase,
-                     continuumCase, sensitivityCase, strengtheningCase, perturbationCase]
+                     continuumCase, sensitivityCase, strengtheningCase,
+                     multiphysicsCase, perturbationCase]
         cases += try ExternalValidationProgram.run()
         return ValidationReport(cases: cases)
     }

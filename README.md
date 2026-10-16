@@ -258,6 +258,9 @@ Swift-NumericCore/
   Engineering operating points now support sparse implicit forward
   sensitivities and discrete adjoints, including effective DAE tangents,
   direct response dependence, and forward/adjoint consistency diagnostics.
+  Named engineering disciplines can now be solved as one sparse coupled
+  multiphysics system and optimized over bounded design parameters using exact
+  response-graph derivatives and implicit adjoints.
   Not yet built on the `Grammar`/`Lexer`/
   `Parser` packages originally sketched for this — see `Model.swift`'s
   module docs for why.
