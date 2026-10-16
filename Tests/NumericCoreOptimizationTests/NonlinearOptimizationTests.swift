@@ -228,6 +228,25 @@ final class NonlinearOptimizationTests: XCTestCase {
         XCTAssertTrue(result.globalOptimalityCertified)
     }
 
+    func testGlobalMINLPAddsIntegerSquareEnvelopeCuts() throws {
+        // x^2-x has continuous optimum -0.25 but integer optimum zero.
+        let expression = NonlinearExpression(nodes: [
+            .parameter(0), .pow(0, 2), .subtract(1, 0)
+        ], output: 2)
+        let model = try NonlinearModel.objective(
+            parameterCount: 1, bounds: [.init(lower: 0, upper: 3)], expression: expression)
+        let problem = try GlobalMINLPProblem(model: model, isInteger: [true])
+        let result = try GlobalMixedIntegerNonlinearSolver.minimize(problem: problem)
+        XCTAssertEqual(result.objective, 0, accuracy: 1e-10)
+        XCTAssertGreaterThanOrEqual(result.integerEnvelopeCutsGenerated, 3)
+        XCTAssertTrue(result.globalOptimalityCertified)
+        let unstrengthened = try GlobalMixedIntegerNonlinearSolver.minimize(
+            problem: problem, options: .init(enableIntegerEnvelopeCuts: false))
+        XCTAssertEqual(unstrengthened.integerEnvelopeCutsGenerated, 0)
+        XCTAssertEqual(unstrengthened.objective, 0, accuracy: 1e-10)
+        XCTAssertLessThan(result.nodesExplored, unstrengthened.nodesExplored)
+    }
+
     func testNonlinearPropagationTightensSquareAndDetectsInfeasibility() throws {
         let square = NonlinearExpression(nodes: [.parameter(0), .pow(0, 2)], output: 1)
         let model = try NonlinearModel.objective(

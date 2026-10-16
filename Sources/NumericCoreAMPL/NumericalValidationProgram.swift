@@ -280,6 +280,27 @@ public enum NumericCoreValidationProgram {
                       reference: 0, tolerance: .init(absolute: 1e-12, relative: 0)),
             ])
 
+        let integerSquare = NonlinearExpression(nodes: [
+            .parameter(0), .pow(0, 2), .subtract(1, 0),
+        ], output: 2)
+        let strengthenedModel = try NonlinearModel.objective(
+            parameterCount: 1, bounds: [.init(lower: 0, upper: 3)],
+            expression: integerSquare)
+        let strengthened = try GlobalMixedIntegerNonlinearSolver.minimize(
+            problem: .init(model: strengthenedModel, isInteger: [true]))
+        let strengtheningCase = ValidationCase(id: "internal.minlp.integer-envelope",
+            family: "global-mixed-integer-nonlinear", tier: .standard,
+            name: "integer-square envelope strengthening", metrics: [
+                .init(name: "strengthened MINLP objective", observed: strengthened.objective,
+                      reference: 0, tolerance: tolerance),
+                .init(name: "integer envelope cuts generated",
+                      observed: Double(strengthened.integerEnvelopeCutsGenerated),
+                      reference: 3, tolerance: .init(absolute: 0, relative: 0)),
+                .init(name: "global certificate",
+                      observed: strengthened.globalOptimalityCertified ? 1 : 0,
+                      reference: 1, tolerance: .init(absolute: 0, relative: 0)),
+            ])
+
         let perturbed = NumericalValidation.perturb([1, -2, 3], seed: 42,
                                                      relativeMagnitude: 1e-6)
         let perturbationCase = ValidationCase(id: "internal.reproducibility.perturbation",
@@ -293,7 +314,7 @@ public enum NumericCoreValidationProgram {
 
         var cases = [lpCase, qpCase, certificateCase, milpCase, nonlinearCase,
                      presolveCase, sparseCase, kktCase, spiceCase, daeCase,
-                     continuumCase, sensitivityCase, perturbationCase]
+                     continuumCase, sensitivityCase, strengtheningCase, perturbationCase]
         cases += try ExternalValidationProgram.run()
         return ValidationReport(cases: cases)
     }

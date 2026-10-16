@@ -150,7 +150,9 @@ Swift-NumericCore/
   constraint ranges and incumbent objective cutoffs before each LP relaxation.
   `GlobalMixedIntegerNonlinearSolver` combines those relaxations with
   integrality-aware branching and integer-fixed nonlinear polishing to certify
-  bounded factorable MINLPs.
+  bounded factorable MINLPs. Integer square atoms now receive selective integer-hull
+  secant cuts, closing fractional epigraph gaps without compromising global
+  bounds or certificates.
   Sparse LP/QP infrastructure provides validated CSR LP models, reusable
   row/column workspaces, and lower-triangular symmetric sparse Hessians with
   production-solver adapters. A reversible sparse LP/MILP presolver now proves

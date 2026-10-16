@@ -17,6 +17,8 @@ public struct GlobalMINLPOptions: Sendable, Hashable {
     public var propagationPasses: Int
     public var propagationTolerance: Double
     public var enableRoundingHeuristic: Bool
+    public var enableIntegerEnvelopeCuts: Bool
+    public var maximumIntegerEnvelopeCuts: Int
     public var localOptions: LBFGSOptions
     public var sqpOptions: SQPOptions
     public init(maxNodes: Int = 20_000, minimumWidth: Double = 1e-4,
@@ -24,6 +26,8 @@ public struct GlobalMINLPOptions: Sendable, Hashable {
                 absoluteGapTolerance: Double = 1e-6, relativeGapTolerance: Double = 1e-6,
                 simplexIterations: Int = 10_000, propagationPasses: Int = 8,
                 propagationTolerance: Double = 1e-10, enableRoundingHeuristic: Bool = true,
+                enableIntegerEnvelopeCuts: Bool = true,
+                maximumIntegerEnvelopeCuts: Int = 256,
                 localOptions: LBFGSOptions = .init(), sqpOptions: SQPOptions = .init()) {
         self.maxNodes = maxNodes; self.minimumWidth = minimumWidth
         self.integerTolerance = integerTolerance; self.feasibilityTolerance = feasibilityTolerance
@@ -32,6 +36,8 @@ public struct GlobalMINLPOptions: Sendable, Hashable {
         self.simplexIterations = simplexIterations; self.propagationPasses = propagationPasses
         self.propagationTolerance = propagationTolerance
         self.enableRoundingHeuristic = enableRoundingHeuristic
+        self.enableIntegerEnvelopeCuts = enableIntegerEnvelopeCuts
+        self.maximumIntegerEnvelopeCuts = maximumIntegerEnvelopeCuts
         self.localOptions = localOptions; self.sqpOptions = sqpOptions
     }
 }
@@ -63,6 +69,7 @@ public struct GlobalMINLPResult: Sendable, Hashable {
     public let boundsTightened: Int; public let integerBranches: Int; public let spatialBranches: Int
     public let localSolves: Int; public let heuristicAttempts: Int; public let heuristicSuccesses: Int
     public let incumbentsFound: Int; public let maximumDepth: Int
+    public let integerEnvelopeCutsGenerated: Int
     public let globalOptimalityCertified: Bool; public let termination: GlobalMINLPTermination
 }
 
@@ -85,6 +92,7 @@ public enum GlobalMixedIntegerNonlinearSolver {
         var prunePropagation = 0, passes = 0, tightened = 0
         var integerBranches = 0, spatialBranches = 0, localSolves = 0
         var heuristicAttempts = 0, heuristicSuccesses = 0, incumbents = 0, maximumDepth = 0
+        var envelopeCuts = 0
         var failures = 0, cancelled = false, gapReached = false
         while !nodes.isEmpty && explored < options.maxNodes {
             let index = nodes.indices.min { nodes[$0].inherited < nodes[$1].inherited }!
@@ -104,8 +112,16 @@ public enum GlobalMixedIntegerNonlinearSolver {
             guard normalize(&node.bounds, problem.isInteger, options.integerTolerance) else {
                 pruneInfeasible += 1; prunePropagation += 1; continue
             }
+            var relaxationProblem = try spatialCompileRelaxation(spatial, node.bounds)
+            if options.enableIntegerEnvelopeCuts {
+                let strengthened = strengthenIntegerSquareEnvelopes(
+                    problem, bounds: node.bounds, relaxation: relaxationProblem,
+                    maximumCuts: options.maximumIntegerEnvelopeCuts)
+                relaxationProblem = strengthened.problem
+                envelopeCuts += strengthened.cuts
+            }
             let solution = try FFIKernels.solveLPSimplex(
-                spatialCompileRelaxation(spatial, node.bounds),
+                relaxationProblem,
                 options: .init(maxIterations: UInt64(options.simplexIterations),
                                tolerance: min(1e-9, max(1e-12, options.feasibilityTolerance)),
                                scaling: true))
@@ -186,12 +202,57 @@ public enum GlobalMixedIntegerNonlinearSolver {
                      spatialBranches: spatialBranches, localSolves: localSolves,
                      heuristicAttempts: heuristicAttempts, heuristicSuccesses: heuristicSuccesses,
                      incumbentsFound: incumbents, maximumDepth: maximumDepth,
+                     integerEnvelopeCutsGenerated: envelopeCuts,
                      globalOptimalityCertified: certified, termination: termination)
     }
 }
 
 private struct GlobalNode { var bounds: [ParameterBound]; var inherited: Double; var depth: Int }
 private struct GlobalIncumbent { var point: [Double]; var objective: Double }
+private func strengthenIntegerSquareEnvelopes(
+    _ problem: GlobalMINLPProblem, bounds: [ParameterBound], relaxation: FFIProblem,
+    maximumCuts: Int
+) -> (problem: FFIProblem, cuts: Int) {
+    guard maximumCuts > 0 else { return (relaxation, 0) }
+    let expressions = [problem.model.objective!] + problem.constraints.map(\.expression)
+    var rowPointers = relaxation.constraintRowPointers
+    var columns = relaxation.constraintColumnIndices
+    var values = relaxation.constraintValues
+    var rowBounds = relaxation.rowBounds
+    var offset = problem.model.parameterCount, cuts = 0
+    expressionLoop: for expression in expressions {
+        for (nodeIndex, node) in expression.nodes.enumerated() {
+            guard case .pow(let operand, let exponent) = node, exponent == 2,
+                  case .parameter(let parameter) = expression.nodes[operand],
+                  problem.isInteger[parameter],
+                  let lower = bounds[parameter].lower, let upper = bounds[parameter].upper else {
+                continue
+            }
+            let first = ceil(lower), last = floor(upper)
+            guard first < last else { continue }
+            var k = first
+            while k < last {
+                if cuts == maximumCuts { break expressionLoop }
+                let slope = 2*k + 1
+                let intercept = -k*(k+1)
+                guard slope.isFinite, intercept.isFinite else { break }
+                columns.append(parameter); values.append(-slope)
+                columns.append(offset + nodeIndex); values.append(1)
+                rowPointers.append(values.count)
+                rowBounds.append(.init(lower: intercept, upper: nil))
+                cuts += 1
+                k += 1
+            }
+        }
+        offset += expression.nodes.count
+    }
+    return (FFIProblem(objective: relaxation.objective,
+        constraintRows: relaxation.constraintRows + cuts,
+        constraintCols: relaxation.constraintCols,
+        constraintRowPointers: rowPointers, constraintColumnIndices: columns,
+        constraintValues: values, rowBounds: rowBounds,
+        varBounds: relaxation.varBounds, isInteger: relaxation.isInteger), cuts)
+}
 private func roundedCandidate(_ problem: GlobalMINLPProblem, _ bounds: [ParameterBound],
                               _ point: [Double], _ options: GlobalMINLPOptions) throws
     -> GlobalIncumbent? {
@@ -239,6 +300,7 @@ private func globalBound(_ nodes: [GlobalNode], _ unresolved: Double) -> Double 
 }
 private func validate(_ o: GlobalMINLPOptions) throws {
     guard o.maxNodes > 0, o.simplexIterations > 0, o.propagationPasses > 0,
+          o.maximumIntegerEnvelopeCuts >= 0,
           [o.minimumWidth, o.integerTolerance, o.feasibilityTolerance,
            o.absoluteGapTolerance, o.relativeGapTolerance,
            o.propagationTolerance].allSatisfy(\.isFinite),
