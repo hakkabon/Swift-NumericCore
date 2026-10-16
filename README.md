@@ -261,6 +261,9 @@ Swift-NumericCore/
   Named engineering disciplines can now be solved as one sparse coupled
   multiphysics system and optimized over bounded design parameters using exact
   response-graph derivatives and implicit adjoints.
+  API stabilization now exposes a machine-readable, cross-language capability
+  manifest with explicit stable, provisional, and experimental tiers. This
+  defines the compatibility boundary and release gates being prepared for 1.0.
   Not yet built on the `Grammar`/`Lexer`/
   `Parser` packages originally sketched for this — see `Model.swift`'s
   module docs for why.
