@@ -794,6 +794,77 @@ public func FfiConverterTypeFfiVectorF64_lower(_ value: FfiVectorF64) -> UnsafeM
 }
 
 /**
+ * Runtime identity and compatibility metadata for the linked Rust binary.
+ */
+public struct FfiApiManifest {
+    public var rustPackageVersion: String
+    public var schemaVersion: UInt32
+    public var compatibilityEpoch: UInt32
+    public var capabilities: [FfiCapability]
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(rustPackageVersion: String, schemaVersion: UInt32, compatibilityEpoch: UInt32, capabilities: [FfiCapability]) {
+        self.rustPackageVersion = rustPackageVersion
+        self.schemaVersion = schemaVersion
+        self.compatibilityEpoch = compatibilityEpoch
+        self.capabilities = capabilities
+    }
+}
+
+extension FfiApiManifest: Equatable, Hashable {
+    public static func == (lhs: FfiApiManifest, rhs: FfiApiManifest) -> Bool {
+        if lhs.rustPackageVersion != rhs.rustPackageVersion {
+            return false
+        }
+        if lhs.schemaVersion != rhs.schemaVersion {
+            return false
+        }
+        if lhs.compatibilityEpoch != rhs.compatibilityEpoch {
+            return false
+        }
+        if lhs.capabilities != rhs.capabilities {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(rustPackageVersion)
+        hasher.combine(schemaVersion)
+        hasher.combine(compatibilityEpoch)
+        hasher.combine(capabilities)
+    }
+}
+
+public struct FfiConverterTypeFfiApiManifest: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiApiManifest {
+        return
+            try FfiApiManifest(
+                rustPackageVersion: FfiConverterString.read(from: &buf),
+                schemaVersion: FfiConverterUInt32.read(from: &buf),
+                compatibilityEpoch: FfiConverterUInt32.read(from: &buf),
+                capabilities: FfiConverterSequenceTypeFfiCapability.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: FfiApiManifest, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.rustPackageVersion, into: &buf)
+        FfiConverterUInt32.write(value.schemaVersion, into: &buf)
+        FfiConverterUInt32.write(value.compatibilityEpoch, into: &buf)
+        FfiConverterSequenceTypeFfiCapability.write(value.capabilities, into: &buf)
+    }
+}
+
+public func FfiConverterTypeFfiApiManifest_lift(_ buf: RustBuffer) throws -> FfiApiManifest {
+    return try FfiConverterTypeFfiApiManifest.lift(buf)
+}
+
+public func FfiConverterTypeFfiApiManifest_lower(_ value: FfiApiManifest) -> RustBuffer {
+    return FfiConverterTypeFfiApiManifest.lower(value)
+}
+
+/**
  * Mirrors `nc_optimize::Bound`. `None` means unbounded in that
  * direction, same convention as the Rust type.
  */
@@ -970,6 +1041,69 @@ public func FfiConverterTypeFfiBranchAndBoundOptions_lift(_ buf: RustBuffer) thr
 
 public func FfiConverterTypeFfiBranchAndBoundOptions_lower(_ value: FfiBranchAndBoundOptions) -> RustBuffer {
     return FfiConverterTypeFfiBranchAndBoundOptions.lower(value)
+}
+
+/**
+ * One capability advertised by the linked Rust binary.
+ */
+public struct FfiCapability {
+    public var identifier: String
+    public var stability: FfiApiStability
+    public var contractVersion: UInt32
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(identifier: String, stability: FfiApiStability, contractVersion: UInt32) {
+        self.identifier = identifier
+        self.stability = stability
+        self.contractVersion = contractVersion
+    }
+}
+
+extension FfiCapability: Equatable, Hashable {
+    public static func == (lhs: FfiCapability, rhs: FfiCapability) -> Bool {
+        if lhs.identifier != rhs.identifier {
+            return false
+        }
+        if lhs.stability != rhs.stability {
+            return false
+        }
+        if lhs.contractVersion != rhs.contractVersion {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(identifier)
+        hasher.combine(stability)
+        hasher.combine(contractVersion)
+    }
+}
+
+public struct FfiConverterTypeFfiCapability: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiCapability {
+        return
+            try FfiCapability(
+                identifier: FfiConverterString.read(from: &buf),
+                stability: FfiConverterTypeFfiApiStability.read(from: &buf),
+                contractVersion: FfiConverterUInt32.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: FfiCapability, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.identifier, into: &buf)
+        FfiConverterTypeFfiApiStability.write(value.stability, into: &buf)
+        FfiConverterUInt32.write(value.contractVersion, into: &buf)
+    }
+}
+
+public func FfiConverterTypeFfiCapability_lift(_ buf: RustBuffer) throws -> FfiCapability {
+    return try FfiConverterTypeFfiCapability.lift(buf)
+}
+
+public func FfiConverterTypeFfiCapability_lower(_ value: FfiCapability) -> RustBuffer {
+    return FfiConverterTypeFfiCapability.lower(value)
 }
 
 public struct FfiConstrainedOptions {
@@ -5569,6 +5703,58 @@ public func FfiConverterTypeFfiSqpResult_lower(_ value: FfiSqpResult) -> RustBuf
 
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/* 
+ * FFI representation of the cross-language API stability vocabulary.
+ */
+
+public enum FfiApiStability {
+    case experimental
+    case provisional
+    case stable
+}
+
+public struct FfiConverterTypeFfiApiStability: FfiConverterRustBuffer {
+    typealias SwiftType = FfiApiStability
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiApiStability {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        case 1: return .experimental
+
+        case 2: return .provisional
+
+        case 3: return .stable
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: FfiApiStability, into buf: inout [UInt8]) {
+        switch value {
+        case .experimental:
+            writeInt(&buf, Int32(1))
+
+        case .provisional:
+            writeInt(&buf, Int32(2))
+
+        case .stable:
+            writeInt(&buf, Int32(3))
+        }
+    }
+}
+
+public func FfiConverterTypeFfiApiStability_lift(_ buf: RustBuffer) throws -> FfiApiStability {
+    return try FfiConverterTypeFfiApiStability.lift(buf)
+}
+
+public func FfiConverterTypeFfiApiStability_lower(_ value: FfiApiStability) -> RustBuffer {
+    return FfiConverterTypeFfiApiStability.lower(value)
+}
+
+extension FfiApiStability: Equatable, Hashable {}
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
 
 public enum FfiBranchAndBoundTermination {
     case exhausted
@@ -7052,6 +7238,28 @@ private struct FfiConverterSequenceTypeFfiBound: FfiConverterRustBuffer {
     }
 }
 
+private struct FfiConverterSequenceTypeFfiCapability: FfiConverterRustBuffer {
+    typealias SwiftType = [FfiCapability]
+
+    static func write(_ value: [FfiCapability], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeFfiCapability.write(item, into: &buf)
+        }
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [FfiCapability] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [FfiCapability]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            try seq.append(FfiConverterTypeFfiCapability.read(from: &buf))
+        }
+        return seq
+    }
+}
+
 private struct FfiConverterSequenceTypeFfiConstraintMultiplier: FfiConverterRustBuffer {
     typealias SwiftType = [FfiConstraintMultiplier]
 
@@ -7317,6 +7525,15 @@ public func norm2F64(x: [Double]) -> Double {
         uniffi_nc_ffi_fn_func_norm2_f64(
             FfiConverterSequenceDouble.lower(x), $0
         )
+    })
+}
+
+/**
+ * Report the exact API contract implemented by this binary.
+ */
+public func numericCoreApiManifest() -> FfiApiManifest {
+    return try! FfiConverterTypeFfiApiManifest.lift(try! rustCall {
+        uniffi_nc_ffi_fn_func_numeric_core_api_manifest($0)
     })
 }
 
@@ -7752,6 +7969,9 @@ private var initializationResult: InitializationResult {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_nc_ffi_checksum_func_norm2_f64() != 34231 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_nc_ffi_checksum_func_numeric_core_api_manifest() != 59283 {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_nc_ffi_checksum_func_restore_nonlinear_feasibility() != 64896 {
