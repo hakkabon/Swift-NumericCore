@@ -289,7 +289,7 @@ public extension PresolvedLinearProblem {
 }
 
 #if NUMERICCORE_LP_DECOMPOSITION_FFI
-private func ffiLPProblem(_ problem: SparseLinearProblem) throws -> FfiProblem {
+func ffiLPProblem(_ problem: SparseLinearProblem) throws -> FfiProblem {
     try problem.validate()
     guard UInt32(exactly: problem.rows) != nil, UInt32(exactly: problem.columns) != nil,
           UInt32(exactly: problem.values.count) != nil else {

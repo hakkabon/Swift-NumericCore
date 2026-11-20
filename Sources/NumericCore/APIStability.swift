@@ -55,12 +55,14 @@ public enum NumericCoreAPI {
             .init(identifier: "numerical-validation", stability: .stable),
             .init(identifier: "sparse-linear-algebra", stability: .stable),
         ]
-        #if NUMERICCORE_LP_DECOMPOSITION_FFI
-        return (entries + [.init(identifier: "lp-decomposition", stability: .provisional)])
-            .sorted { $0.identifier < $1.identifier }
-        #else
-        return entries
+        var decomposition: [NumericCoreCapability] = []
+        #if NUMERICCORE_BENDERS_FFI
+        decomposition.append(.init(identifier: "benders-decomposition", stability: .provisional))
         #endif
+        #if NUMERICCORE_LP_DECOMPOSITION_FFI
+        decomposition.append(.init(identifier: "lp-decomposition", stability: .provisional))
+        #endif
+        return (entries + decomposition).sorted { $0.identifier < $1.identifier }
     }()
 
     public static func capability(_ identifier: String) -> NumericCoreCapability? {

@@ -1,6 +1,8 @@
 import NCBindings
 import NumericCore
 
+extension SparseMatrix: Sendable where Scalar: Sendable {}
+
 /// Compressed Sparse Row matrix — the Swift-facing counterpart of
 /// `nc-sparse::CsrMatrix`.
 ///

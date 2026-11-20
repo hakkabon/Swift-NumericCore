@@ -3,13 +3,16 @@ import Foundation
 import PackageDescription
 
 // The release sync updates this binding and the binary together. Enable the
-// Phase 61 bridge only when that generated workspace API is present.
+// decomposition bridges only when their generated APIs are present.
 let generatedBindings = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
     .appendingPathComponent("Sources/NCBindings/Generated/nc_ffi.swift")
-let decompositionSettings: [SwiftSetting] =
-    (try? String(contentsOf: generatedBindings, encoding: .utf8))?
-        .contains("public protocol FfiLpWorkspaceProtocol") == true
-    ? [.define("NUMERICCORE_LP_DECOMPOSITION_FFI")] : []
+let generatedSource = (try? String(contentsOf: generatedBindings, encoding: .utf8)) ?? ""
+let decompositionSettings: [SwiftSetting] = [
+    ("public protocol FfiLpWorkspaceProtocol", "NUMERICCORE_LP_DECOMPOSITION_FFI"),
+    ("public func solveBendersDecomposition(", "NUMERICCORE_BENDERS_FFI"),
+].compactMap { marker, flag in
+    generatedSource.contains(marker) ? .define(flag) : nil
+}
 
 // Package name kept as "NumericCore" (matching the product/module names
 // consumers import) even though the repository is "Swift-NumericCore" —
@@ -108,7 +111,7 @@ let package = Package(
 
         .testTarget(
             name: "NumericCoreOptimizationTests",
-            dependencies: ["NumericCore", "NumericCoreOptimization"]
+            dependencies: ["NumericCore", "NumericCoreSparse", "NumericCoreOptimization"]
         ),
         .executableTarget(
             name: "NumericCoreBenchmarks",
