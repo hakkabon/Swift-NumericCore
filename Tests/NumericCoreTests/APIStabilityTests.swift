@@ -6,7 +6,7 @@ final class APIStabilityTests: XCTestCase {
     func testManifestIdentityIsFrozenForCompatibilityEpochOne() {
         XCTAssertEqual(NumericCoreAPI.manifestSchemaVersion, 1)
         XCTAssertEqual(NumericCoreAPI.compatibilityEpoch, 1)
-        let optional = ["benders-decomposition", "lp-decomposition"]
+        let optional = ["benders-decomposition", "integer-benders-decomposition", "lp-decomposition"]
         let identifiers = NumericCoreAPI.capabilities.filter { !optional.contains($0.identifier) }
         XCTAssertEqual(identifiers.map(\.identifier), [
             "dae-integration",

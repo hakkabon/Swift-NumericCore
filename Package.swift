@@ -10,6 +10,7 @@ let generatedSource = (try? String(contentsOf: generatedBindings, encoding: .utf
 let decompositionSettings: [SwiftSetting] = [
     ("public protocol FfiLpWorkspaceProtocol", "NUMERICCORE_LP_DECOMPOSITION_FFI"),
     ("public func solveBendersDecomposition(", "NUMERICCORE_BENDERS_FFI"),
+    ("public func solveIntegerBendersDecomposition(", "NUMERICCORE_INTEGER_BENDERS_FFI"),
 ].compactMap { marker, flag in
     generatedSource.contains(marker) ? .define(flag) : nil
 }

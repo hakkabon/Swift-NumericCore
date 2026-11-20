@@ -59,6 +59,9 @@ public enum NumericCoreAPI {
         #if NUMERICCORE_BENDERS_FFI
         decomposition.append(.init(identifier: "benders-decomposition", stability: .provisional))
         #endif
+        #if NUMERICCORE_INTEGER_BENDERS_FFI
+        decomposition.append(.init(identifier: "integer-benders-decomposition", stability: .provisional))
+        #endif
         #if NUMERICCORE_LP_DECOMPOSITION_FFI
         decomposition.append(.init(identifier: "lp-decomposition", stability: .provisional))
         #endif

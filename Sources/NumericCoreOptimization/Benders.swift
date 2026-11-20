@@ -123,13 +123,7 @@ public enum BendersSolver {
         #if NUMERICCORE_BENDERS_FFI
         let result = try solveBendersDecomposition(
             firstStage: ffiLPProblem(problem.firstStage),
-            scenarios: problem.scenarios.map { scenario in
-                try FfiBendersScenario(
-                    id: .init(name: scenario.id.name, scenario: scenario.id.scenario),
-                    probability: scenario.probability,
-                    recourse: ffiLPProblem(scenario.recourse),
-                    coupling: ffiBendersCoupling(scenario.coupling))
-            },
+            scenarios: problem.scenarios.map(ffiBendersScenario),
             options: .init(
                 cutStrategy: options.cutStrategy == .single ? .single : .multi,
                 maxIterations: options.maxIterations, lpIterationLimit: options.lpIterationLimit,
@@ -150,12 +144,7 @@ public enum BendersSolver {
         }
         return .init(
             termination: termination,
-            incumbent: result.incumbent.map { incumbent in
-                .init(firstStage: incumbent.firstStage, recourse: incumbent.recourse.map { solution in
-                    .init(id: .init(name: solution.id.name, scenario: solution.id.scenario),
-                          point: solution.point, objective: solution.objective)
-                }, objective: incumbent.objective)
-            },
+            incumbent: result.incumbent.map(fromFFIBendersIncumbent),
             lowerBound: result.lowerBound, upperBound: result.upperBound,
             absoluteGap: result.absoluteGap, relativeGap: result.relativeGap,
             history: result.history.map {
@@ -172,6 +161,19 @@ public enum BendersSolver {
 }
 
 #if NUMERICCORE_BENDERS_FFI
+func ffiBendersScenario(_ scenario: BendersScenario) throws -> FfiBendersScenario {
+    try .init(id: .init(name: scenario.id.name, scenario: scenario.id.scenario),
+              probability: scenario.probability, recourse: ffiLPProblem(scenario.recourse),
+              coupling: ffiBendersCoupling(scenario.coupling))
+}
+
+func fromFFIBendersIncumbent(_ incumbent: FfiBendersIncumbent) -> BendersIncumbent {
+    .init(firstStage: incumbent.firstStage, recourse: incumbent.recourse.map { solution in
+        .init(id: .init(name: solution.id.name, scenario: solution.id.scenario),
+              point: solution.point, objective: solution.objective)
+    }, objective: incumbent.objective)
+}
+
 private func ffiBendersCoupling(_ matrix: SparseMatrix<Double>) throws -> FfiCsrMatrixF64 {
     guard let rows = UInt32(exactly: matrix.rows), let columns = UInt32(exactly: matrix.cols),
           UInt32(exactly: matrix.nonZeroCount) != nil else {
