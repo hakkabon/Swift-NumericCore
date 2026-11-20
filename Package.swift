@@ -7,12 +7,13 @@ import PackageDescription
 let generatedBindings = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
     .appendingPathComponent("Sources/NCBindings/Generated/nc_ffi.swift")
 let generatedSource = (try? String(contentsOf: generatedBindings, encoding: .utf8)) ?? ""
-let decompositionSettings: [SwiftSetting] = [
+let optionalSolverSettings: [SwiftSetting] = [
     ("public protocol FfiLpWorkspaceProtocol", "NUMERICCORE_LP_DECOMPOSITION_FFI"),
     ("public func solveBendersDecomposition(", "NUMERICCORE_BENDERS_FFI"),
     ("public func solveIntegerBendersDecomposition(", "NUMERICCORE_INTEGER_BENDERS_FFI"),
     ("public func solveScenarioTree(", "NUMERICCORE_STOCHASTIC_FFI"),
     ("public func solveNonlinearDecomposition(", "NUMERICCORE_NONLINEAR_DECOMPOSITION_FFI"),
+    ("public protocol FfiSparseFactorizationProtocol", "NUMERICCORE_SPARSE_WORKSPACE_FFI"),
 ].compactMap { marker, flag in
     generatedSource.contains(marker) ? .define(flag) : nil
 }
@@ -77,7 +78,7 @@ let package = Package(
         .target(
             name: "NumericCore",
             dependencies: ["NCBindings"],
-            swiftSettings: decompositionSettings
+            swiftSettings: optionalSolverSettings
         ),
 
         .target(
@@ -92,7 +93,8 @@ let package = Package(
 
         .target(
             name: "NumericCoreSparse",
-            dependencies: ["NumericCore", "NCBindings"]
+            dependencies: ["NumericCore", "NCBindings"],
+            swiftSettings: optionalSolverSettings
         ),
 
         .target(
@@ -103,7 +105,7 @@ let package = Package(
         .target(
             name: "NumericCoreOptimization",
             dependencies: ["NumericCore", "NumericCoreSparse", "NCBindings"],
-            swiftSettings: decompositionSettings
+            swiftSettings: optionalSolverSettings
         ),
 
         .testTarget(

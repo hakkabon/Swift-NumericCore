@@ -118,7 +118,7 @@ public enum SparseLinearSolver {
         } catch let error as FFIError { throw error.sparseLinearError }
     }
 
-    private static func ffiMatrix(_ matrix: SparseMatrix<Double>) -> FFICSRMatrix {
+    static func ffiMatrix(_ matrix: SparseMatrix<Double>) -> FFICSRMatrix {
         .init(rows: matrix.rows, cols: matrix.cols,
               rowPointers: matrix.csrRowPointers,
               columnIndices: matrix.csrColumnIndices,
@@ -126,7 +126,7 @@ public enum SparseLinearSolver {
     }
 }
 
-private extension FFIError {
+extension FFIError {
     var sparseLinearError: NCError {
         switch self {
         case .dimensionMismatch(let message): return .dimensionMismatch(message)

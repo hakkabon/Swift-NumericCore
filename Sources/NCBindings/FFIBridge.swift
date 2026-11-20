@@ -413,7 +413,7 @@ public enum FFIKernels {
             preconditioner: options.preconditioner.generated)
     }
 
-    private static func makeFfiCSRMatrix(_ matrix: FFICSRMatrix) throws -> FfiCsrMatrixF64 {
+    package static func makeFfiCSRMatrix(_ matrix: FFICSRMatrix) throws -> FfiCsrMatrixF64 {
         FfiCsrMatrixF64(
             rows: try ffiUInt32(matrix.rows, name: "rows"),
             cols: try ffiUInt32(matrix.cols, name: "cols"),
@@ -441,7 +441,7 @@ public enum FFIKernels {
     /// `FFIError`. Isolated in one place so `NumericCore`/
     /// `NumericCoreSparse` never need to know about the generated error
     /// type's exact shape.
-    static func translate(_ error: Error) -> FFIError {
+    package static func translate(_ error: Error) -> FFIError {
         guard let ffiError = error as? FfiError else {
             return .unknown(String(describing: error))
         }

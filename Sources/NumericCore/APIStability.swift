@@ -71,6 +71,9 @@ public enum NumericCoreAPI {
         #if NUMERICCORE_NONLINEAR_DECOMPOSITION_FFI
         decomposition.append(.init(identifier: "nonlinear-decomposition", stability: .provisional))
         #endif
+        #if NUMERICCORE_SPARSE_WORKSPACE_FFI
+        decomposition.append(.init(identifier: "sparse-solver-workspaces", stability: .provisional))
+        #endif
         return (entries + decomposition).sorted { $0.identifier < $1.identifier }
     }()
 
