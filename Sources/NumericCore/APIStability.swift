@@ -40,20 +40,28 @@ public enum NumericCoreAPI {
     public static let compatibilityEpoch = 1
 
     /// Public capability catalog, in deterministic identifier order.
-    public static let capabilities: [NumericCoreCapability] = [
-        .init(identifier: "dae-integration", stability: .provisional),
-        .init(identifier: "dense-linear-algebra", stability: .stable),
-        .init(identifier: "engineering-models", stability: .provisional),
-        .init(identifier: "fem", stability: .provisional),
-        .init(identifier: "global-minlp", stability: .experimental),
-        .init(identifier: "iterative-linear-solvers", stability: .stable),
-        .init(identifier: "lp-qp-milp", stability: .stable),
-        .init(identifier: "multiphysics-design", stability: .experimental),
-        .init(identifier: "nonlinear-equations", stability: .provisional),
-        .init(identifier: "nonlinear-optimization", stability: .stable),
-        .init(identifier: "numerical-validation", stability: .stable),
-        .init(identifier: "sparse-linear-algebra", stability: .stable),
-    ]
+    public static let capabilities: [NumericCoreCapability] = {
+        let entries: [NumericCoreCapability] = [
+            .init(identifier: "dae-integration", stability: .provisional),
+            .init(identifier: "dense-linear-algebra", stability: .stable),
+            .init(identifier: "engineering-models", stability: .provisional),
+            .init(identifier: "fem", stability: .provisional),
+            .init(identifier: "global-minlp", stability: .experimental),
+            .init(identifier: "iterative-linear-solvers", stability: .stable),
+            .init(identifier: "lp-qp-milp", stability: .stable),
+            .init(identifier: "multiphysics-design", stability: .experimental),
+            .init(identifier: "nonlinear-equations", stability: .provisional),
+            .init(identifier: "nonlinear-optimization", stability: .stable),
+            .init(identifier: "numerical-validation", stability: .stable),
+            .init(identifier: "sparse-linear-algebra", stability: .stable),
+        ]
+        #if NUMERICCORE_LP_DECOMPOSITION_FFI
+        return (entries + [.init(identifier: "lp-decomposition", stability: .provisional)])
+            .sorted { $0.identifier < $1.identifier }
+        #else
+        return entries
+        #endif
+    }()
 
     public static func capability(_ identifier: String) -> NumericCoreCapability? {
         capabilities.first { $0.identifier == identifier }

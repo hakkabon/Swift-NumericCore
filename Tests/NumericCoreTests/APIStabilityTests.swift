@@ -6,13 +6,18 @@ final class APIStabilityTests: XCTestCase {
     func testManifestIdentityIsFrozenForCompatibilityEpochOne() {
         XCTAssertEqual(NumericCoreAPI.manifestSchemaVersion, 1)
         XCTAssertEqual(NumericCoreAPI.compatibilityEpoch, 1)
-        XCTAssertEqual(NumericCoreAPI.capabilities.map(\.identifier), [
+        let identifiers = NumericCoreAPI.capabilities.filter { $0.identifier != "lp-decomposition" }
+        XCTAssertEqual(identifiers.map(\.identifier), [
             "dae-integration",
             "dense-linear-algebra", "engineering-models", "fem", "global-minlp",
             "iterative-linear-solvers", "lp-qp-milp", "multiphysics-design",
             "nonlinear-equations", "nonlinear-optimization", "numerical-validation",
             "sparse-linear-algebra",
         ])
+        if let decomposition = NumericCoreAPI.capability("lp-decomposition") {
+            XCTAssertEqual(decomposition.stability, .provisional)
+            XCTAssertEqual(decomposition.contractVersion, 1)
+        }
     }
 
     func testManifestIsWellFormedAndQueryable() {

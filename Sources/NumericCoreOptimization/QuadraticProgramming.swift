@@ -198,6 +198,59 @@ public struct QuadraticIteration: Sendable, Hashable {
     public let dualResidual: Double
 }
 
+/// Reuses the matrix assembly and initial-rho factor across fixed-matrix QPs.
+public struct QuadraticWorkspace {
+    public private(set) var problem: QuadraticProblem
+    public let options: QuadraticOptions
+    private let system: PreparedQuadraticSystem
+    private var warmStart: QuadraticWarmStart?
+
+    public init(problem: QuadraticProblem, options: QuadraticOptions = .init()) throws {
+        try ConvexQuadraticSolver.validate(options)
+        try problem.validate(convexityTolerance: options.convexityTolerance)
+        self.problem = problem
+        self.options = options
+        system = .init(problem, rho: options.rho)
+    }
+
+    public mutating func update(linear: [Double], constant: Double,
+                                rowBounds: [ParameterBound], variableBounds: [ParameterBound]) throws {
+        guard linear.count == problem.linear.count, linear.allSatisfy(\.isFinite),
+              constant.isFinite, rowBounds.count == problem.rowBounds.count,
+              variableBounds.count == problem.variableBounds.count,
+              rowBounds.allSatisfy(qpValidBound), variableBounds.allSatisfy(qpValidBound) else {
+            throw NonlinearOptimizationError.invalidConfiguration("invalid fixed-matrix QP update")
+        }
+        problem = .init(quadratic: problem.quadratic, linear: linear, constant: constant,
+                        constraints: problem.constraints, rowBounds: rowBounds,
+                        variableBounds: variableBounds)
+    }
+
+    public mutating func solve(observer: ConvexQuadraticSolver.Observer? = nil) throws -> QuadraticResult {
+        let result = try ConvexQuadraticSolver.solvePrepared(
+            problem, options: options, warmStart: warmStart, observer: observer, system: system)
+        warmStart = result.termination == .converged ? result.warmStart : nil
+        return result
+    }
+}
+
+fileprivate struct PreparedQuadraticSystem {
+    let combined: [[Double]]
+    let initialFactor: [[Double]]?
+
+    init(_ problem: QuadraticProblem, rho: Double) {
+        let n = problem.linear.count
+        var combined = problem.constraints.dense()
+        for column in 0..<n {
+            var row = [Double](repeating: 0, count: n)
+            row[column] = 1
+            combined.append(row)
+        }
+        self.combined = combined
+        initialFactor = qpFactorSystem(problem, combined, rho)
+    }
+}
+
 public enum ConvexQuadraticSolver {
     public typealias Observer = (QuadraticIteration) -> Bool
 
@@ -205,14 +258,19 @@ public enum ConvexQuadraticSolver {
                              warmStart: QuadraticWarmStart? = nil,
                              observer: Observer? = nil) throws -> QuadraticResult {
         try validate(options); try problem.validate(convexityTolerance: options.convexityTolerance)
+        return try solvePrepared(problem, options: options, warmStart: warmStart, observer: observer,
+                                 system: .init(problem, rho: options.rho))
+    }
+
+    fileprivate static func solvePrepared(
+        _ problem: QuadraticProblem, options: QuadraticOptions, warmStart: QuadraticWarmStart?,
+        observer: Observer?, system: PreparedQuadraticSystem
+    ) throws -> QuadraticResult {
         let n = problem.linear.count, m = problem.rowBounds.count, p = m + n
-        var combined = problem.constraints.dense()
-        for column in 0..<n {
-            var row = [Double](repeating: 0, count: n); row[column] = 1; combined.append(row)
-        }
+        let combined = system.combined
         let bounds = problem.rowBounds + problem.variableBounds
         var rho = options.rho
-        guard var factor = qpFactorSystem(problem, combined, rho) else {
+        guard var factor = system.initialFactor else {
             return makeResult(problem, [Double](repeating: 0, count: n),
                               [Double](repeating: 0, count: p), 0, .numericalFailure,
                               .infinity, .infinity)
@@ -288,7 +346,7 @@ public enum ConvexQuadraticSolver {
                           options.maxIterations, .iterationLimit, primalResidual, dualResidual)
     }
 
-    private static func validate(_ options: QuadraticOptions) throws {
+    fileprivate static func validate(_ options: QuadraticOptions) throws {
         guard options.maxIterations > 0, options.rho.isFinite, options.rho > 0,
               options.absoluteTolerance.isFinite, options.absoluteTolerance > 0,
               options.relativeTolerance.isFinite, options.relativeTolerance > 0,

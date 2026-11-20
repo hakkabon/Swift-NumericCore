@@ -744,7 +744,7 @@ extension FFIKernels {
         }
     }
 
-    private static func makeFfiProblem(_ problem: FFIProblem) -> FfiProblem {
+    package static func makeFfiProblem(_ problem: FFIProblem) -> FfiProblem {
         FfiProblem(
             objective: problem.objective,
             constraints: FfiCsrMatrixF64(
