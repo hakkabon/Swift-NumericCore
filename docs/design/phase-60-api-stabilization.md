@@ -35,3 +35,38 @@ explicit termination behavior.
 
 The compatibility epoch is `1`; it is deliberately independent of package
 versions and can therefore be tested before the first stable release.
+
+## Maintenance interval
+
+- The numerical validation workflow runs weekly and on demand. It collects
+  the standard corpus snapshot and the Swift toolchain version. Scheduled
+  and manual runs also exercise a fresh SwiftPM consumer against both the
+  checkout and the published Swift 1.0.0 version.
+- The Swift tests compare schema, compatibility epoch, ordered capability
+  identifiers, stability tiers, and contract versions with the linked Rust
+  binary. CI also compares its runtime version with `.ffi-version`. Rust
+  v0.34.0 may still advertise the two provisional capabilities retired by
+  the modeling and circuit split. Newer pins require full catalog parity.
+- Verify release assets before shipping. The Swift tag workflow downloads
+  the Rust archive and binding from the exact pinned release, checks the
+  archive checksum and binding bytes, and builds a consumer against the
+  pushed Swift version before notifying consumers.
+- Retain published Rust archives and generated bindings for every supported
+  Swift tag. Preserve both original files and the archive checksum in release
+  backups. If an asset goes missing, restore the exact verified bytes or
+  ship a new Rust tag and Swift pin.
+- Triage numerical failures using the archived case ID, metric, tolerance,
+  solver backend, toolchain, and FFI version. Keep patch releases focused
+  on corrections and compatible diagnostics. Review toolchain and CI
+  dependency upgrades separately. Promote a provisional capability only
+  after documenting its contract and reviewing its conformance evidence.
+
+Run the core suite and clean-checkout consumer locally from the repo root:
+
+```sh
+NUMERICCORE_EXPECTED_RUST_TAG="$(cat .ffi-version)" swift test
+NUMERICCORE_PACKAGE_PATH="$PWD" swift run --package-path scripts/consumer-smoke
+```
+
+To verify files already downloaded from the pinned Rust release, run
+`python3 -B scripts/verify_ffi_release.py /path/to/assets`.

@@ -2,7 +2,7 @@ name: Validate release and notify consumers
 
 on:
   push:
-    tags: ["v*.*.*"]
+    tags: ["v*.*.*", "[0-9]*.*.*"]
 
 permissions:
   contents: read
@@ -13,16 +13,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Test tagged Swift and remote Rust FFI
-        run: swift test --filter NumericCoreTests
+        run: NUMERICCORE_EXPECTED_RUST_TAG="$(cat .ffi-version)" swift test
       - name: Verify synchronized FFI provenance
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          test -s .ffi-version
           RUST_TAG=$(cat .ffi-version)
-          grep -q "releases/download/${RUST_TAG}/NumericCoreFFI.xcframework.zip" Package.swift
-          test -s Sources/NCBindings/Generated/nc_ffi.swift
+          gh release download "$RUST_TAG" --repo hakkabon/Rust-NumericCore \
+            --pattern NumericCoreFFI.xcframework.zip --pattern nc_ffi.swift \
+            --dir "${RUNNER_TEMP}/numericcore-ffi-assets"
+          python3 -B scripts/verify_ffi_release.py "${RUNNER_TEMP}/numericcore-ffi-assets"
+      - name: Build and run a consumer against the published Swift tag
+        env:
+          NUMERICCORE_SWIFT_TAG: ${{ github.ref_name }}
+        run: swift run --package-path scripts/consumer-smoke
       - name: Notify ecosystem compatibility workflow
         env:
           TOKEN: ${{ secrets.DATALENSING_DISPATCH_TOKEN }}
+          SWIFT_TAG: ${{ github.ref_name }}
         run: |
           if [ -z "${TOKEN}" ]; then
             echo "No dispatch token; DataLensing's weekly compatibility run is the fallback."
@@ -31,4 +39,4 @@ jobs:
           curl -sS -X POST -H "Accept: application/vnd.github+json" \
             -H "Authorization: Bearer ${TOKEN}" \
             https://api.github.com/repos/hakkabon/DataLensing/dispatches \
-            -d '{"event_type":"numericcore-release","client_payload":{"tag":"${{ github.ref_name }}"}}'
+            -d "$(jq -cn --arg tag "$SWIFT_TAG" '{event_type:"numericcore-release",client_payload:{tag:$tag}}')"

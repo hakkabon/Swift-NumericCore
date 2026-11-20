@@ -153,7 +153,7 @@ jobs:
         continue-on-error: true
         run: |
           swift build
-          swift test
+          NUMERICCORE_EXPECTED_RUST_TAG="$(cat .ffi-version)" swift test
 
       - name: Open update PR
         if: steps.check.outputs.up_to_date == 'false'

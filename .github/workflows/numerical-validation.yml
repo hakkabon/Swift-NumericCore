@@ -11,6 +11,8 @@ on:
     types: [opened, synchronize, reopened, ready_for_review]
   push:
     branches: [main]
+  schedule:
+    - cron: "23 5 * * 1" # Mondays, UTC
   workflow_dispatch:
 
 permissions:
@@ -41,11 +43,37 @@ jobs:
           persist-credentials: false
 
       - name: Run complete validation suite
-        run: swift test
+        run: NUMERICCORE_EXPECTED_RUST_TAG="$(cat .ffi-version)" swift test
+      - name: Verify published Rust FFI assets
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          RUST_TAG=$(cat .ffi-version)
+          gh release download "$RUST_TAG" --repo hakkabon/Rust-NumericCore \
+            --pattern NumericCoreFFI.xcframework.zip --pattern nc_ffi.swift \
+            --dir "${RUNNER_TEMP}/numericcore-ffi-assets"
+          python3 -B scripts/verify_ffi_release.py "${RUNNER_TEMP}/numericcore-ffi-assets"
+      - name: Run clean consumer against this checkout
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        env:
+          NUMERICCORE_PACKAGE_PATH: ${{ github.workspace }}
+        run: swift run --package-path scripts/consumer-smoke
+      - name: Run clean consumer against the Swift 1.0 release
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        env:
+          NUMERICCORE_SWIFT_TAG: "1.0.0"
+        run: swift run --package-path scripts/consumer-smoke --scratch-path "${RUNNER_TEMP}/numericcore-1x-smoke"
       - name: Produce reproducible standard-tier evidence
-        run: swift run -c release NumericCoreValidation standard > numerical-validation.json
+        if: ${{ !cancelled() }}
+        run: |
+          swift --version > toolchain.txt
+          swift run -c release NumericCoreValidation standard > numerical-validation.json
       - name: Upload numerical evidence
+        if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
         with:
           name: swift-numerical-validation
-          path: numerical-validation.json
+          path: |
+            numerical-validation.json
+            toolchain.txt
