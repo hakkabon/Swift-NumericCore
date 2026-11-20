@@ -95,7 +95,7 @@ extension EngineeringModel {
     }
 }
 
-private func engineeringEffectiveTangent(_ assembly: EngineeringAssembly,
+func engineeringEffectiveTangent(_ assembly: EngineeringAssembly,
                                          alpha: Double) throws -> SparseMatrix<Double> {
     var entries = engineeringEntries(assembly.jacobianState)
     if alpha != 0 {

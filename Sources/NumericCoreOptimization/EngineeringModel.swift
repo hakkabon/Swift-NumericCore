@@ -155,22 +155,28 @@ public struct EngineeringModel: Sendable, Hashable {
         var parameterEntries: [SparseEntry<Double>] = []
         for element in elements {
             let local = element.ports.count
-            let input = [time]
-                + element.ports.map { state[$0.unknown] }
-                + element.ports.map { derivative[$0.unknown] }
-                + parameters.map(\.value)
+            let derivativeStart = 1 + local
+            let parameterStart = derivativeStart + local
             for equation in element.equations {
-                let value = try equation.expression.evaluate(parameters: input)
-                residuals[equation.row] += value.value
-                for (index, port) in element.ports.enumerated() {
-                    engineeringPush(&stateEntries, row: equation.row, column: port.unknown,
-                                    value: value.gradient[1 + index])
-                    engineeringPush(&derivativeEntries, row: equation.row, column: port.unknown,
-                                    value: value.gradient[1 + local + index])
+                let value = try equation.expression.evaluateSparse(parameterCount: parameterStart + parameters.count) { index in
+                    switch index {
+                    case 0: time
+                    case 1..<derivativeStart: state[element.ports[index - 1].unknown]
+                    case derivativeStart..<parameterStart: derivative[element.ports[index - derivativeStart].unknown]
+                    default: parameters[index - parameterStart].value
+                    }
                 }
-                for parameter in parameters.indices {
-                    engineeringPush(&parameterEntries, row: equation.row, column: parameter,
-                                    value: value.gradient[1 + 2 * local + parameter])
+                residuals[equation.row] += value.value
+                for (index, partial) in zip(value.derivative.indices, value.derivative.values) {
+                    switch index {
+                    case 0: continue
+                    case 1..<derivativeStart:
+                        stateEntries.append(.init(row: equation.row, column: element.ports[index - 1].unknown, value: partial))
+                    case derivativeStart..<parameterStart:
+                        derivativeEntries.append(.init(row: equation.row, column: element.ports[index - derivativeStart].unknown, value: partial))
+                    default:
+                        parameterEntries.append(.init(row: equation.row, column: index - parameterStart, value: partial))
+                    }
                 }
             }
         }
@@ -193,10 +199,6 @@ public struct EngineeringModel: Sendable, Hashable {
     }
 }
 
-private func engineeringPush(_ entries: inout [SparseEntry<Double>], row: Int,
-                             column: Int, value: Double) {
-    if value != 0 { entries.append(.init(row: row, column: column, value: value)) }
-}
 private func engineeringUnique(_ names: [String], kind: String) throws {
     guard names.allSatisfy({ !$0.isEmpty }), Set(names).count == names.count else {
         throw engineeringInvalid("\(kind) names must be non-empty and unique")

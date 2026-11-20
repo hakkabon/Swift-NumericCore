@@ -207,7 +207,7 @@ public enum MultiphysicsDesignOptimizer {
             coupledSolves += 1; warmState = steady.state
             let evaluated = try problem.response.evaluate(parameters: steady.state + parameters)
             let n = steady.state.count
-            let sensitivity = try model.engineeringModel.sensitivities(
+            let sensitivity = try model.engineeringModel.adjointSensitivities(
                 time: 0, state: steady.state, derivative: [Double](repeating: 0, count: n),
                 responses: [.init(name: "design-response",
                     stateGradient: Array(evaluated.gradient[..<n]),

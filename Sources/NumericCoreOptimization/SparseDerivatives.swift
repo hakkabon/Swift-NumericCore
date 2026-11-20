@@ -89,7 +89,15 @@ public extension NonlinearExpression {
     /// Evaluates a value and sparse gradient using a primal sweep followed by
     /// reverse accumulation. Storage is O(nodes + active parameters).
     func evaluateSparse(parameters: [Double]) throws -> (value: Double, derivative: SparseDerivative) {
-        let primal = try sparsePrimalValues(parameters)
+        guard parameters.allSatisfy(\.isFinite) else {
+            throw NonlinearOptimizationError.invalidInitialPoint
+        }
+        return try evaluateSparse(parameterCount: parameters.count) { parameters[$0] }
+    }
+
+    internal func evaluateSparse(parameterCount: Int, input: (Int) -> Double) throws
+        -> (value: Double, derivative: SparseDerivative) {
+        let primal = try sparsePrimalValues(parameterCount: parameterCount, input: input)
         var adjoints = [Double](repeating: 0, count: nodes.count)
         adjoints[output] = 1
         if output >= 0 {
@@ -126,7 +134,7 @@ public extension NonlinearExpression {
             throw NonlinearOptimizationError.invalidEvaluation("expression derivative is non-finite")
         }
         let nonzeros = entries.filter { $0.value != 0 }.sorted { $0.key < $1.key }
-        return (primal[output], .init(dimension: parameters.count,
+        return (primal[output], .init(dimension: parameterCount,
                                       indices: nonzeros.map(\.key),
                                       values: nonzeros.map(\.value)))
     }
@@ -153,14 +161,11 @@ public extension NonlinearExpression {
         return (primal[output], tangent[output])
     }
 
-    private func sparsePrimalValues(_ parameters: [Double]) throws -> [Double] {
-        try validate(parameterCount: parameters.count)
-        guard parameters.allSatisfy(\.isFinite) else {
-            throw NonlinearOptimizationError.invalidInitialPoint
-        }
+    private func sparsePrimalValues(parameterCount: Int, input: (Int) -> Double) throws -> [Double] {
+        try validate(parameterCount: parameterCount)
         var values: [Double] = []
         for (index, node) in nodes.enumerated() {
-            let value = sparseNodeValue(node, values, parameters)
+            let value = sparseNodeValue(node, values, input)
             guard value.isFinite else {
                 throw NonlinearOptimizationError.invalidEvaluation(
                     "expression evaluation produced a non-finite value")
@@ -229,10 +234,10 @@ public extension NonlinearModel {
     }
 }
 
-private func sparseNodeValue(_ node: NonlinearNode, _ v: [Double], _ p: [Double]) -> Double {
+private func sparseNodeValue(_ node: NonlinearNode, _ v: [Double], _ input: (Int) -> Double) -> Double {
     switch node {
     case .constant(let x): return x
-    case .parameter(let i): return p[i]
+    case .parameter(let i): return input(i)
     case .add(let a, let b): return v[a] + v[b]
     case .subtract(let a, let b): return v[a] - v[b]
     case .multiply(let a, let b): return v[a] * v[b]

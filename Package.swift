@@ -14,6 +14,7 @@ let optionalSolverSettings: [SwiftSetting] = [
     ("public func solveScenarioTree(", "NUMERICCORE_STOCHASTIC_FFI"),
     ("public func solveNonlinearDecomposition(", "NUMERICCORE_NONLINEAR_DECOMPOSITION_FFI"),
     ("public protocol FfiSparseFactorizationProtocol", "NUMERICCORE_SPARSE_WORKSPACE_FFI"),
+    ("public func integrateEngineeringTrajectory(", "NUMERICCORE_ENGINEERING_ADJOINTS_FFI"),
 ].compactMap { marker, flag in
     generatedSource.contains(marker) ? .define(flag) : nil
 }
