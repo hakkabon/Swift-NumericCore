@@ -3,7 +3,7 @@ import Foundation
 import PackageDescription
 
 // The release sync updates this binding and the binary together. Enable the
-// decomposition bridges only when their generated APIs are present.
+// optional solver bridges only when their generated APIs are present.
 let generatedBindings = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
     .appendingPathComponent("Sources/NCBindings/Generated/nc_ffi.swift")
 let generatedSource = (try? String(contentsOf: generatedBindings, encoding: .utf8)) ?? ""
@@ -11,6 +11,7 @@ let decompositionSettings: [SwiftSetting] = [
     ("public protocol FfiLpWorkspaceProtocol", "NUMERICCORE_LP_DECOMPOSITION_FFI"),
     ("public func solveBendersDecomposition(", "NUMERICCORE_BENDERS_FFI"),
     ("public func solveIntegerBendersDecomposition(", "NUMERICCORE_INTEGER_BENDERS_FFI"),
+    ("public func solveScenarioTree(", "NUMERICCORE_STOCHASTIC_FFI"),
 ].compactMap { marker, flag in
     generatedSource.contains(marker) ? .define(flag) : nil
 }

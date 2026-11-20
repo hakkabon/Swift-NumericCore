@@ -65,6 +65,9 @@ public enum NumericCoreAPI {
         #if NUMERICCORE_LP_DECOMPOSITION_FFI
         decomposition.append(.init(identifier: "lp-decomposition", stability: .provisional))
         #endif
+        #if NUMERICCORE_STOCHASTIC_FFI
+        decomposition.append(.init(identifier: "stochastic-optimization", stability: .provisional))
+        #endif
         return (entries + decomposition).sorted { $0.identifier < $1.identifier }
     }()
 

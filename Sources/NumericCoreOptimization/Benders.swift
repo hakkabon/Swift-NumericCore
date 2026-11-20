@@ -174,7 +174,7 @@ func fromFFIBendersIncumbent(_ incumbent: FfiBendersIncumbent) -> BendersIncumbe
     }, objective: incumbent.objective)
 }
 
-private func ffiBendersCoupling(_ matrix: SparseMatrix<Double>) throws -> FfiCsrMatrixF64 {
+func ffiBendersCoupling(_ matrix: SparseMatrix<Double>) throws -> FfiCsrMatrixF64 {
     guard let rows = UInt32(exactly: matrix.rows), let columns = UInt32(exactly: matrix.cols),
           UInt32(exactly: matrix.nonZeroCount) != nil else {
         throw LPDecompositionError.indexOutsideFFIRange
