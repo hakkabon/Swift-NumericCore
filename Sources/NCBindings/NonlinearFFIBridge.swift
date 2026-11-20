@@ -796,6 +796,11 @@ extension FFIKernels {
         FfiNonlinearExpression(nodes: expression.nodes.map(ffi), output: UInt32(expression.output))
     }
 
+    /// Encode a validated expression whose indices fit the UniFFI graph format.
+    public static func makeFfiNonlinearExpression(_ expression: FFINonlinearExpression) -> FfiNonlinearExpression {
+        ffi(expression)
+    }
+
     private static func ffi(_ node: FFINonlinearNode) -> FfiNonlinearNode {
         func make(_ kind: FfiNonlinearNodeKind, _ first: Int = 0,
                   _ second: Int = 0, value: Double = 0) -> FfiNonlinearNode {

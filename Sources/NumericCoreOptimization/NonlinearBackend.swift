@@ -459,7 +459,7 @@ public enum NonlinearModelSolver {
               objective: model.objective.map(ffi), residuals: model.residuals.map(ffi))
     }
 
-    private static func ffi(_ expression: NonlinearExpression) -> FFINonlinearExpression {
+    static func ffi(_ expression: NonlinearExpression) -> FFINonlinearExpression {
         .init(nodes: expression.nodes.map(ffi), output: expression.output)
     }
 

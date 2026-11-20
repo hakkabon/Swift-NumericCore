@@ -68,6 +68,9 @@ public enum NumericCoreAPI {
         #if NUMERICCORE_STOCHASTIC_FFI
         decomposition.append(.init(identifier: "stochastic-optimization", stability: .provisional))
         #endif
+        #if NUMERICCORE_NONLINEAR_DECOMPOSITION_FFI
+        decomposition.append(.init(identifier: "nonlinear-decomposition", stability: .provisional))
+        #endif
         return (entries + decomposition).sorted { $0.identifier < $1.identifier }
     }()
 

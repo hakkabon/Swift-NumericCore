@@ -12,6 +12,7 @@ let decompositionSettings: [SwiftSetting] = [
     ("public func solveBendersDecomposition(", "NUMERICCORE_BENDERS_FFI"),
     ("public func solveIntegerBendersDecomposition(", "NUMERICCORE_INTEGER_BENDERS_FFI"),
     ("public func solveScenarioTree(", "NUMERICCORE_STOCHASTIC_FFI"),
+    ("public func solveNonlinearDecomposition(", "NUMERICCORE_NONLINEAR_DECOMPOSITION_FFI"),
 ].compactMap { marker, flag in
     generatedSource.contains(marker) ? .define(flag) : nil
 }
