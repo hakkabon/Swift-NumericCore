@@ -41,8 +41,6 @@ public enum NumericCoreAPI {
 
     /// Public capability catalog, in deterministic identifier order.
     public static let capabilities: [NumericCoreCapability] = [
-        .init(identifier: "ampl-modeling", stability: .provisional),
-        .init(identifier: "circuit-analysis", stability: .provisional),
         .init(identifier: "dae-integration", stability: .provisional),
         .init(identifier: "dense-linear-algebra", stability: .stable),
         .init(identifier: "engineering-models", stability: .provisional),

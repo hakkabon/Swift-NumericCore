@@ -67,6 +67,14 @@ public struct EngineeringAssembly {
     public let jacobianDerivative: SparseMatrix<Double>
     public let parameterJacobian: SparseMatrix<Double>
 
+    public init(residuals: [Double], jacobianState: SparseMatrix<Double>,
+                jacobianDerivative: SparseMatrix<Double>, parameterJacobian: SparseMatrix<Double>) {
+        self.residuals = residuals
+        self.jacobianState = jacobianState
+        self.jacobianDerivative = jacobianDerivative
+        self.parameterJacobian = parameterJacobian
+    }
+
     public func daeEvaluation() -> DAEEvaluation {
         .init(residuals: residuals, jacobianState: engineeringDense(jacobianState),
               jacobianDerivative: engineeringDense(jacobianDerivative))

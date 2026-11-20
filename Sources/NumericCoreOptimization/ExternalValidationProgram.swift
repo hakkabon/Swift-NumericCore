@@ -1,5 +1,4 @@
 import NumericCore
-import NumericCoreOptimization
 
 /// Offline fixtures from independently maintained numerical reference corpora.
 public enum ExternalValidationProgram {

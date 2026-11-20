@@ -1,6 +1,5 @@
 import Foundation
 import NumericCore
-import NumericCoreOptimization
 
 /// Deterministic, hand-checkable validation program spanning the production
 /// LP, QP, MILP, and nonlinear paths, including Swift/Rust nonlinear parity.
@@ -8,23 +7,22 @@ public enum NumericCoreValidationProgram {
     public static func run() throws -> ValidationReport {
         let tolerance = ValidationTolerance(absolute: 1e-7, relative: 1e-7)
 
-        let lpSource = """
-        var x >= 0;
-        var y >= 0, <= 10;
-        maximize value: 3 x + 2 y;
-        subject to capacity: x + y <= 4;
-        subject to xlimit: x <= 3;
-        """
-        let compiledLP = try AMPLParser.parse(lpSource).compile()
-        let lp = try compiledLP.solve(configuration: .simplex(.init(scaling: false)))
-        let scaledLP = try compiledLP.solve(configuration: .simplex(.init(scaling: true)))
+        let lpProblem = try SparseLinearProblem(
+            objective: [-3, -2], rows: 2, columns: 2,
+            rowPointers: [0, 2, 3], columnIndices: [0, 1, 0], values: [1, 1, 1],
+            rowBounds: [.init(upper: 4), .init(upper: 3)],
+            variableBounds: [.init(lower: 0), .init(lower: 0, upper: 10)])
+        let lp = try SparseLinearSolver.solve(lpProblem, configuration: .simplex(.init(scaling: false)))
+        let scaledLP = try SparseLinearSolver.solve(lpProblem, configuration: .simplex(.init(scaling: true)))
+        let lpActivity = try SparseLinearWorkspace(problem: lpProblem).rowActivity(lp.variableValues)
+        let lpRowViolation = max(0, lpActivity[0] - 4, lpActivity[1] - 3)
         let lpCase = ValidationCase(id: "internal.lp.reference", family: "linear-programming",
                                     name: "LP reference and scaling invariance", metrics: [
-            .init(name: "LP objective", observed: lp.objectiveValue,
+            .init(name: "LP objective", observed: -lp.objectiveValue,
                   reference: 11, tolerance: tolerance),
-            .init(name: "scaled LP objective", observed: scaledLP.objectiveValue,
-                  reference: lp.objectiveValue, tolerance: tolerance),
-            .init(name: "LP row violation", observed: lp.diagnostics.maximumRowViolation,
+            .init(name: "scaled LP objective", observed: -scaledLP.objectiveValue,
+                  reference: -lp.objectiveValue, tolerance: tolerance),
+            .init(name: "LP row violation", observed: lpRowViolation,
                   reference: 0, tolerance: tolerance),
         ])
 
@@ -58,21 +56,22 @@ public enum NumericCoreValidationProgram {
                       reference: 0, tolerance: .init(absolute: 0, relative: 0)),
             ])
 
-        let milpSource = """
-        var x >= 0, <= 1 integer;
-        var y >= 0, <= 1 integer;
-        maximize value: 2 x + y;
-        subject to capacity: x + y <= 1.4;
-        """
-        let milp = try AMPLParser.parse(milpSource).compile().solve(
-            configuration: .branchAndBound())
+        let milpProblem = try SparseLinearProblem(
+            objective: [-2, -1], rows: 1, columns: 2,
+            rowPointers: [0, 2], columnIndices: [0, 1], values: [1, 1],
+            rowBounds: [.init(upper: 1.4)],
+            variableBounds: [.init(lower: 0, upper: 1), .init(lower: 0, upper: 1)],
+            isInteger: [true, true])
+        let milp = try SparseLinearSolver.solve(milpProblem, configuration: .branchAndBound())
+        let integralityViolation = milp.variableValues.map { abs($0 - $0.rounded()) }.max()
+            ?? .infinity
         let milpCase = ValidationCase(id: "internal.milp.enumerated",
                                       family: "mixed-integer-programming",
                                       name: "MILP enumerated optimum", metrics: [
-            .init(name: "MILP objective", observed: milp.objectiveValue,
+            .init(name: "MILP objective", observed: -milp.objectiveValue,
                   reference: 2, tolerance: tolerance),
             .init(name: "MILP integrality",
-                  observed: milp.diagnostics.maximumIntegralityViolation,
+                  observed: integralityViolation,
                   reference: 0, tolerance: tolerance),
             .init(name: "MILP certified gap", observed: milp.searchReport?.absoluteGap ?? .infinity,
                   reference: 0, tolerance: tolerance),
@@ -169,34 +168,6 @@ public enum NumericCoreValidationProgram {
                       reference: 2, tolerance: .init(absolute: 0, relative: 0)),
                 .init(name: "KKT negative inertia", observed: Double(kkt.inertia?.negative ?? -1),
                       reference: 1, tolerance: .init(absolute: 0, relative: 0)),
-            ])
-
-        let netlist = try SpiceNetlist.parse("""
-        validation RC low pass
-        V1 in 0 DC 1 AC 1
-        R1 in out 1k
-        C1 out 0 1u
-        .OP
-        .AC DEC 10 10 10k
-        .END
-        """)
-        let circuitOperatingPoint = try netlist.circuit.dcOperatingPoint()
-        guard case .ac(let acRequest)? = netlist.analyses.last else {
-            throw NonlinearOptimizationError.invalidConfiguration("SPICE validation lost AC request")
-        }
-        let circuitSweep = try netlist.circuit.acAnalysis(
-            operatingState: circuitOperatingPoint.state, frequencies: acRequest.frequencies,
-            excitations: netlist.acExcitations)
-        let spiceCase = ValidationCase(id: "internal.circuit.spice-netlist",
-            family: "circuit-analysis", tier: .standard,
-            name: "SPICE netlist DC and AC integration", metrics: [
-                .init(name: "SPICE DC output", observed: circuitOperatingPoint.nodeVoltages[2],
-                      reference: 1, tolerance: tolerance),
-                .init(name: "SPICE AC point count", observed: Double(circuitSweep.points.count),
-                      reference: 31, tolerance: .init(absolute: 0, relative: 0)),
-                .init(name: "SPICE AC maximum residual",
-                      observed: circuitSweep.points.map(\.residualNorm).max() ?? .infinity,
-                      reference: 0, tolerance: .init(absolute: 1e-9, relative: 0)),
             ])
 
         let daeSystem: TimeIntegrator.DAESystem = { _, y, yd in
@@ -357,7 +328,7 @@ public enum NumericCoreValidationProgram {
             })
 
         var cases = [lpCase, qpCase, certificateCase, milpCase, nonlinearCase,
-                     presolveCase, sparseCase, kktCase, spiceCase, daeCase,
+                     presolveCase, sparseCase, kktCase, daeCase,
                      continuumCase, sensitivityCase, strengtheningCase,
                      multiphysicsCase, perturbationCase]
         cases += try ExternalValidationProgram.run()

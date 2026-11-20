@@ -2,9 +2,8 @@
 
 A numerical computing platform for Apple platforms — `Matrix<T>`/
 `Vector<T>` with a capability-based dispatcher across Accelerate, Metal
-Performance Shaders, and a Rust-core-backed fallback — plus an
-AMPL-style declarative modeling language and solver interface built on
-top.
+Performance Shaders, and a Rust-core-backed fallback — plus sparse
+linear algebra and mathematical optimization.
 
 This is the Swift half of the project. The Rust half
 (kernels/sparse/solvers, consumed via UniFFI) lives in
@@ -29,7 +28,7 @@ dependencies: [
 
 then depend on whichever product(s) you need — `NumericCore` is the
 core `Matrix`/`Vector`/`Dispatcher` API; `NumericCoreAccelerate`,
-`NumericCoreSparse`, `NumericCoreGraph`, `NumericCoreAMPL`, and
+`NumericCoreSparse`, `NumericCoreGraph`, and
 `NumericCoreOptimization` are additive.
 As long as the maintainer has committed working FFI artifacts (see
 above), this "just works" for a consumer — no separate Rust toolchain
@@ -50,12 +49,11 @@ Swift-NumericCore/
 │   ├── NumericCoreMPS/        # Metal Performance Shaders backend (scaffold)
 │   ├── NumericCoreSparse/     # SparseMatrix<T> (CSR), SpMV
 │   ├── NumericCoreGraph/      # bridge to NetworkGraph/Layout — adjacency matrices
-│   ├── NumericCoreOptimization/ # Swift/Rust nonlinear optimization, LP/MILP/MINLP/QP
-│   └── NumericCoreAMPL/       # AMPL-style modeling language — lexer/parser/presolve/solve, full loop closed
+│   └── NumericCoreOptimization/ # Swift/Rust nonlinear optimization, LP/MILP/MINLP/QP
 ├── Tests/
 └── docs/
     ├── decisions/             # full ADR set for the NumericCore project
-    └── design/                # AMPL grammar sketch, dispatch-threshold tuning notes
+    └── design/                # Numerical design notes and historical decisions
 ```
 
 ## What's actually implemented
@@ -186,32 +184,14 @@ Swift-NumericCore/
   typed unknowns and parameters, oriented ports, portable constitutive graphs,
   exact sparse residual/Jacobian stamping, parameter sensitivities, and a
   direct residual-form DAE adapter for circuit and finite-element front ends.
-  `CircuitModel` now supplies the first such front end: modified nodal analysis
-  with reference-node elimination, R/C/L, independent sources and diode stamps,
-  DC operating points, transient DAE integration, source waveforms, recovered
-  branch currents, and KCL/branch residual diagnostics.
-  Nonlinear circuit depth includes VCCS/VCVS controlled sources, an analytic
-  level-1 NMOS model, source-stepped/gmin DC continuation, and pulse-transition
-  breakpoints for discontinuity-aware transient scheduling.
-  Small-signal AC sweeps linearize the nonlinear MNA system at a DC operating
-  point and solve its real block complex form. Bounded circuit optimization can
-  fit weighted AC magnitude targets through model-builder closures and L-BFGS-B.
   The FEM foundation adds sparse static assembly, exact prescribed-value
   elimination, reaction recovery, thermal triangles, and planar trusses with
   element stress/force and global energy/residual diagnostics.
   Structural dynamics extends the truss formulation with consistent mass
   assembly, mass-normalized modal analysis, Rayleigh damping, and stable
   average-acceleration Newmark integration with energy/equilibrium diagnostics.
-- `NumericCoreAMPL` — `Model` (variables/params/constraints/objective,
-  including the `integer` qualifier), a hand-rolled lexer/parser for
-  the grammar in `docs/design/ampl-grammar.md`
-  (`AMPLLexer.swift`/`AMPLParser.swift`), including precedence-aware nonlinear
-  arithmetic, constant powers, and elementary functions; presolve
-  (`Model.compile() -> CompiledProblem`, `Presolve.swift`), and solving
-  (`CompiledProblem.solve(using:)`, `Solve.swift`) via `nc-ffi`'s
-  `solve_lp_simplex`/`solve_lp_interior_point`/
-  `solve_milp_branch_and_bound` — a complete path from AMPL source text
-  to a solved LP *or* MILP. MILP search includes scaling, incumbent warm starts,
+  LP/MILP solving is available directly through `SparseLinearSolver`.
+  MILP search includes scaling, incumbent warm starts,
   singleton-row bound propagation, learned pseudo-cost branching, configurable
   node/gap policies, validated rounding incumbents with activity metrics, and a
   complete search certificate. Revised simplex periodically reconstructs its
@@ -226,9 +206,7 @@ Swift-NumericCore/
   backward-error checks, deterministic perturbations, and audited
   LP/QP/MILP/nonlinear reference cases. External release gates include the
   provenance-tagged NIST StRD Misra1a and CUTEst HS71 problems on both nonlinear
-  backends. Nonlinear models compile to the shared graph and
-  solve through bounded L-BFGS, SQP, augmented Lagrangian, or mixed-integer
-  nonlinear search on either backend.
+  backends.
   Validation cases now also have stable IDs, numerical families, and cumulative
   smoke/standard/extended tiers. `NumericCoreValidation` emits deterministic,
   timestamp-free JSON snapshots with a corpus manifest and regression-comparison
@@ -242,15 +220,9 @@ Swift-NumericCore/
   integrality checks (and optimality only with a supplied global gap), while
   convex QPs receive full primal/KKT/complementarity checks plus active-set
   rank warnings. Invalid or non-finite evidence fails closed.
-  A source-located SPICE netlist compiler now lowers a practical R/C/L,
-  independent/controlled-source, diode, and level-1 NMOS subset into
-  `CircuitModel`, including parameters, initial conditions, transient source
-  waveforms, and DC/transient/AC analysis directives. Parsed RC validation runs
-  through the native DC and AC solvers as part of the standard release corpus.
   The production DAE path now adds Jacobian-based consistent initialization for
   singular-mass index-1 systems, directional and terminal event location, and
-  validated hard step stops. Circuit transients automatically honor source
-  waveform breakpoints instead of stepping across discontinuities.
+  validated hard step stops.
   Continuum FEM now adds constant-strain triangular plane-stress and
   plane-strain elasticity, consistent body forces, sparse constrained assembly,
   and recovery of strain, full stress, principal/von-Mises measures, reactions,
@@ -264,14 +236,10 @@ Swift-NumericCore/
   API stabilization now exposes a machine-readable, cross-language capability
   manifest with explicit stable, provisional, and experimental tiers. This
   defines the compatibility boundary and release gates being prepared for 1.0.
-  Not yet built on the `Grammar`/`Lexer`/
-  `Parser` packages originally sketched for this — see `Model.swift`'s
-  module docs for why.
 
-Confirmed building on a real Mac toolchain as of the last full review;
-anything added after that point in a given conversation may not be
-re-verified — check the most recent commit message / PR description for
-what's been built-and-tested versus written-but-unverified.
+See [the package and circuit migration](docs/design/modeling-and-circuit-migration.md)
+for the transition from the bundled 1.x products to standalone NumericCoreAMPL
+and OhmLab.
 
 ## Building
 

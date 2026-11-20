@@ -17,17 +17,9 @@ let package = Package(
         .library(name: "NumericCoreMPS", targets: ["NumericCoreMPS"]),
         .library(name: "NumericCoreSparse", targets: ["NumericCoreSparse"]),
         .library(name: "NumericCoreGraph", targets: ["NumericCoreGraph"]),
-        .library(name: "NumericCoreAMPL", targets: ["NumericCoreAMPL"]),
         .library(name: "NumericCoreOptimization", targets: ["NumericCoreOptimization"]),
         .executable(name: "NumericCoreBenchmarks", targets: ["NumericCoreBenchmarks"]),
         .executable(name: "NumericCoreValidation", targets: ["NumericCoreValidation"]),
-    ],
-    dependencies: [
-        // Uncomment once the Grammar/Lexer/Parser packages are ready to be
-        // pulled in for NumericCoreAMPL's modeling-language front end.
-        // .package(url: "https://github.com/hakkabon/Grammar", branch: "main"),
-        // .package(url: "https://github.com/hakkabon/Parser", branch: "main"),
-        // .package(url: "https://github.com/hakkabon/Lexer", branch: "main"),
     ],
     targets: [
         // The compiled Rust core (nc-ffi), built by
@@ -92,14 +84,6 @@ let package = Package(
         ),
 
         .target(
-            name: "NumericCoreAMPL",
-            dependencies: ["NumericCore", "NumericCoreSparse", "NumericCoreOptimization", "NCBindings"]
-            // Add "Grammar", "Parser", "Lexer" here once the DSL front end
-            // is implemented against those packages instead of ad hoc
-            // parsing.
-        ),
-
-        .target(
             name: "NumericCoreOptimization",
             dependencies: ["NumericCore", "NumericCoreSparse", "NCBindings"]
         ),
@@ -111,12 +95,8 @@ let package = Package(
         ),
 
         .testTarget(
-            name: "NumericCoreAMPLTests",
-            dependencies: ["NumericCoreAMPL", "NumericCore", "NumericCoreOptimization"]
-        ),
-        .testTarget(
             name: "NumericCoreOptimizationTests",
-            dependencies: ["NumericCoreOptimization"]
+            dependencies: ["NumericCore", "NumericCoreOptimization"]
         ),
         .executableTarget(
             name: "NumericCoreBenchmarks",
@@ -125,7 +105,7 @@ let package = Package(
         ),
         .executableTarget(
             name: "NumericCoreValidation",
-            dependencies: ["NumericCore", "NumericCoreAMPL"],
+            dependencies: ["NumericCore", "NumericCoreOptimization"],
             path: "Benchmarks/NumericCoreValidation"
         ),
     ]

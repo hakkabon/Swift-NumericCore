@@ -6,7 +6,7 @@ final class APIStabilityTests: XCTestCase {
         XCTAssertEqual(NumericCoreAPI.manifestSchemaVersion, 1)
         XCTAssertEqual(NumericCoreAPI.compatibilityEpoch, 1)
         XCTAssertEqual(NumericCoreAPI.capabilities.map(\.identifier), [
-            "ampl-modeling", "circuit-analysis", "dae-integration",
+            "dae-integration",
             "dense-linear-algebra", "engineering-models", "fem", "global-minlp",
             "iterative-linear-solvers", "lp-qp-milp", "multiphysics-design",
             "nonlinear-equations", "nonlinear-optimization", "numerical-validation",

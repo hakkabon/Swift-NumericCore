@@ -23,7 +23,7 @@ public struct SparseLinearProblem: Sendable, Hashable {
     }
 
     public func validate() throws {
-        guard rows >= 0, columns > 0, objective.count == columns,
+        guard rows >= 0, columns >= 0, objective.count == columns,
               rowBounds.count == rows, variableBounds.count == columns,
               isInteger.count == columns, rowPointers.count == rows + 1,
               rowPointers.first == 0, rowPointers.last == values.count,
@@ -37,7 +37,7 @@ public struct SparseLinearProblem: Sendable, Hashable {
         }
     }
 
-    fileprivate var ffi: FFIProblem {
+    var ffi: FFIProblem {
         FFIProblem(objective: objective, constraintRows: rows, constraintCols: columns,
                    constraintRowPointers: rowPointers, constraintColumnIndices: columnIndices,
                    constraintValues: values,

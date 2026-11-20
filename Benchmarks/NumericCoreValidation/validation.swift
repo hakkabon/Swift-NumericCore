@@ -1,6 +1,6 @@
 import Foundation
 import NumericCore
-import NumericCoreAMPL
+import NumericCoreOptimization
 
 enum ValidationCommandError: Error, CustomStringConvertible {
     case unknownTier(String)
