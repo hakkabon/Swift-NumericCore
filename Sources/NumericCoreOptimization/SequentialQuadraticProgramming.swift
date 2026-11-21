@@ -338,15 +338,28 @@ private func sqpStationarity(_ problem: ConstrainedNonlinearProblem, _ point: [D
     return sqpInfinity(result)
 }
 
-private func sqpBFGS(_ hessian: inout [[Double]], _ step: [Double], _ y: [Double],
+func sqpBFGS(_ hessian: inout [[Double]], _ step: [Double], _ y: [Double],
                      _ regularization: Double) {
     let bs = sqpMatvec(hessian, step), sbs = sqpDot(step, bs), sy = sqpDot(step, y)
-    let scale = max(1, sqpInfinity(step)) * max(1, sqpInfinity(y))
-    guard sbs.isFinite, sy.isFinite, sbs > regularization, sy > 1e-10 * scale else {
+    guard sbs.isFinite, sy.isFinite, sbs > 0 else {
         hessian = sqpIdentity(step.count); return
     }
+    guard sbs > regularization else { return }
+    // Powell damping retains curvature while enforcing sᵀȳ ≥ 0.2 sᵀBs.
+    let theta = sy >= 0.2 * sbs ? 1.0 : 0.8 / (1 - sy / sbs)
+    let adjusted = zip(y, bs).map { theta * $0.0 + (1 - theta) * $0.1 }
+    let curvature = sqpDot(step, adjusted)
+    guard curvature.isFinite, curvature > 0 else { return }
+    let yScale = sqrt(curvature)
+    let bsScale = sqrt(sbs)
     for i in step.indices { for j in step.indices {
-        hessian[i][j] += y[i] * y[j] / sy - bs[i] * bs[j] / sbs
+        let value = hessian[i][j] + (adjusted[i] / yScale) * (adjusted[j] / yScale)
+            - (bs[i] / bsScale) * (bs[j] / bsScale)
+        guard value.isFinite else {
+            hessian = sqpIdentity(step.count)
+            return
+        }
+        hessian[i][j] = value
     }}
     sqpRegularize(&hessian, regularization)
 }
