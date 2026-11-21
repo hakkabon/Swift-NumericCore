@@ -15,6 +15,7 @@ let optionalSolverSettings: [SwiftSetting] = [
     ("public func solveNonlinearDecomposition(", "NUMERICCORE_NONLINEAR_DECOMPOSITION_FFI"),
     ("public protocol FfiSparseFactorizationProtocol", "NUMERICCORE_SPARSE_WORKSPACE_FFI"),
     ("public func integrateEngineeringTrajectory(", "NUMERICCORE_ENGINEERING_ADJOINTS_FFI"),
+    ("public func startDistributedBenders(", "NUMERICCORE_DISTRIBUTED_BENDERS_FFI"),
 ].compactMap { marker, flag in
     generatedSource.contains(marker) ? .define(flag) : nil
 }

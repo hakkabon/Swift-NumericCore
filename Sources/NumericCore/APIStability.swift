@@ -77,6 +77,9 @@ public enum NumericCoreAPI {
         #if NUMERICCORE_ENGINEERING_ADJOINTS_FFI
         decomposition.append(.init(identifier: "engineering-adjoints", stability: .provisional))
         #endif
+        #if NUMERICCORE_DISTRIBUTED_BENDERS_FFI
+        decomposition.append(.init(identifier: "distributed-benders", stability: .provisional))
+        #endif
         return (entries + decomposition).sorted { $0.identifier < $1.identifier }
     }()
 
