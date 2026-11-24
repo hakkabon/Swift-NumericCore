@@ -3,6 +3,12 @@ name: Validate release and notify consumers
 on:
   push:
     tags: ["v*.*.*", "[0-9]*.*.*"]
+  workflow_dispatch:
+    inputs:
+      swift_commit:
+        description: "Full Swift commit SHA to qualify"
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -11,8 +17,31 @@ jobs:
   validate:
     runs-on: macos-15
     steps:
+      - name: Require an exact candidate commit
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          SWIFT_COMMIT: ${{ inputs.swift_commit }}
+        run: |
+          if [[ ! "$SWIFT_COMMIT" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::Enter a full 40-character Swift commit SHA."
+            exit 1
+          fi
       - uses: actions/checkout@v4
-      - name: Test tagged Swift and remote Rust FFI
+        with:
+          ref: ${{ inputs.swift_commit || github.ref }}
+          persist-credentials: false
+      - name: Record candidate and toolchain
+        env:
+          SWIFT_COMMIT: ${{ inputs.swift_commit }}
+        run: |
+          git log -1 --format='%H %s'
+          if [[ -n "$SWIFT_COMMIT" ]]; then
+            test "$(git rev-parse HEAD)" = "$SWIFT_COMMIT"
+          fi
+          test "$(uname -m)" = arm64
+          swift --version
+          xcodebuild -version
+      - name: Test Swift and remote Rust FFI on Apple Silicon
         run: NUMERICCORE_EXPECTED_RUST_TAG="$(cat .ffi-version)" swift test
       - name: Verify synchronized FFI provenance
         env:
@@ -24,10 +53,42 @@ jobs:
             --dir "${RUNNER_TEMP}/numericcore-ffi-assets"
           python3 -B scripts/verify_ffi_release.py "${RUNNER_TEMP}/numericcore-ffi-assets"
       - name: Build and run a consumer against the published Swift tag
+        if: github.ref_type == 'tag' && github.event_name == 'push'
         env:
           NUMERICCORE_SWIFT_TAG: ${{ github.ref_name }}
         run: swift run --package-path scripts/consumer-smoke
+      - name: Build and run a consumer against the candidate checkout
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          NUMERICCORE_PACKAGE_PATH: ${{ github.workspace }}
+        run: swift run --package-path scripts/consumer-smoke
+      - name: Test the linked FFI on an iOS simulator
+        run: |
+          device_id="$(xcrun simctl list devices available --json | python3 -c '
+          import json
+          import sys
+
+          runtimes = json.load(sys.stdin)["devices"]
+          ios = [key for key in runtimes if key.startswith("com.apple.CoreSimulator.SimRuntime.iOS-")]
+          for runtime in sorted(ios, key=lambda key: tuple(map(int, key.split(".iOS-")[1].split("-"))),
+                                reverse=True):
+              device = next((d for d in runtimes[runtime] if d["name"].startswith("iPhone")), None)
+              if device:
+                  print(device["udid"])
+                  break
+          else:
+              sys.exit("No available iPhone simulator")
+          ')"
+          NUMERICCORE_EXPECTED_RUST_TAG="$(cat .ffi-version)" xcodebuild test \
+            -scheme NumericCore-Package \
+            -destination "platform=iOS Simulator,id=$device_id" \
+            -derivedDataPath "$RUNNER_TEMP/numericcore-ios" \
+            -parallel-testing-enabled NO \
+            -only-testing:NumericCoreTests/APIStabilityTests \
+            -only-testing:NumericCoreTests/FFIVectorHandleTests \
+            -only-testing:NumericCoreOptimizationTests/DistributedBendersTests
       - name: Notify ecosystem compatibility workflow
+        if: github.ref_type == 'tag' && github.event_name == 'push'
         env:
           TOKEN: ${{ secrets.DATALENSING_DISPATCH_TOKEN }}
           SWIFT_TAG: ${{ github.ref_name }}

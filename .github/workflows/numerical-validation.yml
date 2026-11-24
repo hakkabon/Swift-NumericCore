@@ -27,7 +27,7 @@ jobs:
     if: >-
       github.event_name != 'pull_request_target' ||
       github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: macos-14
+    runs-on: macos-15
     steps:
       - name: Check out pull-request merge
         if: github.event_name == 'pull_request_target'
