@@ -13,15 +13,18 @@
 - Model parsing tests travel with the language package. Circuit tests belong in
   OhmLab. NumericCoreValidation continues to test the numerical solver paths.
 
-The Swift removal targets **2.0.0** so consumers of the 1.x products can retain
-their existing dependency range. OhmLab and NumericCoreAMPL require
-Swift-NumericCore 2.x. The minimum supported pairing for NumericCoreAMPL's
-extensive-form, local Benders, and distributed Benders paths is
-Swift-NumericCore **2.0.0** with the
-[Rust-NumericCore **v0.45.0** XCFramework](https://github.com/hakkabon/Rust-NumericCore/releases/tag/v0.45.0).
-SwiftPM resolves the Rust binary and its checksum from Swift-NumericCore's
-manifest. Its generated bindings and `.ffi-version` identify the same Rust
-release, which includes the circuit split and both Benders interfaces.
+Swift-NumericCore **1.1.0** is the last tag with the bundled
+`NumericCoreAMPL` product. The split first appears in **1.2.0**, so a
+dependency range covering all of 1.x can resolve without the bundled product.
+Pin exactly **1.1.0** if you still rely on the bundled product during
+migration.
+
+OhmLab and standalone NumericCoreAMPL require Swift-NumericCore 2.x.
+The extensive-form, local Benders, and distributed Benders paths were
+qualified with Rust-NumericCore **v0.45.0**. Swift-NumericCore **2.0.0** ships
+with the [Rust-NumericCore **v0.45.1** XCFramework](https://github.com/hakkabon/Rust-NumericCore/releases/tag/v0.45.1).
+SwiftPM resolves the binary and its checksum from `Package.swift`; the
+generated bindings and `.ffi-version` match that release.
 
 Publish the standalone package and release the matching OhmLab update after
 Swift 2.0.0 is available.
