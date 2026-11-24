@@ -7,7 +7,11 @@ The same contract exists in Rust.
 
 - `smoke` runs the fast LP, QP, MILP, and nonlinear checks.
 - `standard` adds presolve/postsolve, mixed-scale sparse operations,
-  deterministic perturbations, NIST StRD Misra1a, and CUTEst HS71.
+  deterministic perturbations, NIST StRD Misra1a, and CUTEst HS71. The release
+  checks also cover a caller-supplied LP gap, Benders limits and proof replay,
+  sparse LU forward and backward errors across twelve orders of row scaling,
+  and a checkpointed adjoint against central differences of a reference
+  backward-Euler recurrence.
 - `extended` is reserved for larger licensed corpora and scheduled runs; it
   currently contains the full standard suite.
 

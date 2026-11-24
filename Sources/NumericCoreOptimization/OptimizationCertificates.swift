@@ -32,7 +32,7 @@ public struct CertificateMetric: Sendable, Hashable {
     public let name: String
     public let value: Double
     public let tolerance: Double
-    public var passed: Bool { value.isFinite && value <= tolerance }
+    public var passed: Bool { value.isFinite && value >= 0 && value <= tolerance }
 }
 
 public struct OptimizationCertificate: Sendable, Hashable {
@@ -40,6 +40,7 @@ public struct OptimizationCertificate: Sendable, Hashable {
     public let finite: Bool
     public let metrics: [CertificateMetric]
     public let warnings: [String]
+    /// Whether the evidence for the reported claim passed its checks.
     public var verified: Bool {
         finite && (claim == .optimality || claim == .feasibility)
             && !metrics.isEmpty && metrics.allSatisfy(\.passed)
@@ -47,29 +48,31 @@ public struct OptimizationCertificate: Sendable, Hashable {
 }
 
 public enum OptimizationCertifier {
+    /// Recomputes primal feasibility and objective agreement against `problem`.
+    /// A supplied gap is checked as a scalar and cannot upgrade the claim.
     public static func certifyLinear(problem: SparseLinearProblem,
                                      result: ProductionLinearResult,
                                      globalGap: Double? = nil,
                                      tolerance: CertificateTolerance = .init()) throws
         -> OptimizationCertificate {
         try validate(tolerance)
-        let diagnostics = result.diagnostics
+        let diagnostics = ProductionLinearSolver.audit(problem, point: result.point, objective: result.objective)
         var metrics = [
             metric("row feasibility", diagnostics.maximumRowViolation, tolerance.feasibility),
             metric("variable feasibility", diagnostics.maximumVariableViolation, tolerance.feasibility),
             metric("integrality", diagnostics.maximumIntegralityViolation, tolerance.integrality),
             metric("objective reconstruction", diagnostics.objectiveError, tolerance.objective),
         ]
-        if let globalGap { metrics.append(metric("global bound gap", abs(globalGap), tolerance.gap)) }
+        if let globalGap { metrics.append(metric("caller-supplied gap", globalGap, tolerance.gap)) }
         let finite = diagnostics.finite && metrics.allSatisfy { $0.value.isFinite }
         guard result.status == .optimal, finite, metrics.allSatisfy(\.passed) else {
             return .init(claim: .rejected, finite: finite, metrics: metrics, warnings: [])
         }
-        if globalGap != nil {
-            return .init(claim: .optimality, finite: true, metrics: metrics, warnings: [])
-        }
+        let warning = globalGap == nil
+            ? "dual or global-bound evidence unavailable; certifying feasibility only"
+            : "caller-supplied gap passed its scalar check; certifying feasibility only"
         return .init(claim: .feasibility, finite: true, metrics: metrics,
-                     warnings: ["dual or global-bound evidence unavailable; certifying feasibility only"])
+                     warnings: [warning])
     }
 
     public static func certifyConvexQP(problem: QuadraticProblem, result: QuadraticResult,
@@ -129,6 +132,7 @@ public enum OptimizationCertifier {
                    tolerance.objective),
         ]
         let finite = result.point.allSatisfy(\.isFinite) && result.rowDual.allSatisfy(\.isFinite)
+            && activity.allSatisfy(\.isFinite) && gradient.allSatisfy(\.isFinite)
             && result.variableDual.allSatisfy(\.isFinite) && metrics.allSatisfy { $0.value.isFinite }
         let rank = numericalRank(activeRows, tolerance: tolerance.activeSet)
         var warnings: [String] = []

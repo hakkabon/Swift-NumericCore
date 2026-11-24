@@ -5,12 +5,18 @@ evidence about the returned point. `OptimizationCertifier` produces a typed
 claim (`optimality`, `feasibility`, `candidate`, or `rejected`), named residual
 metrics with their tolerances, and non-fatal structural warnings.
 
-For linear models, the certifier recomputes the original-model objective,
-row and variable feasibility, and integrality. A successful solve is certified
-as feasible, not optimal, unless the caller supplies a finite independently
-established global gap. This deliberately avoids deriving an optimality claim
-from solver status alone while the production LP interface does not expose a
-complete dual or ray certificate.
+| Evidence | Scope of the claim |
+| --- | --- |
+| Linear primal audit | `certifyLinear` rebuilds the objective, row and variable feasibility, and integrality from the supplied model and point. A successful status and passing evidence establish `.feasibility` within the configured tolerances. |
+| Caller-supplied gap | The named `caller-supplied gap` metric checks that the scalar is finite and belongs to `[0, tolerance.gap]`. Its provenance is the caller, and a passing check preserves the `.feasibility` claim. A failing check returns `.rejected`. |
+| Local nonlinear stationarity | The reported gradient or KKT residual measures first-order stationarity at the returned point. Check primal feasibility and termination alongside it. Its scope is local and first order. |
+| Convex QP KKT evidence | `certifyConvexQP` checks convexity and recomputes the objective and primal-dual residuals. Passing evidence establishes numerical `.optimality` for the validated convex model at the configured tolerances. |
+| Bounds from a search | Local Benders, branch-and-bound, and spatial search report the bounds and gap produced by the solve. Limits can leave partial evidence. Read the termination reason and the bounds together. |
+| Independently replayed proof | `DistributedBendersCoordinator.verify` checks exported witnesses against the original continuous two-stage LP, rebuilds cuts and bounds, and computes a claim. `.optimality` requires a verified incumbent and a closed gap under the audit tolerances. `.bounds` can describe partial evidence, and `.infeasibility` requires a verified infeasibility witness. |
+
+`verified` applies to the displayed `OptimizationCertificate.claim`. In
+particular, a verified feasibility claim describes the point and its
+reconstructed objective.
 
 For convex quadratic programs, the certifier independently recomputes primal
 feasibility, the objective, stationarity, dual sign feasibility, and
@@ -19,10 +25,11 @@ checks the numerical rank of the active constraint gradients. Dependent or
 overdetermined active sets are reported as warnings because degeneracy does not
 by itself invalidate valid KKT evidence.
 
-All dimensions, tolerances, and numerical values are checked, and non-finite or
-inconsistent evidence fails closed as `rejected`. The standard validation
-corpus contains an independently certified convex-QP case, while focused tests
-also corrupt a valid solution to prove that the verifier detects bad evidence.
+The certificate checks dimensions, tolerances, and numerical values. Invalid
+tolerance settings raise an error. Non-finite or inconsistent solution
+evidence fails closed as `.rejected`. The standard validation corpus covers
+convex QP KKT evidence, a zero gap supplied for a feasible suboptimal LP point,
+local and distributed Benders limits, and replay of valid and altered proofs.
 
 This phase does not yet claim rigorous interval enclosures, LP/MILP Farkas
 infeasibility certificates, unbounded rays, or exact branch-and-bound proof

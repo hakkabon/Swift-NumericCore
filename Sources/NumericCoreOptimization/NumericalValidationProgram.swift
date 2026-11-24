@@ -331,6 +331,7 @@ public enum NumericCoreValidationProgram {
                      presolveCase, sparseCase, kktCase, daeCase,
                      continuumCase, sensitivityCase, strengtheningCase,
                      multiphysicsCase, perturbationCase]
+        cases += try releaseValidationCases()
         cases += try ExternalValidationProgram.run()
         return ValidationReport(cases: cases)
     }

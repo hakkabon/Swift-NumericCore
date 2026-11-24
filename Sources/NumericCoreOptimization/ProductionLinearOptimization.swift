@@ -87,7 +87,7 @@ public enum ProductionLinearSolver {
                     status: reducedSolution.status)
             }
         }
-        let diagnostics = audit(problem, solution)
+        let diagnostics = audit(problem, point: solution.variableValues, objective: solution.objectiveValue)
         return .init(point: solution.variableValues, objective: solution.objectiveValue,
                      status: solution.status, diagnostics: diagnostics,
                      presolveReport: presolved.report, originalVariables: problem.columns,
@@ -96,9 +96,8 @@ public enum ProductionLinearSolver {
                         && diagnostics.isVerified(tolerance: options.verificationTolerance))
     }
 
-    private static func audit(_ problem: SparseLinearProblem, _ solution: FFISolution)
+    static func audit(_ problem: SparseLinearProblem, point: [Double], objective: Double)
         -> ProductionLinearDiagnostics {
-        let point = solution.variableValues
         guard point.count == problem.columns else {
             return .init(finite: false, maximumRowViolation: .infinity,
                          maximumVariableViolation: .infinity,
@@ -121,13 +120,13 @@ public enum ProductionLinearSolver {
             .map(violation).max() ?? 0
         let integralityViolation = point.indices.filter { problem.isInteger[$0] }
             .map { abs(point[$0] - point[$0].rounded()) }.max() ?? 0
-        let objective = zip(problem.objective, point).reduce(0) { $0 + $1.0 * $1.1 }
-        let finite = point.allSatisfy(\.isFinite) && solution.objectiveValue.isFinite
-            && activities.allSatisfy(\.isFinite) && objective.isFinite
+        let reconstructed = zip(problem.objective, point).reduce(0) { $0 + $1.0 * $1.1 }
+        let finite = point.allSatisfy(\.isFinite) && objective.isFinite
+            && activities.allSatisfy(\.isFinite) && reconstructed.isFinite
         return .init(finite: finite, maximumRowViolation: rowViolation,
                      maximumVariableViolation: variableViolation,
                      maximumIntegralityViolation: integralityViolation,
-                     recomputedObjective: objective,
-                     objectiveError: abs(objective - solution.objectiveValue))
+                     recomputedObjective: reconstructed,
+                     objectiveError: abs(reconstructed - objective))
     }
 }
