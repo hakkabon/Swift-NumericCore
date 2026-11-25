@@ -17,3 +17,21 @@ This is deliberately described as a model-based quadratic trust-region method,
 not as BOBYQA. It establishes the interpolation, geometry, box projection, and
 trust-region contracts needed for a future full quadratic interpolation set,
 minimum-Frobenius-change updates, and Powell-style geometry-improvement steps.
+
+The later `BobyqaSolver` API uses the same PRIMA-based BOBYQA implementation
+as Rust-NumericCore through a synchronous UniFFI objective callback.
+Use `BobyqaSolver.isAvailable` to query the capability on the linked release.
+A callback receives the full feasible point even when some coordinates are
+fixed. Its errors propagate to the caller. The configured evaluation budget
+includes initialization, and `radiusReached` reports trust-region resolution.
+
+```swift
+let result = try BobyqaSolver.minimize(
+    initial: [0, 0],
+    bounds: [.init(lower: -2, upper: 2), .init(lower: -2, upper: 2)]
+) { x in
+    let a = x[0] + x[1] - 1
+    let b = x[0] - x[1]
+    return a * a + 3 * b * b
+}
+```

@@ -80,6 +80,9 @@ public enum NumericCoreAPI {
         #if NUMERICCORE_DISTRIBUTED_BENDERS_FFI
         decomposition.append(.init(identifier: "distributed-benders", stability: .provisional))
         #endif
+        #if NUMERICCORE_BOBYQA_FFI
+        decomposition.append(.init(identifier: "bobyqa", stability: .provisional))
+        #endif
         return (entries + decomposition).sorted { $0.identifier < $1.identifier }
     }()
 
