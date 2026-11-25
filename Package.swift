@@ -21,6 +21,7 @@ let optionalSolverSettings: [SwiftSetting] = [
     ("public func solveLincoa(", "NUMERICCORE_LINCOA_FFI"),
     ("public func solveNewuoa(", "NUMERICCORE_NEWUOA_FFI"),
     ("public func solveUobyqa(", "NUMERICCORE_UOBYQA_FFI"),
+    ("public func runPowellHybridModel(", "NUMERICCORE_POWELL_HYBRID_FFI"),
 ].compactMap { marker, flag in
     generatedSource.contains(marker) ? .define(flag) : nil
 }

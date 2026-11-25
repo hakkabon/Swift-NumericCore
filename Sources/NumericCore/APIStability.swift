@@ -95,6 +95,9 @@ public enum NumericCoreAPI {
         #if NUMERICCORE_UOBYQA_FFI
         decomposition.append(.init(identifier: "uobyqa", stability: .provisional))
         #endif
+        #if NUMERICCORE_POWELL_HYBRID_FFI
+        decomposition.append(.init(identifier: "powell-hybrid", stability: .provisional))
+        #endif
         return (entries + decomposition).sorted { $0.identifier < $1.identifier }
     }()
 
