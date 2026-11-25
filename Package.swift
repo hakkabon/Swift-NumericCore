@@ -18,6 +18,7 @@ let optionalSolverSettings: [SwiftSetting] = [
     ("public func startDistributedBenders(", "NUMERICCORE_DISTRIBUTED_BENDERS_FFI"),
     ("public func solveBobyqa(", "NUMERICCORE_BOBYQA_FFI"),
     ("public func solveCobyla(", "NUMERICCORE_COBYLA_FFI"),
+    ("public func solveLincoa(", "NUMERICCORE_LINCOA_FFI"),
 ].compactMap { marker, flag in
     generatedSource.contains(marker) ? .define(flag) : nil
 }

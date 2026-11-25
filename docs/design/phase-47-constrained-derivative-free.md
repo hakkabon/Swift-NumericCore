@@ -49,3 +49,33 @@ and callback errors propagate to the caller.
 
 Check `feasible` and `maximumViolation` alongside the termination reason.
 A run can reach the final radius with a remaining constraint violation.
+
+## Powell LINCOA
+
+`LincoaSolver` accepts a value-only objective and a `SparseLinearProblem`
+containing continuous linear inequalities and variable bounds. The linear
+objective coefficients are ignored. Check `LincoaSolver.isAvailable` on the
+linked FFI. For example, this minimizes the distance squared from (2, 2)
+subject to x + y ≤ 2.
+
+```swift
+let region = try SparseLinearProblem(
+    objective: [0, 0], rows: 1, columns: 2,
+    rowPointers: [0, 2], columnIndices: [0, 1], values: [1, 1],
+    rowBounds: [.init(upper: 2)], variableBounds: [.init(), .init()]
+)
+let result = try LincoaSolver.minimize(initial: [0, 0], problem: region) { point in
+    let dx = point[0] - 2
+    let dy = point[1] - 2
+    return dx * dx + dy * dy
+}
+```
+
+The start must be feasible after setting fixed coordinates to their
+specified values. Use inequalities for nonconstant linear rows. The
+objective must be finite and defined at the solver's trial points, which
+can lie outside the constraints and bounds. The result is the best evaluated
+point that satisfies the configured absolute feasibility tolerance on the
+original rows and bounds. The evaluation count includes interpolation
+samples, and the termination reason distinguishes radius, evaluation,
+and iteration limits.
