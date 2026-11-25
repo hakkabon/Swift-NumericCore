@@ -35,3 +35,27 @@ let result = try BobyqaSolver.minimize(
     return a * a + 3 * b * b
 }
 ```
+
+## Unconstrained Powell methods
+
+`NewuoaSolver` and `UobyqaSolver` minimize a finite, deterministic,
+value-only objective. NEWUOA uses `2n + 1` interpolation points and
+least-change quadratic updates. UOBYQA is a dense reference variant that
+determines all the coefficients of the quadratic using
+`(n + 1)(n + 2)/2` points. It supports up to 16 variables.
+
+```swift
+let result = try NewuoaSolver.minimize(
+    initial: [-1.2, 1], options: .init(maxEvaluations: 500, initialRadius: 0.5)
+) { x in
+    let a = x[1] - x[0] * x[0]
+    let b = 1 - x[0]
+    return 100 * a * a + b * b
+}
+```
+
+Switch to `UobyqaSolver.minimize` to compare against the full model using
+the same options. Check the solver's `isAvailable` property for support
+in the linked FFI. The budget includes the starting point and interpolation
+samples. The result reports the best objective evaluation and its point,
+and the termination reason records how the local search stopped.

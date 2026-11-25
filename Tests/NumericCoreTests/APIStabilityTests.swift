@@ -8,7 +8,8 @@ final class APIStabilityTests: XCTestCase {
         XCTAssertEqual(NumericCoreAPI.compatibilityEpoch, 1)
         let optional = ["benders-decomposition", "integer-benders-decomposition", "lp-decomposition",
                         "stochastic-optimization", "nonlinear-decomposition", "sparse-solver-workspaces",
-                        "engineering-adjoints", "distributed-benders", "bobyqa", "cobyla", "lincoa"]
+                        "engineering-adjoints", "distributed-benders", "bobyqa", "cobyla", "lincoa",
+                        "newuoa", "uobyqa"]
         let identifiers = NumericCoreAPI.capabilities.filter { !optional.contains($0.identifier) }
         XCTAssertEqual(identifiers.map(\.identifier), [
             "dae-integration",

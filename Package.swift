@@ -19,6 +19,8 @@ let optionalSolverSettings: [SwiftSetting] = [
     ("public func solveBobyqa(", "NUMERICCORE_BOBYQA_FFI"),
     ("public func solveCobyla(", "NUMERICCORE_COBYLA_FFI"),
     ("public func solveLincoa(", "NUMERICCORE_LINCOA_FFI"),
+    ("public func solveNewuoa(", "NUMERICCORE_NEWUOA_FFI"),
+    ("public func solveUobyqa(", "NUMERICCORE_UOBYQA_FFI"),
 ].compactMap { marker, flag in
     generatedSource.contains(marker) ? .define(flag) : nil
 }
