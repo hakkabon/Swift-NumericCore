@@ -19,3 +19,33 @@ only when feasible; otherwise termination is `infeasibleStationary`.
 The method is COBYLA-inspired but is not claimed to reproduce COBYLA. A future
 implementation may maintain a general poised simplex, solve the linearized
 trust-region subproblem more exactly, and add filter-based constraint handling.
+
+## Powell COBYLA
+
+`CobylaSolver` exposes the PRIMA-based COBYLA implementation through the
+Rust FFI. It uses the same combined evaluation type as
+`ConstrainedDerivativeFree`. Check `CobylaSolver.isAvailable` for capability
+support on the linked release.
+
+```swift
+let result = try CobylaSolver.minimize(
+    initial: [0, 2],
+    constraintKinds: [.lessEqual],
+    options: .init(maxEvaluations: 220, initialRadius: 0.75)
+) { point in
+    let x = point[0]
+    let y = point[1]
+    return .init(objective: x * x + y * y,
+                 constraints: [(x - 2) * (x - 2) + y * y - 1])
+}
+```
+
+The callback must accept trial points outside the supplied constraints and
+variable bounds. Fixed coordinates retain their fixed values throughout.
+The objective and residuals must be finite and have magnitude at most
+`2^100`, the backend's model range. Equality residuals are handled as
+paired inequalities. The evaluation budget includes simplex construction,
+and callback errors propagate to the caller.
+
+Check `feasible` and `maximumViolation` alongside the termination reason.
+A run can reach the final radius with a remaining constraint violation.

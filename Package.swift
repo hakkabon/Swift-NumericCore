@@ -17,6 +17,7 @@ let optionalSolverSettings: [SwiftSetting] = [
     ("public func integrateEngineeringTrajectory(", "NUMERICCORE_ENGINEERING_ADJOINTS_FFI"),
     ("public func startDistributedBenders(", "NUMERICCORE_DISTRIBUTED_BENDERS_FFI"),
     ("public func solveBobyqa(", "NUMERICCORE_BOBYQA_FFI"),
+    ("public func solveCobyla(", "NUMERICCORE_COBYLA_FFI"),
 ].compactMap { marker, flag in
     generatedSource.contains(marker) ? .define(flag) : nil
 }

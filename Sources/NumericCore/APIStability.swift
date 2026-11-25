@@ -83,6 +83,9 @@ public enum NumericCoreAPI {
         #if NUMERICCORE_BOBYQA_FFI
         decomposition.append(.init(identifier: "bobyqa", stability: .provisional))
         #endif
+        #if NUMERICCORE_COBYLA_FFI
+        decomposition.append(.init(identifier: "cobyla", stability: .provisional))
+        #endif
         return (entries + decomposition).sorted { $0.identifier < $1.identifier }
     }()
 
