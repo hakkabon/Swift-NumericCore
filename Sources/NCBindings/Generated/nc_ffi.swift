@@ -1934,6 +1934,142 @@ public func FfiConverterTypeFfiBendersScenario_lower(_ value: FfiBendersScenario
     return FfiConverterTypeFfiBendersScenario.lower(value)
 }
 
+public struct FfiBobyqaOptions {
+    public var maxEvaluations: UInt64
+    public var initialRadius: Double
+    public var finalRadius: Double
+    public var interpolationPoints: UInt64?
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(maxEvaluations: UInt64, initialRadius: Double, finalRadius: Double, interpolationPoints: UInt64?) {
+        self.maxEvaluations = maxEvaluations
+        self.initialRadius = initialRadius
+        self.finalRadius = finalRadius
+        self.interpolationPoints = interpolationPoints
+    }
+}
+
+extension FfiBobyqaOptions: Equatable, Hashable {
+    public static func == (lhs: FfiBobyqaOptions, rhs: FfiBobyqaOptions) -> Bool {
+        if lhs.maxEvaluations != rhs.maxEvaluations {
+            return false
+        }
+        if lhs.initialRadius != rhs.initialRadius {
+            return false
+        }
+        if lhs.finalRadius != rhs.finalRadius {
+            return false
+        }
+        if lhs.interpolationPoints != rhs.interpolationPoints {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(maxEvaluations)
+        hasher.combine(initialRadius)
+        hasher.combine(finalRadius)
+        hasher.combine(interpolationPoints)
+    }
+}
+
+public struct FfiConverterTypeFfiBobyqaOptions: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiBobyqaOptions {
+        return
+            try FfiBobyqaOptions(
+                maxEvaluations: FfiConverterUInt64.read(from: &buf),
+                initialRadius: FfiConverterDouble.read(from: &buf),
+                finalRadius: FfiConverterDouble.read(from: &buf),
+                interpolationPoints: FfiConverterOptionUInt64.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: FfiBobyqaOptions, into buf: inout [UInt8]) {
+        FfiConverterUInt64.write(value.maxEvaluations, into: &buf)
+        FfiConverterDouble.write(value.initialRadius, into: &buf)
+        FfiConverterDouble.write(value.finalRadius, into: &buf)
+        FfiConverterOptionUInt64.write(value.interpolationPoints, into: &buf)
+    }
+}
+
+public func FfiConverterTypeFfiBobyqaOptions_lift(_ buf: RustBuffer) throws -> FfiBobyqaOptions {
+    return try FfiConverterTypeFfiBobyqaOptions.lift(buf)
+}
+
+public func FfiConverterTypeFfiBobyqaOptions_lower(_ value: FfiBobyqaOptions) -> RustBuffer {
+    return FfiConverterTypeFfiBobyqaOptions.lower(value)
+}
+
+public struct FfiBobyqaResult {
+    public var point: [Double]
+    public var objective: Double
+    public var evaluations: UInt64
+    public var termination: FfiBobyqaTermination
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(point: [Double], objective: Double, evaluations: UInt64, termination: FfiBobyqaTermination) {
+        self.point = point
+        self.objective = objective
+        self.evaluations = evaluations
+        self.termination = termination
+    }
+}
+
+extension FfiBobyqaResult: Equatable, Hashable {
+    public static func == (lhs: FfiBobyqaResult, rhs: FfiBobyqaResult) -> Bool {
+        if lhs.point != rhs.point {
+            return false
+        }
+        if lhs.objective != rhs.objective {
+            return false
+        }
+        if lhs.evaluations != rhs.evaluations {
+            return false
+        }
+        if lhs.termination != rhs.termination {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(point)
+        hasher.combine(objective)
+        hasher.combine(evaluations)
+        hasher.combine(termination)
+    }
+}
+
+public struct FfiConverterTypeFfiBobyqaResult: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiBobyqaResult {
+        return
+            try FfiBobyqaResult(
+                point: FfiConverterSequenceDouble.read(from: &buf),
+                objective: FfiConverterDouble.read(from: &buf),
+                evaluations: FfiConverterUInt64.read(from: &buf),
+                termination: FfiConverterTypeFfiBobyqaTermination.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: FfiBobyqaResult, into buf: inout [UInt8]) {
+        FfiConverterSequenceDouble.write(value.point, into: &buf)
+        FfiConverterDouble.write(value.objective, into: &buf)
+        FfiConverterUInt64.write(value.evaluations, into: &buf)
+        FfiConverterTypeFfiBobyqaTermination.write(value.termination, into: &buf)
+    }
+}
+
+public func FfiConverterTypeFfiBobyqaResult_lift(_ buf: RustBuffer) throws -> FfiBobyqaResult {
+    return try FfiConverterTypeFfiBobyqaResult.lift(buf)
+}
+
+public func FfiConverterTypeFfiBobyqaResult_lower(_ value: FfiBobyqaResult) -> RustBuffer {
+    return FfiConverterTypeFfiBobyqaResult.lower(value)
+}
+
 /**
  * Mirrors `nc_optimize::Bound`. `None` means unbounded in that
  * direction, same convention as the Rust type.
@@ -2174,6 +2310,226 @@ public func FfiConverterTypeFfiCapability_lift(_ buf: RustBuffer) throws -> FfiC
 
 public func FfiConverterTypeFfiCapability_lower(_ value: FfiCapability) -> RustBuffer {
     return FfiConverterTypeFfiCapability.lower(value)
+}
+
+public struct FfiCobylaEvaluation {
+    public var objective: Double
+    public var constraints: [Double]
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(objective: Double, constraints: [Double]) {
+        self.objective = objective
+        self.constraints = constraints
+    }
+}
+
+extension FfiCobylaEvaluation: Equatable, Hashable {
+    public static func == (lhs: FfiCobylaEvaluation, rhs: FfiCobylaEvaluation) -> Bool {
+        if lhs.objective != rhs.objective {
+            return false
+        }
+        if lhs.constraints != rhs.constraints {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(objective)
+        hasher.combine(constraints)
+    }
+}
+
+public struct FfiConverterTypeFfiCobylaEvaluation: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiCobylaEvaluation {
+        return
+            try FfiCobylaEvaluation(
+                objective: FfiConverterDouble.read(from: &buf),
+                constraints: FfiConverterSequenceDouble.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: FfiCobylaEvaluation, into buf: inout [UInt8]) {
+        FfiConverterDouble.write(value.objective, into: &buf)
+        FfiConverterSequenceDouble.write(value.constraints, into: &buf)
+    }
+}
+
+public func FfiConverterTypeFfiCobylaEvaluation_lift(_ buf: RustBuffer) throws -> FfiCobylaEvaluation {
+    return try FfiConverterTypeFfiCobylaEvaluation.lift(buf)
+}
+
+public func FfiConverterTypeFfiCobylaEvaluation_lower(_ value: FfiCobylaEvaluation) -> RustBuffer {
+    return FfiConverterTypeFfiCobylaEvaluation.lower(value)
+}
+
+public struct FfiCobylaOptions {
+    public var maxIterations: UInt64
+    public var maxEvaluations: UInt64
+    public var initialRadius: Double
+    public var finalRadius: Double
+    public var feasibilityTolerance: Double
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(maxIterations: UInt64, maxEvaluations: UInt64, initialRadius: Double, finalRadius: Double, feasibilityTolerance: Double) {
+        self.maxIterations = maxIterations
+        self.maxEvaluations = maxEvaluations
+        self.initialRadius = initialRadius
+        self.finalRadius = finalRadius
+        self.feasibilityTolerance = feasibilityTolerance
+    }
+}
+
+extension FfiCobylaOptions: Equatable, Hashable {
+    public static func == (lhs: FfiCobylaOptions, rhs: FfiCobylaOptions) -> Bool {
+        if lhs.maxIterations != rhs.maxIterations {
+            return false
+        }
+        if lhs.maxEvaluations != rhs.maxEvaluations {
+            return false
+        }
+        if lhs.initialRadius != rhs.initialRadius {
+            return false
+        }
+        if lhs.finalRadius != rhs.finalRadius {
+            return false
+        }
+        if lhs.feasibilityTolerance != rhs.feasibilityTolerance {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(maxIterations)
+        hasher.combine(maxEvaluations)
+        hasher.combine(initialRadius)
+        hasher.combine(finalRadius)
+        hasher.combine(feasibilityTolerance)
+    }
+}
+
+public struct FfiConverterTypeFfiCobylaOptions: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiCobylaOptions {
+        return
+            try FfiCobylaOptions(
+                maxIterations: FfiConverterUInt64.read(from: &buf),
+                maxEvaluations: FfiConverterUInt64.read(from: &buf),
+                initialRadius: FfiConverterDouble.read(from: &buf),
+                finalRadius: FfiConverterDouble.read(from: &buf),
+                feasibilityTolerance: FfiConverterDouble.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: FfiCobylaOptions, into buf: inout [UInt8]) {
+        FfiConverterUInt64.write(value.maxIterations, into: &buf)
+        FfiConverterUInt64.write(value.maxEvaluations, into: &buf)
+        FfiConverterDouble.write(value.initialRadius, into: &buf)
+        FfiConverterDouble.write(value.finalRadius, into: &buf)
+        FfiConverterDouble.write(value.feasibilityTolerance, into: &buf)
+    }
+}
+
+public func FfiConverterTypeFfiCobylaOptions_lift(_ buf: RustBuffer) throws -> FfiCobylaOptions {
+    return try FfiConverterTypeFfiCobylaOptions.lift(buf)
+}
+
+public func FfiConverterTypeFfiCobylaOptions_lower(_ value: FfiCobylaOptions) -> RustBuffer {
+    return FfiConverterTypeFfiCobylaOptions.lower(value)
+}
+
+public struct FfiCobylaResult {
+    public var point: [Double]
+    public var objective: Double
+    public var constraintValues: [Double]
+    public var maximumViolation: Double
+    public var feasible: Bool
+    public var evaluations: UInt64
+    public var termination: FfiCobylaTermination
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(point: [Double], objective: Double, constraintValues: [Double], maximumViolation: Double, feasible: Bool, evaluations: UInt64, termination: FfiCobylaTermination) {
+        self.point = point
+        self.objective = objective
+        self.constraintValues = constraintValues
+        self.maximumViolation = maximumViolation
+        self.feasible = feasible
+        self.evaluations = evaluations
+        self.termination = termination
+    }
+}
+
+extension FfiCobylaResult: Equatable, Hashable {
+    public static func == (lhs: FfiCobylaResult, rhs: FfiCobylaResult) -> Bool {
+        if lhs.point != rhs.point {
+            return false
+        }
+        if lhs.objective != rhs.objective {
+            return false
+        }
+        if lhs.constraintValues != rhs.constraintValues {
+            return false
+        }
+        if lhs.maximumViolation != rhs.maximumViolation {
+            return false
+        }
+        if lhs.feasible != rhs.feasible {
+            return false
+        }
+        if lhs.evaluations != rhs.evaluations {
+            return false
+        }
+        if lhs.termination != rhs.termination {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(point)
+        hasher.combine(objective)
+        hasher.combine(constraintValues)
+        hasher.combine(maximumViolation)
+        hasher.combine(feasible)
+        hasher.combine(evaluations)
+        hasher.combine(termination)
+    }
+}
+
+public struct FfiConverterTypeFfiCobylaResult: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiCobylaResult {
+        return
+            try FfiCobylaResult(
+                point: FfiConverterSequenceDouble.read(from: &buf),
+                objective: FfiConverterDouble.read(from: &buf),
+                constraintValues: FfiConverterSequenceDouble.read(from: &buf),
+                maximumViolation: FfiConverterDouble.read(from: &buf),
+                feasible: FfiConverterBool.read(from: &buf),
+                evaluations: FfiConverterUInt64.read(from: &buf),
+                termination: FfiConverterTypeFfiCobylaTermination.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: FfiCobylaResult, into buf: inout [UInt8]) {
+        FfiConverterSequenceDouble.write(value.point, into: &buf)
+        FfiConverterDouble.write(value.objective, into: &buf)
+        FfiConverterSequenceDouble.write(value.constraintValues, into: &buf)
+        FfiConverterDouble.write(value.maximumViolation, into: &buf)
+        FfiConverterBool.write(value.feasible, into: &buf)
+        FfiConverterUInt64.write(value.evaluations, into: &buf)
+        FfiConverterTypeFfiCobylaTermination.write(value.termination, into: &buf)
+    }
+}
+
+public func FfiConverterTypeFfiCobylaResult_lift(_ buf: RustBuffer) throws -> FfiCobylaResult {
+    return try FfiConverterTypeFfiCobylaResult.lift(buf)
+}
+
+public func FfiConverterTypeFfiCobylaResult_lower(_ value: FfiCobylaResult) -> RustBuffer {
+    return FfiConverterTypeFfiCobylaResult.lower(value)
 }
 
 public struct FfiConstrainedOptions {
@@ -5222,6 +5578,158 @@ public func FfiConverterTypeFfiLbfgsResult_lower(_ value: FfiLbfgsResult) -> Rus
     return FfiConverterTypeFfiLbfgsResult.lower(value)
 }
 
+public struct FfiLincoaOptions {
+    public var maxIterations: UInt64
+    public var maxEvaluations: UInt64
+    public var initialRadius: Double
+    public var finalRadius: Double
+    public var feasibilityTolerance: Double
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(maxIterations: UInt64, maxEvaluations: UInt64, initialRadius: Double, finalRadius: Double, feasibilityTolerance: Double) {
+        self.maxIterations = maxIterations
+        self.maxEvaluations = maxEvaluations
+        self.initialRadius = initialRadius
+        self.finalRadius = finalRadius
+        self.feasibilityTolerance = feasibilityTolerance
+    }
+}
+
+extension FfiLincoaOptions: Equatable, Hashable {
+    public static func == (lhs: FfiLincoaOptions, rhs: FfiLincoaOptions) -> Bool {
+        if lhs.maxIterations != rhs.maxIterations {
+            return false
+        }
+        if lhs.maxEvaluations != rhs.maxEvaluations {
+            return false
+        }
+        if lhs.initialRadius != rhs.initialRadius {
+            return false
+        }
+        if lhs.finalRadius != rhs.finalRadius {
+            return false
+        }
+        if lhs.feasibilityTolerance != rhs.feasibilityTolerance {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(maxIterations)
+        hasher.combine(maxEvaluations)
+        hasher.combine(initialRadius)
+        hasher.combine(finalRadius)
+        hasher.combine(feasibilityTolerance)
+    }
+}
+
+public struct FfiConverterTypeFfiLincoaOptions: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiLincoaOptions {
+        return
+            try FfiLincoaOptions(
+                maxIterations: FfiConverterUInt64.read(from: &buf),
+                maxEvaluations: FfiConverterUInt64.read(from: &buf),
+                initialRadius: FfiConverterDouble.read(from: &buf),
+                finalRadius: FfiConverterDouble.read(from: &buf),
+                feasibilityTolerance: FfiConverterDouble.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: FfiLincoaOptions, into buf: inout [UInt8]) {
+        FfiConverterUInt64.write(value.maxIterations, into: &buf)
+        FfiConverterUInt64.write(value.maxEvaluations, into: &buf)
+        FfiConverterDouble.write(value.initialRadius, into: &buf)
+        FfiConverterDouble.write(value.finalRadius, into: &buf)
+        FfiConverterDouble.write(value.feasibilityTolerance, into: &buf)
+    }
+}
+
+public func FfiConverterTypeFfiLincoaOptions_lift(_ buf: RustBuffer) throws -> FfiLincoaOptions {
+    return try FfiConverterTypeFfiLincoaOptions.lift(buf)
+}
+
+public func FfiConverterTypeFfiLincoaOptions_lower(_ value: FfiLincoaOptions) -> RustBuffer {
+    return FfiConverterTypeFfiLincoaOptions.lower(value)
+}
+
+public struct FfiLincoaResult {
+    public var point: [Double]
+    public var objective: Double
+    public var maximumViolation: Double
+    public var evaluations: UInt64
+    public var termination: FfiLincoaTermination
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(point: [Double], objective: Double, maximumViolation: Double, evaluations: UInt64, termination: FfiLincoaTermination) {
+        self.point = point
+        self.objective = objective
+        self.maximumViolation = maximumViolation
+        self.evaluations = evaluations
+        self.termination = termination
+    }
+}
+
+extension FfiLincoaResult: Equatable, Hashable {
+    public static func == (lhs: FfiLincoaResult, rhs: FfiLincoaResult) -> Bool {
+        if lhs.point != rhs.point {
+            return false
+        }
+        if lhs.objective != rhs.objective {
+            return false
+        }
+        if lhs.maximumViolation != rhs.maximumViolation {
+            return false
+        }
+        if lhs.evaluations != rhs.evaluations {
+            return false
+        }
+        if lhs.termination != rhs.termination {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(point)
+        hasher.combine(objective)
+        hasher.combine(maximumViolation)
+        hasher.combine(evaluations)
+        hasher.combine(termination)
+    }
+}
+
+public struct FfiConverterTypeFfiLincoaResult: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiLincoaResult {
+        return
+            try FfiLincoaResult(
+                point: FfiConverterSequenceDouble.read(from: &buf),
+                objective: FfiConverterDouble.read(from: &buf),
+                maximumViolation: FfiConverterDouble.read(from: &buf),
+                evaluations: FfiConverterUInt64.read(from: &buf),
+                termination: FfiConverterTypeFfiLincoaTermination.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: FfiLincoaResult, into buf: inout [UInt8]) {
+        FfiConverterSequenceDouble.write(value.point, into: &buf)
+        FfiConverterDouble.write(value.objective, into: &buf)
+        FfiConverterDouble.write(value.maximumViolation, into: &buf)
+        FfiConverterUInt64.write(value.evaluations, into: &buf)
+        FfiConverterTypeFfiLincoaTermination.write(value.termination, into: &buf)
+    }
+}
+
+public func FfiConverterTypeFfiLincoaResult_lift(_ buf: RustBuffer) throws -> FfiLincoaResult {
+    return try FfiConverterTypeFfiLincoaResult.lift(buf)
+}
+
+public func FfiConverterTypeFfiLincoaResult_lower(_ value: FfiLincoaResult) -> RustBuffer {
+    return FfiConverterTypeFfiLincoaResult.lower(value)
+}
+
 public struct FfiLinearSolveOptions {
     public var maxIterations: UInt64
     public var tolerance: Double
@@ -8109,6 +8617,358 @@ public func FfiConverterTypeFfiNonlinearRecourseSolution_lower(_ value: FfiNonli
     return FfiConverterTypeFfiNonlinearRecourseSolution.lower(value)
 }
 
+public struct FfiPowellHybridOptions {
+    public var maxIterations: UInt64
+    public var maxResidualEvaluations: UInt64
+    public var residualTolerance: Double
+    public var stepTolerance: Double
+    public var initialRadius: Double
+    public var maximumRadius: Double
+    public var variableScale: [Double]
+    public var residualScale: [Double]
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(maxIterations: UInt64, maxResidualEvaluations: UInt64, residualTolerance: Double, stepTolerance: Double, initialRadius: Double, maximumRadius: Double, variableScale: [Double], residualScale: [Double]) {
+        self.maxIterations = maxIterations
+        self.maxResidualEvaluations = maxResidualEvaluations
+        self.residualTolerance = residualTolerance
+        self.stepTolerance = stepTolerance
+        self.initialRadius = initialRadius
+        self.maximumRadius = maximumRadius
+        self.variableScale = variableScale
+        self.residualScale = residualScale
+    }
+}
+
+extension FfiPowellHybridOptions: Equatable, Hashable {
+    public static func == (lhs: FfiPowellHybridOptions, rhs: FfiPowellHybridOptions) -> Bool {
+        if lhs.maxIterations != rhs.maxIterations {
+            return false
+        }
+        if lhs.maxResidualEvaluations != rhs.maxResidualEvaluations {
+            return false
+        }
+        if lhs.residualTolerance != rhs.residualTolerance {
+            return false
+        }
+        if lhs.stepTolerance != rhs.stepTolerance {
+            return false
+        }
+        if lhs.initialRadius != rhs.initialRadius {
+            return false
+        }
+        if lhs.maximumRadius != rhs.maximumRadius {
+            return false
+        }
+        if lhs.variableScale != rhs.variableScale {
+            return false
+        }
+        if lhs.residualScale != rhs.residualScale {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(maxIterations)
+        hasher.combine(maxResidualEvaluations)
+        hasher.combine(residualTolerance)
+        hasher.combine(stepTolerance)
+        hasher.combine(initialRadius)
+        hasher.combine(maximumRadius)
+        hasher.combine(variableScale)
+        hasher.combine(residualScale)
+    }
+}
+
+public struct FfiConverterTypeFfiPowellHybridOptions: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiPowellHybridOptions {
+        return
+            try FfiPowellHybridOptions(
+                maxIterations: FfiConverterUInt64.read(from: &buf),
+                maxResidualEvaluations: FfiConverterUInt64.read(from: &buf),
+                residualTolerance: FfiConverterDouble.read(from: &buf),
+                stepTolerance: FfiConverterDouble.read(from: &buf),
+                initialRadius: FfiConverterDouble.read(from: &buf),
+                maximumRadius: FfiConverterDouble.read(from: &buf),
+                variableScale: FfiConverterSequenceDouble.read(from: &buf),
+                residualScale: FfiConverterSequenceDouble.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: FfiPowellHybridOptions, into buf: inout [UInt8]) {
+        FfiConverterUInt64.write(value.maxIterations, into: &buf)
+        FfiConverterUInt64.write(value.maxResidualEvaluations, into: &buf)
+        FfiConverterDouble.write(value.residualTolerance, into: &buf)
+        FfiConverterDouble.write(value.stepTolerance, into: &buf)
+        FfiConverterDouble.write(value.initialRadius, into: &buf)
+        FfiConverterDouble.write(value.maximumRadius, into: &buf)
+        FfiConverterSequenceDouble.write(value.variableScale, into: &buf)
+        FfiConverterSequenceDouble.write(value.residualScale, into: &buf)
+    }
+}
+
+public func FfiConverterTypeFfiPowellHybridOptions_lift(_ buf: RustBuffer) throws -> FfiPowellHybridOptions {
+    return try FfiConverterTypeFfiPowellHybridOptions.lift(buf)
+}
+
+public func FfiConverterTypeFfiPowellHybridOptions_lower(_ value: FfiPowellHybridOptions) -> RustBuffer {
+    return FfiConverterTypeFfiPowellHybridOptions.lower(value)
+}
+
+public struct FfiPowellHybridResult {
+    public var point: [Double]
+    public var residuals: [Double]
+    public var residualNorm: Double
+    public var iterations: UInt64
+    public var residualEvaluations: UInt64
+    public var jacobianEvaluations: UInt64
+    public var rankOneUpdates: UInt64
+    public var acceptedSteps: UInt64
+    public var finalRadius: Double
+    public var termination: FfiPowellHybridTermination
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(point: [Double], residuals: [Double], residualNorm: Double, iterations: UInt64, residualEvaluations: UInt64, jacobianEvaluations: UInt64, rankOneUpdates: UInt64, acceptedSteps: UInt64, finalRadius: Double, termination: FfiPowellHybridTermination) {
+        self.point = point
+        self.residuals = residuals
+        self.residualNorm = residualNorm
+        self.iterations = iterations
+        self.residualEvaluations = residualEvaluations
+        self.jacobianEvaluations = jacobianEvaluations
+        self.rankOneUpdates = rankOneUpdates
+        self.acceptedSteps = acceptedSteps
+        self.finalRadius = finalRadius
+        self.termination = termination
+    }
+}
+
+extension FfiPowellHybridResult: Equatable, Hashable {
+    public static func == (lhs: FfiPowellHybridResult, rhs: FfiPowellHybridResult) -> Bool {
+        if lhs.point != rhs.point {
+            return false
+        }
+        if lhs.residuals != rhs.residuals {
+            return false
+        }
+        if lhs.residualNorm != rhs.residualNorm {
+            return false
+        }
+        if lhs.iterations != rhs.iterations {
+            return false
+        }
+        if lhs.residualEvaluations != rhs.residualEvaluations {
+            return false
+        }
+        if lhs.jacobianEvaluations != rhs.jacobianEvaluations {
+            return false
+        }
+        if lhs.rankOneUpdates != rhs.rankOneUpdates {
+            return false
+        }
+        if lhs.acceptedSteps != rhs.acceptedSteps {
+            return false
+        }
+        if lhs.finalRadius != rhs.finalRadius {
+            return false
+        }
+        if lhs.termination != rhs.termination {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(point)
+        hasher.combine(residuals)
+        hasher.combine(residualNorm)
+        hasher.combine(iterations)
+        hasher.combine(residualEvaluations)
+        hasher.combine(jacobianEvaluations)
+        hasher.combine(rankOneUpdates)
+        hasher.combine(acceptedSteps)
+        hasher.combine(finalRadius)
+        hasher.combine(termination)
+    }
+}
+
+public struct FfiConverterTypeFfiPowellHybridResult: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiPowellHybridResult {
+        return
+            try FfiPowellHybridResult(
+                point: FfiConverterSequenceDouble.read(from: &buf),
+                residuals: FfiConverterSequenceDouble.read(from: &buf),
+                residualNorm: FfiConverterDouble.read(from: &buf),
+                iterations: FfiConverterUInt64.read(from: &buf),
+                residualEvaluations: FfiConverterUInt64.read(from: &buf),
+                jacobianEvaluations: FfiConverterUInt64.read(from: &buf),
+                rankOneUpdates: FfiConverterUInt64.read(from: &buf),
+                acceptedSteps: FfiConverterUInt64.read(from: &buf),
+                finalRadius: FfiConverterDouble.read(from: &buf),
+                termination: FfiConverterTypeFfiPowellHybridTermination.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: FfiPowellHybridResult, into buf: inout [UInt8]) {
+        FfiConverterSequenceDouble.write(value.point, into: &buf)
+        FfiConverterSequenceDouble.write(value.residuals, into: &buf)
+        FfiConverterDouble.write(value.residualNorm, into: &buf)
+        FfiConverterUInt64.write(value.iterations, into: &buf)
+        FfiConverterUInt64.write(value.residualEvaluations, into: &buf)
+        FfiConverterUInt64.write(value.jacobianEvaluations, into: &buf)
+        FfiConverterUInt64.write(value.rankOneUpdates, into: &buf)
+        FfiConverterUInt64.write(value.acceptedSteps, into: &buf)
+        FfiConverterDouble.write(value.finalRadius, into: &buf)
+        FfiConverterTypeFfiPowellHybridTermination.write(value.termination, into: &buf)
+    }
+}
+
+public func FfiConverterTypeFfiPowellHybridResult_lift(_ buf: RustBuffer) throws -> FfiPowellHybridResult {
+    return try FfiConverterTypeFfiPowellHybridResult.lift(buf)
+}
+
+public func FfiConverterTypeFfiPowellHybridResult_lower(_ value: FfiPowellHybridResult) -> RustBuffer {
+    return FfiConverterTypeFfiPowellHybridResult.lower(value)
+}
+
+public struct FfiPowellUnconstrainedOptions {
+    public var maxIterations: UInt64
+    public var maxEvaluations: UInt64
+    public var initialRadius: Double
+    public var finalRadius: Double
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(maxIterations: UInt64, maxEvaluations: UInt64, initialRadius: Double, finalRadius: Double) {
+        self.maxIterations = maxIterations
+        self.maxEvaluations = maxEvaluations
+        self.initialRadius = initialRadius
+        self.finalRadius = finalRadius
+    }
+}
+
+extension FfiPowellUnconstrainedOptions: Equatable, Hashable {
+    public static func == (lhs: FfiPowellUnconstrainedOptions, rhs: FfiPowellUnconstrainedOptions) -> Bool {
+        if lhs.maxIterations != rhs.maxIterations {
+            return false
+        }
+        if lhs.maxEvaluations != rhs.maxEvaluations {
+            return false
+        }
+        if lhs.initialRadius != rhs.initialRadius {
+            return false
+        }
+        if lhs.finalRadius != rhs.finalRadius {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(maxIterations)
+        hasher.combine(maxEvaluations)
+        hasher.combine(initialRadius)
+        hasher.combine(finalRadius)
+    }
+}
+
+public struct FfiConverterTypeFfiPowellUnconstrainedOptions: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiPowellUnconstrainedOptions {
+        return
+            try FfiPowellUnconstrainedOptions(
+                maxIterations: FfiConverterUInt64.read(from: &buf),
+                maxEvaluations: FfiConverterUInt64.read(from: &buf),
+                initialRadius: FfiConverterDouble.read(from: &buf),
+                finalRadius: FfiConverterDouble.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: FfiPowellUnconstrainedOptions, into buf: inout [UInt8]) {
+        FfiConverterUInt64.write(value.maxIterations, into: &buf)
+        FfiConverterUInt64.write(value.maxEvaluations, into: &buf)
+        FfiConverterDouble.write(value.initialRadius, into: &buf)
+        FfiConverterDouble.write(value.finalRadius, into: &buf)
+    }
+}
+
+public func FfiConverterTypeFfiPowellUnconstrainedOptions_lift(_ buf: RustBuffer) throws -> FfiPowellUnconstrainedOptions {
+    return try FfiConverterTypeFfiPowellUnconstrainedOptions.lift(buf)
+}
+
+public func FfiConverterTypeFfiPowellUnconstrainedOptions_lower(_ value: FfiPowellUnconstrainedOptions) -> RustBuffer {
+    return FfiConverterTypeFfiPowellUnconstrainedOptions.lower(value)
+}
+
+public struct FfiPowellUnconstrainedResult {
+    public var point: [Double]
+    public var objective: Double
+    public var evaluations: UInt64
+    public var termination: FfiPowellUnconstrainedTermination
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(point: [Double], objective: Double, evaluations: UInt64, termination: FfiPowellUnconstrainedTermination) {
+        self.point = point
+        self.objective = objective
+        self.evaluations = evaluations
+        self.termination = termination
+    }
+}
+
+extension FfiPowellUnconstrainedResult: Equatable, Hashable {
+    public static func == (lhs: FfiPowellUnconstrainedResult, rhs: FfiPowellUnconstrainedResult) -> Bool {
+        if lhs.point != rhs.point {
+            return false
+        }
+        if lhs.objective != rhs.objective {
+            return false
+        }
+        if lhs.evaluations != rhs.evaluations {
+            return false
+        }
+        if lhs.termination != rhs.termination {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(point)
+        hasher.combine(objective)
+        hasher.combine(evaluations)
+        hasher.combine(termination)
+    }
+}
+
+public struct FfiConverterTypeFfiPowellUnconstrainedResult: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiPowellUnconstrainedResult {
+        return
+            try FfiPowellUnconstrainedResult(
+                point: FfiConverterSequenceDouble.read(from: &buf),
+                objective: FfiConverterDouble.read(from: &buf),
+                evaluations: FfiConverterUInt64.read(from: &buf),
+                termination: FfiConverterTypeFfiPowellUnconstrainedTermination.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: FfiPowellUnconstrainedResult, into buf: inout [UInt8]) {
+        FfiConverterSequenceDouble.write(value.point, into: &buf)
+        FfiConverterDouble.write(value.objective, into: &buf)
+        FfiConverterUInt64.write(value.evaluations, into: &buf)
+        FfiConverterTypeFfiPowellUnconstrainedTermination.write(value.termination, into: &buf)
+    }
+}
+
+public func FfiConverterTypeFfiPowellUnconstrainedResult_lift(_ buf: RustBuffer) throws -> FfiPowellUnconstrainedResult {
+    return try FfiConverterTypeFfiPowellUnconstrainedResult.lift(buf)
+}
+
+public func FfiConverterTypeFfiPowellUnconstrainedResult_lower(_ value: FfiPowellUnconstrainedResult) -> RustBuffer {
+    return FfiConverterTypeFfiPowellUnconstrainedResult.lower(value)
+}
+
 /**
  * Mirrors `nc_optimize::Problem`, with the constraint matrix crossing
  * as `FfiCsrMatrixF64` (already established above) rather than a
@@ -10908,6 +11768,61 @@ extension FfiBendersTermination: Equatable, Hashable {}
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
 
+public enum FfiBobyqaTermination {
+    case radiusReached
+    case evaluationLimit
+    case modelDegenerate
+    case allVariablesFixed
+}
+
+public struct FfiConverterTypeFfiBobyqaTermination: FfiConverterRustBuffer {
+    typealias SwiftType = FfiBobyqaTermination
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiBobyqaTermination {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        case 1: return .radiusReached
+
+        case 2: return .evaluationLimit
+
+        case 3: return .modelDegenerate
+
+        case 4: return .allVariablesFixed
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: FfiBobyqaTermination, into buf: inout [UInt8]) {
+        switch value {
+        case .radiusReached:
+            writeInt(&buf, Int32(1))
+
+        case .evaluationLimit:
+            writeInt(&buf, Int32(2))
+
+        case .modelDegenerate:
+            writeInt(&buf, Int32(3))
+
+        case .allVariablesFixed:
+            writeInt(&buf, Int32(4))
+        }
+    }
+}
+
+public func FfiConverterTypeFfiBobyqaTermination_lift(_ buf: RustBuffer) throws -> FfiBobyqaTermination {
+    return try FfiConverterTypeFfiBobyqaTermination.lift(buf)
+}
+
+public func FfiConverterTypeFfiBobyqaTermination_lower(_ value: FfiBobyqaTermination) -> RustBuffer {
+    return FfiConverterTypeFfiBobyqaTermination.lower(value)
+}
+
+extension FfiBobyqaTermination: Equatable, Hashable {}
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+
 public enum FfiBranchAndBoundTermination {
     case exhausted
     case gapSatisfied
@@ -11014,6 +11929,110 @@ public func FfiConverterTypeFfiBranchingStrategy_lower(_ value: FfiBranchingStra
 }
 
 extension FfiBranchingStrategy: Equatable, Hashable {}
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+
+public enum FfiCobylaConstraintKind {
+    case lessEqual
+    case equality
+}
+
+public struct FfiConverterTypeFfiCobylaConstraintKind: FfiConverterRustBuffer {
+    typealias SwiftType = FfiCobylaConstraintKind
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiCobylaConstraintKind {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        case 1: return .lessEqual
+
+        case 2: return .equality
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: FfiCobylaConstraintKind, into buf: inout [UInt8]) {
+        switch value {
+        case .lessEqual:
+            writeInt(&buf, Int32(1))
+
+        case .equality:
+            writeInt(&buf, Int32(2))
+        }
+    }
+}
+
+public func FfiConverterTypeFfiCobylaConstraintKind_lift(_ buf: RustBuffer) throws -> FfiCobylaConstraintKind {
+    return try FfiConverterTypeFfiCobylaConstraintKind.lift(buf)
+}
+
+public func FfiConverterTypeFfiCobylaConstraintKind_lower(_ value: FfiCobylaConstraintKind) -> RustBuffer {
+    return FfiConverterTypeFfiCobylaConstraintKind.lower(value)
+}
+
+extension FfiCobylaConstraintKind: Equatable, Hashable {}
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+
+public enum FfiCobylaTermination {
+    case radiusReached
+    case evaluationLimit
+    case iterationLimit
+    case numericalFailure
+    case allVariablesFixed
+}
+
+public struct FfiConverterTypeFfiCobylaTermination: FfiConverterRustBuffer {
+    typealias SwiftType = FfiCobylaTermination
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiCobylaTermination {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        case 1: return .radiusReached
+
+        case 2: return .evaluationLimit
+
+        case 3: return .iterationLimit
+
+        case 4: return .numericalFailure
+
+        case 5: return .allVariablesFixed
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: FfiCobylaTermination, into buf: inout [UInt8]) {
+        switch value {
+        case .radiusReached:
+            writeInt(&buf, Int32(1))
+
+        case .evaluationLimit:
+            writeInt(&buf, Int32(2))
+
+        case .iterationLimit:
+            writeInt(&buf, Int32(3))
+
+        case .numericalFailure:
+            writeInt(&buf, Int32(4))
+
+        case .allVariablesFixed:
+            writeInt(&buf, Int32(5))
+        }
+    }
+}
+
+public func FfiConverterTypeFfiCobylaTermination_lift(_ buf: RustBuffer) throws -> FfiCobylaTermination {
+    return try FfiConverterTypeFfiCobylaTermination.lift(buf)
+}
+
+public func FfiConverterTypeFfiCobylaTermination_lower(_ value: FfiCobylaTermination) -> RustBuffer {
+    return FfiConverterTypeFfiCobylaTermination.lower(value)
+}
+
+extension FfiCobylaTermination: Equatable, Hashable {}
 
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
@@ -11718,6 +12737,67 @@ extension FfiIterativeTermination: Equatable, Hashable {}
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
 
+public enum FfiLincoaTermination {
+    case radiusReached
+    case evaluationLimit
+    case iterationLimit
+    case numericalFailure
+    case allVariablesFixed
+}
+
+public struct FfiConverterTypeFfiLincoaTermination: FfiConverterRustBuffer {
+    typealias SwiftType = FfiLincoaTermination
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiLincoaTermination {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        case 1: return .radiusReached
+
+        case 2: return .evaluationLimit
+
+        case 3: return .iterationLimit
+
+        case 4: return .numericalFailure
+
+        case 5: return .allVariablesFixed
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: FfiLincoaTermination, into buf: inout [UInt8]) {
+        switch value {
+        case .radiusReached:
+            writeInt(&buf, Int32(1))
+
+        case .evaluationLimit:
+            writeInt(&buf, Int32(2))
+
+        case .iterationLimit:
+            writeInt(&buf, Int32(3))
+
+        case .numericalFailure:
+            writeInt(&buf, Int32(4))
+
+        case .allVariablesFixed:
+            writeInt(&buf, Int32(5))
+        }
+    }
+}
+
+public func FfiConverterTypeFfiLincoaTermination_lift(_ buf: RustBuffer) throws -> FfiLincoaTermination {
+    return try FfiConverterTypeFfiLincoaTermination.lift(buf)
+}
+
+public func FfiConverterTypeFfiLincoaTermination_lower(_ value: FfiLincoaTermination) -> RustBuffer {
+    return FfiConverterTypeFfiLincoaTermination.lower(value)
+}
+
+extension FfiLincoaTermination: Equatable, Hashable {}
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+
 public enum FfiLinearPreconditioner {
     case none
     case jacobi
@@ -12411,6 +13491,122 @@ extension FfiNonlinearTermination: Equatable, Hashable {}
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
 
+public enum FfiPowellHybridTermination {
+    case convergedResidual
+    case stalled
+    case evaluationLimit
+    case iterationLimit
+    case numericalFailure
+}
+
+public struct FfiConverterTypeFfiPowellHybridTermination: FfiConverterRustBuffer {
+    typealias SwiftType = FfiPowellHybridTermination
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiPowellHybridTermination {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        case 1: return .convergedResidual
+
+        case 2: return .stalled
+
+        case 3: return .evaluationLimit
+
+        case 4: return .iterationLimit
+
+        case 5: return .numericalFailure
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: FfiPowellHybridTermination, into buf: inout [UInt8]) {
+        switch value {
+        case .convergedResidual:
+            writeInt(&buf, Int32(1))
+
+        case .stalled:
+            writeInt(&buf, Int32(2))
+
+        case .evaluationLimit:
+            writeInt(&buf, Int32(3))
+
+        case .iterationLimit:
+            writeInt(&buf, Int32(4))
+
+        case .numericalFailure:
+            writeInt(&buf, Int32(5))
+        }
+    }
+}
+
+public func FfiConverterTypeFfiPowellHybridTermination_lift(_ buf: RustBuffer) throws -> FfiPowellHybridTermination {
+    return try FfiConverterTypeFfiPowellHybridTermination.lift(buf)
+}
+
+public func FfiConverterTypeFfiPowellHybridTermination_lower(_ value: FfiPowellHybridTermination) -> RustBuffer {
+    return FfiConverterTypeFfiPowellHybridTermination.lower(value)
+}
+
+extension FfiPowellHybridTermination: Equatable, Hashable {}
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+
+public enum FfiPowellUnconstrainedTermination {
+    case radiusReached
+    case evaluationLimit
+    case iterationLimit
+    case numericalFailure
+}
+
+public struct FfiConverterTypeFfiPowellUnconstrainedTermination: FfiConverterRustBuffer {
+    typealias SwiftType = FfiPowellUnconstrainedTermination
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiPowellUnconstrainedTermination {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        case 1: return .radiusReached
+
+        case 2: return .evaluationLimit
+
+        case 3: return .iterationLimit
+
+        case 4: return .numericalFailure
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: FfiPowellUnconstrainedTermination, into buf: inout [UInt8]) {
+        switch value {
+        case .radiusReached:
+            writeInt(&buf, Int32(1))
+
+        case .evaluationLimit:
+            writeInt(&buf, Int32(2))
+
+        case .iterationLimit:
+            writeInt(&buf, Int32(3))
+
+        case .numericalFailure:
+            writeInt(&buf, Int32(4))
+        }
+    }
+}
+
+public func FfiConverterTypeFfiPowellUnconstrainedTermination_lift(_ buf: RustBuffer) throws -> FfiPowellUnconstrainedTermination {
+    return try FfiConverterTypeFfiPowellUnconstrainedTermination.lift(buf)
+}
+
+public func FfiConverterTypeFfiPowellUnconstrainedTermination_lower(_ value: FfiPowellUnconstrainedTermination) -> RustBuffer {
+    return FfiConverterTypeFfiPowellUnconstrainedTermination.lower(value)
+}
+
+extension FfiPowellUnconstrainedTermination: Equatable, Hashable {}
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+
 public enum FfiRobustLossKind {
     case squared
     case huber
@@ -12997,8 +14193,11 @@ public func FfiConverterTypeFfiSqpTermination_lower(_ value: FfiSqpTermination) 
 
 extension FfiSqpTermination: Equatable, Hashable {}
 
-public protocol FfiLogicBendersOracle: AnyObject {
-    func evaluate(id: FfiLpSubproblemId, bits: [Bool]) -> FfiLogicBendersEvaluation
+/**
+ * Synchronous objective callback. No value signals caller failure.
+ */
+public protocol FfiBobyqaObjective: AnyObject {
+    func evaluate(point: [Double]) -> Double?
 }
 
 /// Magic number for the Rust proxy to call using the same mechanism as every other method,
@@ -13008,6 +14207,225 @@ private let IDX_CALLBACK_FREE: Int32 = 0
 private let UNIFFI_CALLBACK_SUCCESS: Int32 = 0
 private let UNIFFI_CALLBACK_ERROR: Int32 = 1
 private let UNIFFI_CALLBACK_UNEXPECTED_ERROR: Int32 = 2
+
+/// Put the implementation in a struct so we don't pollute the top-level namespace
+private enum UniffiCallbackInterfaceFfiBobyqaObjective {
+    /// Create the VTable using a series of closures.
+    /// Swift automatically converts these into C callback functions.
+    static var vtable: UniffiVTableCallbackInterfaceFfiBobyqaObjective = .init(
+        evaluate: { (
+            uniffiHandle: UInt64,
+            point: RustBuffer,
+            uniffiOutReturn: UnsafeMutablePointer<RustBuffer>,
+            uniffiCallStatus: UnsafeMutablePointer<RustCallStatus>
+        ) in
+            let makeCall = {
+                () throws -> Double? in
+                guard let uniffiObj = try? FfiConverterCallbackInterfaceFfiBobyqaObjective.handleMap.get(handle: uniffiHandle) else {
+                    throw UniffiInternalError.unexpectedStaleHandle
+                }
+                return try uniffiObj.evaluate(
+                    point: FfiConverterSequenceDouble.lift(point)
+                )
+            }
+
+            let writeReturn = { uniffiOutReturn.pointee = FfiConverterOptionDouble.lower($0) }
+            uniffiTraitInterfaceCall(
+                callStatus: uniffiCallStatus,
+                makeCall: makeCall,
+                writeReturn: writeReturn
+            )
+        },
+        uniffiFree: { (uniffiHandle: UInt64) in
+            let result = try? FfiConverterCallbackInterfaceFfiBobyqaObjective.handleMap.remove(handle: uniffiHandle)
+            if result == nil {
+                print("Uniffi callback interface FfiBobyqaObjective: handle missing in uniffiFree")
+            }
+        }
+    )
+}
+
+private func uniffiCallbackInitFfiBobyqaObjective() {
+    uniffi_nc_ffi_fn_init_callback_vtable_ffibobyqaobjective(&UniffiCallbackInterfaceFfiBobyqaObjective.vtable)
+}
+
+/// FfiConverter protocol for callback interfaces
+private enum FfiConverterCallbackInterfaceFfiBobyqaObjective {
+    fileprivate static var handleMap = UniffiHandleMap<FfiBobyqaObjective>()
+}
+
+extension FfiConverterCallbackInterfaceFfiBobyqaObjective: FfiConverter {
+    typealias SwiftType = FfiBobyqaObjective
+    typealias FfiType = UInt64
+
+    public static func lift(_ handle: UInt64) throws -> SwiftType {
+        try handleMap.get(handle: handle)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
+    }
+
+    public static func lower(_ v: SwiftType) -> UInt64 {
+        return handleMap.insert(obj: v)
+    }
+
+    public static func write(_ v: SwiftType, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(v))
+    }
+}
+
+public protocol FfiCobylaEvaluator: AnyObject {
+    func evaluate(point: [Double]) -> FfiCobylaEvaluation?
+}
+
+/// Put the implementation in a struct so we don't pollute the top-level namespace
+private enum UniffiCallbackInterfaceFfiCobylaEvaluator {
+    /// Create the VTable using a series of closures.
+    /// Swift automatically converts these into C callback functions.
+    static var vtable: UniffiVTableCallbackInterfaceFfiCobylaEvaluator = .init(
+        evaluate: { (
+            uniffiHandle: UInt64,
+            point: RustBuffer,
+            uniffiOutReturn: UnsafeMutablePointer<RustBuffer>,
+            uniffiCallStatus: UnsafeMutablePointer<RustCallStatus>
+        ) in
+            let makeCall = {
+                () throws -> FfiCobylaEvaluation? in
+                guard let uniffiObj = try? FfiConverterCallbackInterfaceFfiCobylaEvaluator.handleMap.get(handle: uniffiHandle) else {
+                    throw UniffiInternalError.unexpectedStaleHandle
+                }
+                return try uniffiObj.evaluate(
+                    point: FfiConverterSequenceDouble.lift(point)
+                )
+            }
+
+            let writeReturn = { uniffiOutReturn.pointee = FfiConverterOptionTypeFfiCobylaEvaluation.lower($0) }
+            uniffiTraitInterfaceCall(
+                callStatus: uniffiCallStatus,
+                makeCall: makeCall,
+                writeReturn: writeReturn
+            )
+        },
+        uniffiFree: { (uniffiHandle: UInt64) in
+            let result = try? FfiConverterCallbackInterfaceFfiCobylaEvaluator.handleMap.remove(handle: uniffiHandle)
+            if result == nil {
+                print("Uniffi callback interface FfiCobylaEvaluator: handle missing in uniffiFree")
+            }
+        }
+    )
+}
+
+private func uniffiCallbackInitFfiCobylaEvaluator() {
+    uniffi_nc_ffi_fn_init_callback_vtable_fficobylaevaluator(&UniffiCallbackInterfaceFfiCobylaEvaluator.vtable)
+}
+
+/// FfiConverter protocol for callback interfaces
+private enum FfiConverterCallbackInterfaceFfiCobylaEvaluator {
+    fileprivate static var handleMap = UniffiHandleMap<FfiCobylaEvaluator>()
+}
+
+extension FfiConverterCallbackInterfaceFfiCobylaEvaluator: FfiConverter {
+    typealias SwiftType = FfiCobylaEvaluator
+    typealias FfiType = UInt64
+
+    public static func lift(_ handle: UInt64) throws -> SwiftType {
+        try handleMap.get(handle: handle)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
+    }
+
+    public static func lower(_ v: SwiftType) -> UInt64 {
+        return handleMap.insert(obj: v)
+    }
+
+    public static func write(_ v: SwiftType, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(v))
+    }
+}
+
+/**
+ * Synchronous objective callback. No value signals caller failure.
+ */
+public protocol FfiLincoaObjective: AnyObject {
+    func evaluate(point: [Double]) -> Double?
+}
+
+/// Put the implementation in a struct so we don't pollute the top-level namespace
+private enum UniffiCallbackInterfaceFfiLincoaObjective {
+    /// Create the VTable using a series of closures.
+    /// Swift automatically converts these into C callback functions.
+    static var vtable: UniffiVTableCallbackInterfaceFfiLincoaObjective = .init(
+        evaluate: { (
+            uniffiHandle: UInt64,
+            point: RustBuffer,
+            uniffiOutReturn: UnsafeMutablePointer<RustBuffer>,
+            uniffiCallStatus: UnsafeMutablePointer<RustCallStatus>
+        ) in
+            let makeCall = {
+                () throws -> Double? in
+                guard let uniffiObj = try? FfiConverterCallbackInterfaceFfiLincoaObjective.handleMap.get(handle: uniffiHandle) else {
+                    throw UniffiInternalError.unexpectedStaleHandle
+                }
+                return try uniffiObj.evaluate(
+                    point: FfiConverterSequenceDouble.lift(point)
+                )
+            }
+
+            let writeReturn = { uniffiOutReturn.pointee = FfiConverterOptionDouble.lower($0) }
+            uniffiTraitInterfaceCall(
+                callStatus: uniffiCallStatus,
+                makeCall: makeCall,
+                writeReturn: writeReturn
+            )
+        },
+        uniffiFree: { (uniffiHandle: UInt64) in
+            let result = try? FfiConverterCallbackInterfaceFfiLincoaObjective.handleMap.remove(handle: uniffiHandle)
+            if result == nil {
+                print("Uniffi callback interface FfiLincoaObjective: handle missing in uniffiFree")
+            }
+        }
+    )
+}
+
+private func uniffiCallbackInitFfiLincoaObjective() {
+    uniffi_nc_ffi_fn_init_callback_vtable_ffilincoaobjective(&UniffiCallbackInterfaceFfiLincoaObjective.vtable)
+}
+
+/// FfiConverter protocol for callback interfaces
+private enum FfiConverterCallbackInterfaceFfiLincoaObjective {
+    fileprivate static var handleMap = UniffiHandleMap<FfiLincoaObjective>()
+}
+
+extension FfiConverterCallbackInterfaceFfiLincoaObjective: FfiConverter {
+    typealias SwiftType = FfiLincoaObjective
+    typealias FfiType = UInt64
+
+    public static func lift(_ handle: UInt64) throws -> SwiftType {
+        try handleMap.get(handle: handle)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
+    }
+
+    public static func lower(_ v: SwiftType) -> UInt64 {
+        return handleMap.insert(obj: v)
+    }
+
+    public static func write(_ v: SwiftType, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(v))
+    }
+}
+
+public protocol FfiLogicBendersOracle: AnyObject {
+    func evaluate(id: FfiLpSubproblemId, bits: [Bool]) -> FfiLogicBendersEvaluation
+}
 
 /// Put the implementation in a struct so we don't pollute the top-level namespace
 private enum UniffiCallbackInterfaceFfiLogicBendersOracle {
@@ -13059,6 +14477,181 @@ private enum FfiConverterCallbackInterfaceFfiLogicBendersOracle {
 
 extension FfiConverterCallbackInterfaceFfiLogicBendersOracle: FfiConverter {
     typealias SwiftType = FfiLogicBendersOracle
+    typealias FfiType = UInt64
+
+    public static func lift(_ handle: UInt64) throws -> SwiftType {
+        try handleMap.get(handle: handle)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
+    }
+
+    public static func lower(_ v: SwiftType) -> UInt64 {
+        return handleMap.insert(obj: v)
+    }
+
+    public static func write(_ v: SwiftType, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(v))
+    }
+}
+
+/**
+ * Synchronous callbacks. No value signals caller failure.
+ */
+public protocol FfiPowellHybridSystem: AnyObject {
+    func residual(point: [Double]) -> [Double]?
+
+    func jacobian(point: [Double]) -> [[Double]]?
+}
+
+/// Put the implementation in a struct so we don't pollute the top-level namespace
+private enum UniffiCallbackInterfaceFfiPowellHybridSystem {
+    /// Create the VTable using a series of closures.
+    /// Swift automatically converts these into C callback functions.
+    static var vtable: UniffiVTableCallbackInterfaceFfiPowellHybridSystem = .init(
+        residual: { (
+            uniffiHandle: UInt64,
+            point: RustBuffer,
+            uniffiOutReturn: UnsafeMutablePointer<RustBuffer>,
+            uniffiCallStatus: UnsafeMutablePointer<RustCallStatus>
+        ) in
+            let makeCall = {
+                () throws -> [Double]? in
+                guard let uniffiObj = try? FfiConverterCallbackInterfaceFfiPowellHybridSystem.handleMap.get(handle: uniffiHandle) else {
+                    throw UniffiInternalError.unexpectedStaleHandle
+                }
+                return try uniffiObj.residual(
+                    point: FfiConverterSequenceDouble.lift(point)
+                )
+            }
+
+            let writeReturn = { uniffiOutReturn.pointee = FfiConverterOptionSequenceDouble.lower($0) }
+            uniffiTraitInterfaceCall(
+                callStatus: uniffiCallStatus,
+                makeCall: makeCall,
+                writeReturn: writeReturn
+            )
+        },
+        jacobian: { (
+            uniffiHandle: UInt64,
+            point: RustBuffer,
+            uniffiOutReturn: UnsafeMutablePointer<RustBuffer>,
+            uniffiCallStatus: UnsafeMutablePointer<RustCallStatus>
+        ) in
+            let makeCall = {
+                () throws -> [[Double]]? in
+                guard let uniffiObj = try? FfiConverterCallbackInterfaceFfiPowellHybridSystem.handleMap.get(handle: uniffiHandle) else {
+                    throw UniffiInternalError.unexpectedStaleHandle
+                }
+                return try uniffiObj.jacobian(
+                    point: FfiConverterSequenceDouble.lift(point)
+                )
+            }
+
+            let writeReturn = { uniffiOutReturn.pointee = FfiConverterOptionSequenceSequenceDouble.lower($0) }
+            uniffiTraitInterfaceCall(
+                callStatus: uniffiCallStatus,
+                makeCall: makeCall,
+                writeReturn: writeReturn
+            )
+        },
+        uniffiFree: { (uniffiHandle: UInt64) in
+            let result = try? FfiConverterCallbackInterfaceFfiPowellHybridSystem.handleMap.remove(handle: uniffiHandle)
+            if result == nil {
+                print("Uniffi callback interface FfiPowellHybridSystem: handle missing in uniffiFree")
+            }
+        }
+    )
+}
+
+private func uniffiCallbackInitFfiPowellHybridSystem() {
+    uniffi_nc_ffi_fn_init_callback_vtable_ffipowellhybridsystem(&UniffiCallbackInterfaceFfiPowellHybridSystem.vtable)
+}
+
+/// FfiConverter protocol for callback interfaces
+private enum FfiConverterCallbackInterfaceFfiPowellHybridSystem {
+    fileprivate static var handleMap = UniffiHandleMap<FfiPowellHybridSystem>()
+}
+
+extension FfiConverterCallbackInterfaceFfiPowellHybridSystem: FfiConverter {
+    typealias SwiftType = FfiPowellHybridSystem
+    typealias FfiType = UInt64
+
+    public static func lift(_ handle: UInt64) throws -> SwiftType {
+        try handleMap.get(handle: handle)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
+    }
+
+    public static func lower(_ v: SwiftType) -> UInt64 {
+        return handleMap.insert(obj: v)
+    }
+
+    public static func write(_ v: SwiftType, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(v))
+    }
+}
+
+/**
+ * Synchronous objective callback. No value signals caller failure.
+ */
+public protocol FfiPowellObjective: AnyObject {
+    func evaluate(point: [Double]) -> Double?
+}
+
+/// Put the implementation in a struct so we don't pollute the top-level namespace
+private enum UniffiCallbackInterfaceFfiPowellObjective {
+    /// Create the VTable using a series of closures.
+    /// Swift automatically converts these into C callback functions.
+    static var vtable: UniffiVTableCallbackInterfaceFfiPowellObjective = .init(
+        evaluate: { (
+            uniffiHandle: UInt64,
+            point: RustBuffer,
+            uniffiOutReturn: UnsafeMutablePointer<RustBuffer>,
+            uniffiCallStatus: UnsafeMutablePointer<RustCallStatus>
+        ) in
+            let makeCall = {
+                () throws -> Double? in
+                guard let uniffiObj = try? FfiConverterCallbackInterfaceFfiPowellObjective.handleMap.get(handle: uniffiHandle) else {
+                    throw UniffiInternalError.unexpectedStaleHandle
+                }
+                return try uniffiObj.evaluate(
+                    point: FfiConverterSequenceDouble.lift(point)
+                )
+            }
+
+            let writeReturn = { uniffiOutReturn.pointee = FfiConverterOptionDouble.lower($0) }
+            uniffiTraitInterfaceCall(
+                callStatus: uniffiCallStatus,
+                makeCall: makeCall,
+                writeReturn: writeReturn
+            )
+        },
+        uniffiFree: { (uniffiHandle: UInt64) in
+            let result = try? FfiConverterCallbackInterfaceFfiPowellObjective.handleMap.remove(handle: uniffiHandle)
+            if result == nil {
+                print("Uniffi callback interface FfiPowellObjective: handle missing in uniffiFree")
+            }
+        }
+    )
+}
+
+private func uniffiCallbackInitFfiPowellObjective() {
+    uniffi_nc_ffi_fn_init_callback_vtable_ffipowellobjective(&UniffiCallbackInterfaceFfiPowellObjective.vtable)
+}
+
+/// FfiConverter protocol for callback interfaces
+private enum FfiConverterCallbackInterfaceFfiPowellObjective {
+    fileprivate static var handleMap = UniffiHandleMap<FfiPowellObjective>()
+}
+
+extension FfiConverterCallbackInterfaceFfiPowellObjective: FfiConverter {
+    typealias SwiftType = FfiPowellObjective
     typealias FfiType = UInt64
 
     public static func lift(_ handle: UInt64) throws -> SwiftType {
@@ -13158,6 +14751,27 @@ private struct FfiConverterOptionTypeFfiBendersIncumbent: FfiConverterRustBuffer
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterTypeFfiBendersIncumbent.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+private struct FfiConverterOptionTypeFfiCobylaEvaluation: FfiConverterRustBuffer {
+    typealias SwiftType = FfiCobylaEvaluation?
+
+    static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeFfiCobylaEvaluation.write(value, into: &buf)
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeFfiCobylaEvaluation.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
     }
@@ -13389,6 +15003,48 @@ private struct FfiConverterOptionSequenceDouble: FfiConverterRustBuffer {
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterSequenceDouble.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+private struct FfiConverterOptionSequenceTypeFfiBound: FfiConverterRustBuffer {
+    typealias SwiftType = [FfiBound]?
+
+    static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterSequenceTypeFfiBound.write(value, into: &buf)
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterSequenceTypeFfiBound.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+private struct FfiConverterOptionSequenceSequenceDouble: FfiConverterRustBuffer {
+    typealias SwiftType = [[Double]]?
+
+    static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterSequenceSequenceDouble.write(value, into: &buf)
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterSequenceSequenceDouble.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
     }
@@ -14208,6 +15864,28 @@ private struct FfiConverterSequenceTypeFfiSparseRefinedSolution: FfiConverterRus
     }
 }
 
+private struct FfiConverterSequenceTypeFfiCobylaConstraintKind: FfiConverterRustBuffer {
+    typealias SwiftType = [FfiCobylaConstraintKind]
+
+    static func write(_ value: [FfiCobylaConstraintKind], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeFfiCobylaConstraintKind.write(item, into: &buf)
+        }
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [FfiCobylaConstraintKind] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [FfiCobylaConstraintKind]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            try seq.append(FfiConverterTypeFfiCobylaConstraintKind.read(from: &buf))
+        }
+        return seq
+    }
+}
+
 private struct FfiConverterSequenceTypeFfiIntegerBendersScenario: FfiConverterRustBuffer {
     typealias SwiftType = [FfiIntegerBendersScenario]
 
@@ -14545,6 +16223,26 @@ public func resumeDistributedBenders(firstStage: FfiProblem, scenarios: [FfiBend
     })
 }
 
+public func runPowellHybrid(initial: [Double], options: FfiPowellHybridOptions, system: FfiPowellHybridSystem) throws -> FfiPowellHybridResult {
+    return try FfiConverterTypeFfiPowellHybridResult.lift(rustCallWithError(FfiConverterTypeFfiError.lift) {
+        uniffi_nc_ffi_fn_func_run_powell_hybrid(
+            FfiConverterSequenceDouble.lower(initial),
+            FfiConverterTypeFfiPowellHybridOptions.lower(options),
+            FfiConverterCallbackInterfaceFfiPowellHybridSystem.lower(system), $0
+        )
+    })
+}
+
+public func runPowellHybridModel(initial: [Double], equations: [FfiNonlinearExpression], options: FfiPowellHybridOptions) throws -> FfiPowellHybridResult {
+    return try FfiConverterTypeFfiPowellHybridResult.lift(rustCallWithError(FfiConverterTypeFfiError.lift) {
+        uniffi_nc_ffi_fn_func_run_powell_hybrid_model(
+            FfiConverterSequenceDouble.lower(initial),
+            FfiConverterSequenceTypeFfiNonlinearExpression.lower(equations),
+            FfiConverterTypeFfiPowellHybridOptions.lower(options), $0
+        )
+    })
+}
+
 public func runProgressiveHedging(firstStage: FfiProblem, scenarios: [FfiBendersScenario], options: FfiHedgingOptions, checkpoint: FfiHedgingCheckpoint?) throws -> FfiHedgingResult {
     return try FfiConverterTypeFfiHedgingResult.lift(rustCallWithError(FfiConverterTypeFfiError.lift) {
         uniffi_nc_ffi_fn_func_run_progressive_hedging(
@@ -14562,6 +16260,29 @@ public func solveBendersDecomposition(firstStage: FfiProblem, scenarios: [FfiBen
             FfiConverterTypeFfiProblem.lower(firstStage),
             FfiConverterSequenceTypeFfiBendersScenario.lower(scenarios),
             FfiConverterTypeFfiBendersOptions.lower(options), $0
+        )
+    })
+}
+
+public func solveBobyqa(initial: [Double], bounds: [FfiBound], options: FfiBobyqaOptions, objective: FfiBobyqaObjective) throws -> FfiBobyqaResult {
+    return try FfiConverterTypeFfiBobyqaResult.lift(rustCallWithError(FfiConverterTypeFfiError.lift) {
+        uniffi_nc_ffi_fn_func_solve_bobyqa(
+            FfiConverterSequenceDouble.lower(initial),
+            FfiConverterSequenceTypeFfiBound.lower(bounds),
+            FfiConverterTypeFfiBobyqaOptions.lower(options),
+            FfiConverterCallbackInterfaceFfiBobyqaObjective.lower(objective), $0
+        )
+    })
+}
+
+public func solveCobyla(initial: [Double], bounds: [FfiBound]?, constraintKinds: [FfiCobylaConstraintKind], options: FfiCobylaOptions, evaluator: FfiCobylaEvaluator) throws -> FfiCobylaResult {
+    return try FfiConverterTypeFfiCobylaResult.lift(rustCallWithError(FfiConverterTypeFfiError.lift) {
+        uniffi_nc_ffi_fn_func_solve_cobyla(
+            FfiConverterSequenceDouble.lower(initial),
+            FfiConverterOptionSequenceTypeFfiBound.lower(bounds),
+            FfiConverterSequenceTypeFfiCobylaConstraintKind.lower(constraintKinds),
+            FfiConverterTypeFfiCobylaOptions.lower(options),
+            FfiConverterCallbackInterfaceFfiCobylaEvaluator.lower(evaluator), $0
         )
     })
 }
@@ -14608,6 +16329,17 @@ public func solveIntegerBendersDecomposition(firstStage: FfiProblem, scenarios: 
             FfiConverterSequenceTypeFfiIntegerBendersScenario.lower(scenarios),
             FfiConverterTypeFfiIntegerBendersOptions.lower(options),
             FfiConverterCallbackInterfaceFfiLogicBendersOracle.lower(oracle), $0
+        )
+    })
+}
+
+public func solveLincoa(initial: [Double], problem: FfiProblem, options: FfiLincoaOptions, objective: FfiLincoaObjective) throws -> FfiLincoaResult {
+    return try FfiConverterTypeFfiLincoaResult.lift(rustCallWithError(FfiConverterTypeFfiError.lift) {
+        uniffi_nc_ffi_fn_func_solve_lincoa(
+            FfiConverterSequenceDouble.lower(initial),
+            FfiConverterTypeFfiProblem.lower(problem),
+            FfiConverterTypeFfiLincoaOptions.lower(options),
+            FfiConverterCallbackInterfaceFfiLincoaObjective.lower(objective), $0
         )
     })
 }
@@ -14697,6 +16429,16 @@ public func solveMixedIntegerNonlinear(modelValue: FfiNonlinearModel, constraint
             FfiConverterSequenceBool.lower(isInteger),
             FfiConverterSequenceDouble.lower(initial),
             FfiConverterTypeFfiMixedIntegerNonlinearOptions.lower(options), $0
+        )
+    })
+}
+
+public func solveNewuoa(initial: [Double], options: FfiPowellUnconstrainedOptions, objective: FfiPowellObjective) throws -> FfiPowellUnconstrainedResult {
+    return try FfiConverterTypeFfiPowellUnconstrainedResult.lift(rustCallWithError(FfiConverterTypeFfiError.lift) {
+        uniffi_nc_ffi_fn_func_solve_newuoa(
+            FfiConverterSequenceDouble.lower(initial),
+            FfiConverterTypeFfiPowellUnconstrainedOptions.lower(options),
+            FfiConverterCallbackInterfaceFfiPowellObjective.lower(objective), $0
         )
     })
 }
@@ -14938,6 +16680,16 @@ public func solveSqp(modelValue: FfiNonlinearModel, constraints: [FfiNonlinearCo
     })
 }
 
+public func solveUobyqa(initial: [Double], options: FfiPowellUnconstrainedOptions, objective: FfiPowellObjective) throws -> FfiPowellUnconstrainedResult {
+    return try FfiConverterTypeFfiPowellUnconstrainedResult.lift(rustCallWithError(FfiConverterTypeFfiError.lift) {
+        uniffi_nc_ffi_fn_func_solve_uobyqa(
+            FfiConverterSequenceDouble.lower(initial),
+            FfiConverterTypeFfiPowellUnconstrainedOptions.lower(options),
+            FfiConverterCallbackInterfaceFfiPowellObjective.lower(objective), $0
+        )
+    })
+}
+
 /**
  * The `f32` counterpart of `spmv_f64`.
  */
@@ -15126,10 +16878,22 @@ private var initializationResult: InitializationResult {
     if uniffi_nc_ffi_checksum_func_resume_distributed_benders() != 63806 {
         return InitializationResult.apiChecksumMismatch
     }
+    if uniffi_nc_ffi_checksum_func_run_powell_hybrid() != 28434 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_nc_ffi_checksum_func_run_powell_hybrid_model() != 11346 {
+        return InitializationResult.apiChecksumMismatch
+    }
     if uniffi_nc_ffi_checksum_func_run_progressive_hedging() != 64979 {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_nc_ffi_checksum_func_solve_benders_decomposition() != 43406 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_nc_ffi_checksum_func_solve_bobyqa() != 42610 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_nc_ffi_checksum_func_solve_cobyla() != 42263 {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_nc_ffi_checksum_func_solve_constrained_nonlinear() != 26438 {
@@ -15142,6 +16906,9 @@ private var initializationResult: InitializationResult {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_nc_ffi_checksum_func_solve_integer_benders_decomposition() != 45640 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_nc_ffi_checksum_func_solve_lincoa() != 9546 {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_nc_ffi_checksum_func_solve_lp_interior_point() != 56241 {
@@ -15163,6 +16930,9 @@ private var initializationResult: InitializationResult {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_nc_ffi_checksum_func_solve_mixed_integer_nonlinear() != 6008 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_nc_ffi_checksum_func_solve_newuoa() != 30887 {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_nc_ffi_checksum_func_solve_nonlinear_decomposition() != 50818 {
@@ -15220,6 +16990,9 @@ private var initializationResult: InitializationResult {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_nc_ffi_checksum_func_solve_sqp() != 28992 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_nc_ffi_checksum_func_solve_uobyqa() != 8522 {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_nc_ffi_checksum_func_spmv_f32() != 8289 {
@@ -15339,11 +17112,34 @@ private var initializationResult: InitializationResult {
     if uniffi_nc_ffi_checksum_constructor_ffivectorf64_new() != 59672 {
         return InitializationResult.apiChecksumMismatch
     }
+    if uniffi_nc_ffi_checksum_method_ffibobyqaobjective_evaluate() != 36090 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_nc_ffi_checksum_method_fficobylaevaluator_evaluate() != 55460 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_nc_ffi_checksum_method_ffilincoaobjective_evaluate() != 41354 {
+        return InitializationResult.apiChecksumMismatch
+    }
     if uniffi_nc_ffi_checksum_method_ffilogicbendersoracle_evaluate() != 48444 {
         return InitializationResult.apiChecksumMismatch
     }
+    if uniffi_nc_ffi_checksum_method_ffipowellhybridsystem_residual() != 20034 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_nc_ffi_checksum_method_ffipowellhybridsystem_jacobian() != 47372 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_nc_ffi_checksum_method_ffipowellobjective_evaluate() != 61044 {
+        return InitializationResult.apiChecksumMismatch
+    }
 
+    uniffiCallbackInitFfiBobyqaObjective()
+    uniffiCallbackInitFfiCobylaEvaluator()
+    uniffiCallbackInitFfiLincoaObjective()
     uniffiCallbackInitFfiLogicBendersOracle()
+    uniffiCallbackInitFfiPowellHybridSystem()
+    uniffiCallbackInitFfiPowellObjective()
     return InitializationResult.ok
 }
 
